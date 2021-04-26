@@ -8,6 +8,8 @@ specifications in a convenient manner.
 
 ## Installation
 
+The installable plugin file (a .jar file) can be found in the [releases section](https://gitlab.utwente.nl/fmt/intellijml/-/releases).
+
 An installation guide can be found [here](docs/Installation_Guide.pdf)
 
 ## Build from source
