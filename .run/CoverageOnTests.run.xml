@@ -1,0 +1,34 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="CoverageAllTests" type="GradleRunConfiguration" factoryName="Gradle">
+    <ExternalSystemSettings>
+      <option name="executionName" />
+      <option name="externalProjectPath" value="$PROJECT_DIR$" />
+      <option name="externalSystemIdString" value="GRADLE" />
+      <option name="scriptParameters" value="" />
+      <option name="taskDescriptions">
+        <list />
+      </option>
+      <option name="taskNames">
+        <list />
+      </option>
+      <option name="vmOptions" value="" />
+    </ExternalSystemSettings>
+    <ExternalSystemDebugServerProcess>true</ExternalSystemDebugServerProcess>
+    <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="nl.utwente.jmlplugin.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <DebugAllEnabled>false</DebugAllEnabled>
+    <method v="2">
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="JMLIntegrationTest" run_configuration_type="GradleRunConfiguration" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="JMLParsingTest" run_configuration_type="GradleRunConfiguration" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="JMLSemanticsAnnotatorTest" run_configuration_type="GradleRunConfiguration" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="JMLSyntaxAnnotatorTest" run_configuration_type="GradleRunConfiguration" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="JMLTypeAnnotatorTest" run_configuration_type="GradleRunConfiguration" />
+      <option name="RunConfigurationTask" enabled="true" run_configuration_name="JMLCompletionTest" run_configuration_type="GradleRunConfiguration" />
+    </method>
+  </configuration>
+</component>
