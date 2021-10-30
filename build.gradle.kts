@@ -51,11 +51,11 @@ tasks {
     // Set the JVM compatibility versions
     properties("javaVersion").let {
         withType<JavaCompile> {
-            sourceCompatibility = "1.8"
-            targetCompatibility = "1.8"
+            sourceCompatibility = it
+            targetCompatibility = it
         }
         withType<KotlinCompile> {
-            kotlinOptions.jvmTarget = "1.8"
+            kotlinOptions.jvmTarget = it
         }
     }
 
@@ -65,7 +65,7 @@ tasks {
 
     test {
         // set the path to the cloned repository from https://github.com/JetBrains/intellij-community
-        systemProperty("idea.home.path", "CHANGE_THIS_TO_THE_SOURCE_PATH")
+        systemProperty("idea.home.path", "D:\\Workspaces\\intellij-community")
         // start a new instance for every test suite
         setForkEvery(1)
     }
