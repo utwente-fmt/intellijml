@@ -456,7 +456,6 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
 
         List<String> strings = myFixture.getLookupElementStrings();
         if (strings == null) fail();
-
         assertTrue(strings.contains("MAX_VALUE"));
         assertFalse(strings.contains("getInteger"));
     }
