@@ -22,6 +22,8 @@ An installation guide can be found [here](docs/Installation_Guide.pdf)
 
 4. The generated .jar file can then be found in the directory **build/libs**
 
+**Note that gradle must be run with JDK 11 for a successful build**
+
 ## Developer Guide
 
 A guide for the plugin architecture can be found [here](docs/Maintainers_Guide.pdf)

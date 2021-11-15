@@ -13,6 +13,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiErrorElement;
 import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.util.PsiTreeUtil;
+import nl.utwente.jmlplugin.JMLLanguage;
 import nl.utwente.jmlplugin.psi.JMLFile;
 import nl.utwente.jmlplugin.psi.JMLJmlSpecification;
 import nl.utwente.jmlplugin.psi.JMLTypes;
@@ -87,6 +88,6 @@ public class JMLAnnotator extends HighlightErrorFilter implements Annotator {
     // makes sure that the parser does not display its errors, as we already do that in the annotators
     @Override
     public boolean shouldHighlightErrorElement(@NotNull PsiErrorElement element) {
-        return false;
+        return element.getParent().getLanguage() != JMLLanguage.INSTANCE;
     }
 }
