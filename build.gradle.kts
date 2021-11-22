@@ -65,7 +65,7 @@ tasks {
 
     test {
         // set the path to the cloned repository from https://github.com/JetBrains/intellij-community
-        systemProperty("idea.home.path", "C:\\FILES\\Programming\\intellij-community")
+        systemProperty("idea.home.path", "PATH_TO_REPO_HERE")
         // start a new instance for every test suite
         setForkEvery(1)
     }
