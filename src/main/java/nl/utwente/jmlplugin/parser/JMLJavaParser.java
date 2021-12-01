@@ -312,11 +312,11 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         correct = correct && optionalDims(builder);
         exit_section_(builder, level, marker, correct, correct, null);
         while (correct) {
-            PsiBuilder.Marker marker2 = enter_section_(builder, level, _NONE_, JMLTypes.Q_VAR_DECL_IDENTIFIER, "variable name");
-            boolean correct2;
             // works because when no comma is consumed, the frame will have length 0
             // and when that is the case, no error will be thrown
-            correct2 = consumeToken(builder, JavaTokenType.COMMA);
+            boolean correct2 = nextTokenIs(builder,JavaTokenType.COMMA);
+            if (correct2) builder.advanceLexer();
+            PsiBuilder.Marker marker2 = enter_section_(builder, level, _NONE_, JMLTypes.Q_VAR_DECL_IDENTIFIER, "variable name");
             correct2 = correct2 && consumeToken(builder, JavaTokenType.IDENTIFIER);
             correct2 = correct2 && optionalDims(builder);
             exit_section_(builder, level, marker2, correct2, false, null);

@@ -33,6 +33,9 @@ public class JavaReferences {
       @ invariant <error descr="Reference cannot be resolved">b</error>.c.d == null;
     */
 
+    // multiple variables in a forall
+    //@ invariant (\forall int x, y; 0 <= x && x < y && y < 100; x + y == 100);
+
     /*@ (* parameters accessible *)
       @ ensures a > 0;
       @ (* no local variables accessible *)
