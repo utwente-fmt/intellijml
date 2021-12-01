@@ -9,7 +9,7 @@ plugins {
     // Kotlin support
     id("org.jetbrains.kotlin.jvm") version "1.5.30"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij") version "1.1.6"
+    id("org.jetbrains.intellij") version "1.3.0"
     // Gradle Changelog Plugin
     id("org.jetbrains.changelog") version "1.3.0"
     // Gradle Qodana Plugin
@@ -68,6 +68,15 @@ tasks {
         systemProperty("idea.home.path", "PATH_TO_REPO_HERE")
         // start a new instance for every test suite
         setForkEvery(1)
+        //useJUnitPlatform()
+    }
+
+    // FIXME dumb workaround for the testing framework while jetbrains fixes their nonsense
+    // https://youtrack.jetbrains.com/issue/IDEA-278926
+    val test by getting(Test::class) {
+        setScanForTestClasses(false)
+        // Only run tests from classes that end with "Test"
+        include("**/*JML*Test.class")
     }
 
     patchPluginXml {
