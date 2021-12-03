@@ -41,6 +41,9 @@
                                id="asTrue" order="first"/>
         <defaultLiveTemplates file="/liveTemplates/JML.xml"/>
         <liveTemplateContext implementation="nl.utwente.jmlplugin.editor.templates.JMLContext"/>
+        <lang.documentationProvider language="JAVA"
+                                    implementationClass="nl.utwente.jmlplugin.documentation.JMLDocumentationProvider"
+                                    order="first"/>
     </extensions>
 
     <applicationListeners>
