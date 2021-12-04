@@ -1,32 +1,17 @@
 package nl.utwente.jmlplugin.documentation;
 
 import com.intellij.lang.java.JavaDocumentationProvider;
-
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
-import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiComment;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
-import com.intellij.psi.impl.source.tree.PsiCommentImpl;
 import com.intellij.psi.tree.IElementType;
-import nl.utwente.jmlplugin.JMLLexerAdapter;
 import nl.utwente.jmlplugin.lexer.JMLMultiLayerLexer;
-import nl.utwente.jmlplugin.psi.JMLElementType;
-import nl.utwente.jmlplugin.psi.JMLTokenSet;
-import nl.utwente.jmlplugin.psi.JMLTypes;
 import nl.utwente.jmlplugin.syntax_highlighting.JMLSyntaxHighlighter;
 import org.jetbrains.annotations.Nls;
-import org.jetbrains.annotations.NotNull;
-import org.w3c.dom.Text;
 
 import java.awt.*;
-import java.awt.font.TextAttribute;
-import java.util.function.Supplier;
-
-import java.lang.ref.SoftReference;
-import java.util.Arrays;
-import java.util.function.Supplier;
 
 
 public class JMLDocumentationProvider extends JavaDocumentationProvider {
