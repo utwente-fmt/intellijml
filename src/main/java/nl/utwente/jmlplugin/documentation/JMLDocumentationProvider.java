@@ -10,12 +10,17 @@ import com.intellij.psi.tree.IElementType;
 import nl.utwente.jmlplugin.lexer.JMLMultiLayerLexer;
 import nl.utwente.jmlplugin.syntax_highlighting.JMLSyntaxHighlighter;
 import org.jetbrains.annotations.Nls;
-
 import java.awt.*;
 
 
+/**
+ * Class extending the Java documentation provider with extra functionality
+ * to include JML statements in the quick documentation of Java methods.
+ */
+
 public class JMLDocumentationProvider extends JavaDocumentationProvider {
 
+    // TODO Unit tests
     @Override
     public @Nls String generateDoc(PsiElement element, PsiElement originalElement) {
         // Original method return
@@ -25,7 +30,6 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
         // only add JML docs for methods
         if (element instanceof PsiMethod) {
             // search for the JML comment
-//            PsiComment jmlComment = null;
             boolean jmlFound = false;
             StringBuilder resultBuilder = new StringBuilder(original == null ? "" : original);
             for (PsiElement elem: element.getChildren()) {
