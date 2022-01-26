@@ -149,7 +149,7 @@ class JMLTypeAnnotatorUtil {
             }
         }
         // just in case
-        return PsiTypesUtil.getDefaultValueOfType(type);
+        return "(" + PsiTypesUtil.getDefaultValueOfType(type) + ")";
     }
 
     /**

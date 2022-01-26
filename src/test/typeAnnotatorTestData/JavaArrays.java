@@ -20,4 +20,21 @@ public class JavaArrays {
 
     // no accessor
     //@ invariant <error descr="Not a valid expression">arr[] > 0</error>;
+
+    // test arrays in \result
+    //@ ensures \result[0] == 5;
+    //@ ensures \result<error descr="This operator cannot be applied to type int[] and type int"> == </error>5;
+    //@ ensures <error descr="Array access is not allowed as this is not an array">\result[0]</error>[0] == 5;
+    public int[] getArr() {
+        return new int[10];
+    }
+
+    //@ ensures \result[0]<error descr="This operator cannot be applied to type int[][] and type int"> == </error>5;
+    //@ ensures \result[0]<error descr="This operator cannot be applied to type int[][] and type int[]"> == </error>new int[7];
+    //@ ensures \result[0][1]<error descr="This operator cannot be applied to type int[] and type int"> == </error>5;
+    //@ ensures \result[0][1] == new int[7];
+    //@ ensures \result[0][1][2] == 5;
+    public int[][][] getArr2() {
+        return new int[10][10][10];
+    }
 }

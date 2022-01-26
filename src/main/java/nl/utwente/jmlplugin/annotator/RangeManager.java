@@ -70,7 +70,7 @@ public class RangeManager {
         for (int i = rangeChanges.size() - 1; i >= 0; i--) {
             RangeChange change = rangeChanges.get(i);
             // change was entirely before the element
-            if (change.startOffset < myStartOffset && change.newEndOffset < myStartOffset) {
+            if (change.startOffset < myStartOffset && change.newEndOffset <= myStartOffset) {
                 myStartOffset += change.deltaLengthChange;
             }
             // the change was before the end of the element
