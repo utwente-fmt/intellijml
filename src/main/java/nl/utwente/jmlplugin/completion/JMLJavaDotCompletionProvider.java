@@ -40,6 +40,14 @@ public class JMLJavaDotCompletionProvider extends CompletionProvider<CompletionP
                                   @NotNull ProcessingContext context,
                                   @NotNull CompletionResultSet result) {
 
+        //parser has a delay in updating the tree properly, under some conditions JML keywords are
+        //not in the tree when they are needed which can throw a null pointer exception, check for it.
+        try{
+            parameters.getPosition().getPrevSibling().getPrevSibling().getText();
+        } catch (NullPointerException e) {
+            return;
+        }
+
         //provide support for non-chained dot completion on method parameters.
         if (fillMethodParameterDotCompletions(parameters, result)) return;
 
