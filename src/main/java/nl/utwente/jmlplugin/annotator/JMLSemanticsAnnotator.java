@@ -6,6 +6,7 @@ import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import nl.utwente.jmlplugin.psi.*;
+import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLOldExpr;
 import org.jetbrains.annotations.NotNull;
 
@@ -15,7 +16,11 @@ import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.*;
 /**
  * Checks the tree for semantic errors
  */
-public class JMLSemanticsAnnotator {
+public class JMLSemanticsAnnotator extends InnerJavaExprResult {
+
+    JMLSemanticsAnnotator(JMLInnerJavaExpr expr) {
+        super(expr);
+    }
 
     /**
      * Annotates the elements on semantic errors

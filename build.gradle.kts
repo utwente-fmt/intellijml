@@ -7,15 +7,15 @@ plugins {
     // Java support
     id("java")
     // Kotlin support
-    id("org.jetbrains.kotlin.jvm") version "1.5.30"
+    id("org.jetbrains.kotlin.jvm") version "1.7.21"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij") version "1.3.0"
+    id("org.jetbrains.intellij") version "1.9.0"
     // Gradle Changelog Plugin
-    id("org.jetbrains.changelog") version "1.3.0"
+    id("org.jetbrains.changelog") version "2.0.0"
     // Gradle Qodana Plugin
-    id("org.jetbrains.qodana") version "0.1.12"
+    id("org.jetbrains.qodana") version "0.1.13"
     //Grammar kit
-    id("org.jetbrains.grammarkit") version "2021.1.2"
+    id("org.jetbrains.grammarkit") version "2021.2.2"
 }
 
 group = properties("pluginGroup")
@@ -97,12 +97,7 @@ tasks {
                 }.joinToString("\n").run { markdownToHTML(this) }
         )
 
-        // Get the latest available change notes from the changelog file
-        changeNotes.set(provider {
-            changelog.run {
-                getOrNull(properties("pluginVersion")) ?: getLatest()
-            }.toHTML()
-        })
+        changeNotes.set(properties("pluginVersion"))
     }
 
     runPluginVerifier {
