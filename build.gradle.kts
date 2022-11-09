@@ -65,7 +65,7 @@ tasks {
 
     test {
         // set the path to the cloned repository from https://github.com/JetBrains/intellij-community
-        systemProperty("idea.home.path", "D:\\Workspaces\\intellij-community")
+        systemProperty("idea.home.path", "PATH_TO_REPO_HERE")
         // start a new instance for every test suite
         setForkEvery(1)
         //useJUnitPlatform()
@@ -97,12 +97,6 @@ tasks {
                 }.joinToString("\n").run { markdownToHTML(this) }
         )
 
-        // Get the latest available change notes from the changelog file
-//        changeNotes.set(provider {
-//            changelog.run {
-//                getOrNull(properties("pluginVersion")) ?: getLatest()
-//            }.toHTML()
-//        })
         changeNotes.set(properties("pluginVersion"))
     }
 
