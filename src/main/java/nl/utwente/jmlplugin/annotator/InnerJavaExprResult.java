@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 /**
  * Holds the results of type checking an InnerJavaExpr
  */
-class InnerJavaExprResult {
+class InnerJavaExprResult extends JMLTypeAnnotator {
     private final StringBuilder text;
     private final RangeManager rangeManager;
     private boolean correct;
