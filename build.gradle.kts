@@ -1,3 +1,4 @@
+import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
@@ -7,15 +8,15 @@ plugins {
     // Java support
     id("java")
     // Kotlin support
-    id("org.jetbrains.kotlin.jvm") version "1.5.30"
+    id("org.jetbrains.kotlin.jvm") version "1.7.22"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij") version "1.3.0"
+    id("org.jetbrains.intellij") version "1.10.0"
     // Gradle Changelog Plugin
-    id("org.jetbrains.changelog") version "1.3.0"
+    id("org.jetbrains.changelog") version "2.0.0"
     // Gradle Qodana Plugin
     id("org.jetbrains.qodana") version "0.1.12"
     //Grammar kit
-    id("org.jetbrains.grammarkit") version "2021.1.2"
+    id("org.jetbrains.grammarkit") version "2022.3"
 }
 
 group = properties("pluginGroup")
@@ -24,7 +25,6 @@ version = properties("pluginVersion")
 // Configure project's dependencies
 repositories {
     mavenCentral()
-    jcenter()
 }
 
 // Configure gradle-intellij-plugin plugin.
@@ -74,7 +74,7 @@ tasks {
     // FIXME dumb workaround for the testing framework while jetbrains fixes their nonsense
     // https://youtrack.jetbrains.com/issue/IDEA-278926
     val test by getting(Test::class) {
-        setScanForTestClasses(false)
+        isScanForTestClasses = false
         // Only run tests from classes that end with "Test"
         include("**/*JML*Test.class")
     }
@@ -99,9 +99,12 @@ tasks {
 
         // Get the latest available change notes from the changelog file
         changeNotes.set(provider {
-            changelog.run {
-                getOrNull(properties("pluginVersion")) ?: getLatest()
-            }.toHTML()
+            with(changelog) {
+                renderItem(
+                        getOrNull(properties("pluginVersion")) ?: getLatest(),
+                        Changelog.OutputType.HTML,
+                )
+            }
         })
     }
 
