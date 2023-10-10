@@ -10,7 +10,7 @@ plugins {
     // Kotlin support
     id("org.jetbrains.kotlin.jvm") version "1.7.22"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij") version "1.10.0"
+    id("org.jetbrains.intellij") version "1.16.0"
     // Gradle Changelog Plugin
     id("org.jetbrains.changelog") version "2.0.0"
     // Gradle Qodana Plugin
@@ -47,6 +47,10 @@ changelog {
     groups.set(emptyList())
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+}
+
 tasks {
     // Set the JVM compatibility versions
     properties("javaVersion").let {
@@ -65,7 +69,7 @@ tasks {
 
     test {
         // set the path to the cloned repository from https://github.com/JetBrains/intellij-community
-        systemProperty("idea.home.path", "PATH_TO_REPO_HERE")
+        systemProperty("idea.home.path", "/home/jelle/IdeaProjects/intellij-community")
         // start a new instance for every test suite
         setForkEvery(1)
         //useJUnitPlatform()
@@ -123,6 +127,10 @@ tasks {
         systemProperty("ide.mac.message.dialogs.as.sheets", "false")
         systemProperty("jb.privacy.policy.text", "<!--999.999-->")
         systemProperty("jb.consents.confirmation.enabled", "false")
+    }
+
+    buildSearchableOptions {
+        enabled = false
     }
 
     publishPlugin {
