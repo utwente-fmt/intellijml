@@ -17,6 +17,7 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         super.setUp();
         LanguageLevelProjectExtension.getInstance(getProject()).setLanguageLevel(LanguageLevel.JDK_1_8);
     }
+
     @Override
     protected void tuneFixture(JavaModuleFixtureBuilder<?> moduleBuilder) throws Exception {
         super.tuneFixture(moduleBuilder);
@@ -130,7 +131,6 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
 
     public void testPurenessOfCalls() {
         myFixture.configureByFile("PurenessOfCalls.java");
-        Module module = myFixture.getModule();
         myFixture.checkHighlighting(true, false, true, false);
     }
 
