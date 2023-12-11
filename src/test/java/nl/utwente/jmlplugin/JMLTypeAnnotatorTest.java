@@ -1,9 +1,10 @@
 package nl.utwente.jmlplugin;
 
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
 import com.intellij.pom.java.LanguageLevel;
+import com.intellij.testFramework.builders.JavaModuleFixtureBuilder;
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase;
-import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
 
 /**
  * Tests that all the type checking is done correctly so that the error messages are shown at the
@@ -15,6 +16,12 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
     protected void setUp() throws Exception {
         super.setUp();
         LanguageLevelProjectExtension.getInstance(getProject()).setLanguageLevel(LanguageLevel.JDK_1_8);
+    }
+
+    @Override
+    protected void tuneFixture(JavaModuleFixtureBuilder<?> moduleBuilder) throws Exception {
+        super.tuneFixture(moduleBuilder);
+        moduleBuilder.addMavenLibrary(new JavaModuleFixtureBuilder.MavenLib("org.jetbrains:annotations:24.1.0"));
     }
 
     @Override
