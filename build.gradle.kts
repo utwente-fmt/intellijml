@@ -1,6 +1,7 @@
 import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 fun properties(key: String) = project.findProperty(key).toString()
 
@@ -10,13 +11,14 @@ plugins {
     // Kotlin support
     id("org.jetbrains.kotlin.jvm") version "1.9.21"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij") version "1.16.1"
+    id("org.jetbrains.intellij.platform") version "2.0.1"
     // Gradle Changelog Plugin
     id("org.jetbrains.changelog") version "2.0.0"
     // Gradle Qodana Plugin
     id("org.jetbrains.qodana") version "0.1.12"
     //Grammar kit
     id("org.jetbrains.grammarkit") version "2022.3"
+
 }
 
 group = properties("pluginGroup")
@@ -25,23 +27,41 @@ version = properties("pluginVersion")
 // Configure project's dependencies
 repositories {
     mavenCentral()
+
+    intellijPlatform {
+        defaultRepositories()
+
+    }
 }
 
-// Configure gradle-intellij-plugin plugin.
-// Read more: https://github.com/JetBrains/gradle-intellij-plugin
-intellij {
-    pluginName.set(properties("pluginName"))
-    version.set(properties("platformVersion"))
-    type.set(properties("platformType"))
-    downloadSources.set(properties("platformDownloadSources").toBoolean())
-    updateSinceUntilBuild.set(true)
+dependencies {
+    intellijPlatform {
+        val type = providers.gradleProperty("platformType")
+        val version = providers.gradleProperty("platformVersion")
+        create(type, version)
+        val plugins = providers.gradleProperty("platformPlugins").map { it.split(",") }
+                .map { it.map(String::trim).filter(String::isNotEmpty) }.get()
+        for(plugin in plugins) {
+            plugin(plugin)
+        }
+        instrumentationTools()
+        bundledPlugin("com.intellij.java")
+        providers.gradleProperty("pluginVerifierIdeVersions").get().split(',').map(String::trim).filter(String::isNotEmpty)
+                .forEach { pluginVerifier(it) }
 
-    // Plugin Dependencies. Uses `platformPlugins` property from the gradle.properties file.
-    plugins.set(properties("platformPlugins").split(',').map(String::trim).filter(String::isNotEmpty))
+        testFramework(TestFrameworkType.Platform)
+        testFramework(TestFrameworkType.Plugin.Java)
+    }
+
+    intellijPlatformTesting {
+        runIde
+    }
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.opentest4j:opentest4j:1.3.0")
 }
-
-// Configure gradle-changelog-plugin plugin.
-// Read more: https://github.com/JetBrains/gradle-changelog-plugin
+//// Configure gradle-changelog-plugin plugin.
+//// Read more: https://github.com/JetBrains/gradle-changelog-plugin
 changelog {
     version.set(properties("pluginVersion"))
     groups.set(emptyList())
@@ -69,7 +89,7 @@ tasks {
 
     test {
         // set the path to the cloned repository from https://github.com/JetBrains/intellij-community
-        systemProperty("idea.home.path", "PATH_TO_REPO_HERE")
+        systemProperty("idea.home.path", "/home/jelle/Documents/intellij-community")
         // start a new instance for every test suite
         setForkEvery(1)
         //useJUnitPlatform()
@@ -84,7 +104,7 @@ tasks {
     }
 
     patchPluginXml {
-        version.set(properties("pluginVersion"))
+        version// set(properties("pluginVersion"))
         sinceBuild.set(properties("pluginSinceBuild"))
         untilBuild.set(properties("pluginUntilBuild"))
 
@@ -112,21 +132,27 @@ tasks {
         })
     }
 
-    runPluginVerifier {
-        ideVersions.set(properties("pluginVerifierIdeVersions").split(',').map(String::trim).filter(String::isNotEmpty))
-    }
-
     sourceSets["main"].java.srcDirs("src/main/gen")
     sourceSets["test"].java.srcDirs("src/test")
 
 
     // Configure UI tests plugin
     // Read more: https://github.com/JetBrains/intellij-ui-test-robot
-    runIdeForUiTests {
-        systemProperty("robot-server.port", "8082")
-        systemProperty("ide.mac.message.dialogs.as.sheets", "false")
-        systemProperty("jb.privacy.policy.text", "<!--999.999-->")
-        systemProperty("jb.consents.confirmation.enabled", "false")
+    val runIdeForUiTests by intellijPlatformTesting.runIde.registering {
+        task {
+            jvmArgumentProviders += CommandLineArgumentProvider {
+                listOf(
+                        "-Drobot-server.port=8082",
+                        "-Dide.mac.message.dialogs.as.sheets=false",
+                        "-Djb.privacy.policy.text=<!--999.999-->",
+                        "-Djb.consents.confirmation.enabled=false",
+                )
+            }
+        }
+
+        plugins {
+            robotServerPlugin()
+        }
     }
 
     buildSearchableOptions {
