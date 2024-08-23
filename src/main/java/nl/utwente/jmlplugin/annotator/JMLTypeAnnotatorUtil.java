@@ -147,6 +147,9 @@ class JMLTypeAnnotatorUtil {
                 default:
                     return "null";
             }
+        } else if(type instanceof PsiArrayType array) {
+            PsiType arrayType = array.getComponentType();
+            return String.format("(new %s[]{})", arrayType.getCanonicalText());
         }
         // just in case
         return "(" + PsiTypesUtil.getDefaultValueOfType(type) + ")";
