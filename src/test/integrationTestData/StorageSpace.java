@@ -30,7 +30,7 @@ public class StorageSpace {
       @@@ private invariant nrOfBoxesShipped >= 0 && <error descr="The (specification) visibility of the reference should be the same as the visibility of the invariant">nrOfFullBoxes</error> >= 0;
       (* \elemtype needs an array and type class *)
       private invariant \elemtype(<error descr="This is not an array">boxes.getClass()</error>) instanceof Box;
-      private invariant \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?">boxes.toArray(new Box[0])</error>) == \type(Box);
+      private invariant \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?"><warning descr="JML expressions should be pure and this method might not be pure">boxes.toArray(new Box[0])</warning></error>) == \type(Box);
       private invariant \elemtype(<error descr="Not a valid expression">boxes.toArray(new Box[0]).class</error>) == \type(Box);
       private invariant \elemtype(<warning descr="JML expressions should be pure and this method might not be pure">boxes.toArray(new Box[0])</warning>.getClass()) instanceof \TYPE;
       private invariant \nonnullelements(boxes.toArray());
@@ -52,7 +52,7 @@ public class StorageSpace {
     }
 
     // returns the average weight of the boxes, or 0 if there are no boxes
-    //@ ensures <error descr="This must be of type boolean, but is float">\result == boxes.size() == 0 ? 0 : getTotalWeight() / getNrOfBoxes()</error>; (* need parentheses around conditional expression *)
+    //@ ensures <error descr="This must be of type boolean, but is float">\result == boxes.size() == 0 ? 0 : getTotalWeight() / <warning descr="JML expressions should be pure and this method might not be pure">getNrOfBoxes()</warning></error>; (* need parentheses around conditional expression *)
     // some syntactical errors
     //@ ensures \result == (boxes.size() == 0 ? 0 : getTotalWeight() / getNrOfBoxes()<error descr="Semicolon expected after this token">)</error>
     //@ <error descr="Class invariant, in-method specification, method specification, modifiers or at-sign expected, got 'esuress'">esuress</error> \result >= 0;
