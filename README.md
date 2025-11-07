@@ -22,7 +22,7 @@ An installation guide can be found [here](docs/Installation_Guide.pdf)
 
 4. The generated .jar file can then be found in the directory **build/libs**
 
-**Note that gradle must be run with JDK 11 for a successful build**
+**Note that gradle must be run with JDK 21 for a successful build**
 
 ## Developer Guide
 

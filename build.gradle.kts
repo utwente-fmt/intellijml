@@ -2,6 +2,7 @@ import org.jetbrains.changelog.Changelog
 import org.jetbrains.changelog.markdownToHTML
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 fun properties(key: String) = project.findProperty(key).toString()
 
@@ -9,9 +10,9 @@ plugins {
     // Java support
     id("java")
     // Kotlin support
-    id("org.jetbrains.kotlin.jvm") version "1.9.21"
+    id("org.jetbrains.kotlin.jvm") version "2.2.21"
     // Gradle IntelliJ Plugin
-    id("org.jetbrains.intellij.platform") version "2.1.0"
+    id("org.jetbrains.intellij.platform") version "2.10.4"
     // Gradle Changelog Plugin
     id("org.jetbrains.changelog") version "2.0.0"
     // Gradle Qodana Plugin
@@ -44,7 +45,6 @@ dependencies {
         for(plugin in plugins) {
             plugin(plugin)
         }
-        instrumentationTools()
         bundledPlugin("com.intellij.java")
         providers.gradleProperty("pluginVerifierIdeVersions").get().split(',').map(String::trim).filter(String::isNotEmpty)
                 .forEach { pluginVerifier(it) }
@@ -71,16 +71,17 @@ java {
     sourceCompatibility = JavaVersion.VERSION_17
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.fromTarget(properties("javaVersion"))
+    }
+}
+
 tasks {
     // Set the JVM compatibility versions
-    properties("javaVersion").let {
-        withType<JavaCompile> {
-            sourceCompatibility = it
-            targetCompatibility = it
-        }
-        withType<KotlinCompile> {
-            kotlinOptions.jvmTarget = it
-        }
+    withType<JavaCompile> {
+        sourceCompatibility = properties("javaVersion")
+        targetCompatibility = properties("javaVersion")
     }
 
     wrapper {
