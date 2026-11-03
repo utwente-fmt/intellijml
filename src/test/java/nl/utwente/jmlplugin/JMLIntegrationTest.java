@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin;
 
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.pom.java.LanguageLevel;
@@ -18,7 +19,8 @@ public class JMLIntegrationTest extends JavaCodeInsightFixtureTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        LanguageLevelProjectExtension.getInstance(getProject()).setLanguageLevel(LanguageLevel.JDK_11);
+        // newer platform versions assert that the language level is changed in a write action
+        WriteAction.run(() -> LanguageLevelProjectExtension.getInstance(getProject()).setLanguageLevel(LanguageLevel.JDK_11));
     }
 
     public void testBox() {

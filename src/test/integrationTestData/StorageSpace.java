@@ -127,7 +127,7 @@ public class StorageSpace {
         (* comments inside a Java expr *)
         ensures (\forall int i; 0 <= i && i < \result.size(); <error descr="Not a valid expression">(* comment *) !boxes.contains(\result.get(i))</error>);
     */
-    //@ ensures (\forall int i; 0 <= i && i < \result.size(); <error descr="Not a valid expression">/* comment */ !boxes.contains(\result.get(i))</error>);
+    //@ ensures (\forall int i; 0 <= i && i < \result.size(); /* comment */ !boxes.contains(\result.get(i)));
     public List<Box> createShipment(float maximumWeight) {
         List<Box> boxesForShipment = new ArrayList<>();
         float currentWeight = 0;

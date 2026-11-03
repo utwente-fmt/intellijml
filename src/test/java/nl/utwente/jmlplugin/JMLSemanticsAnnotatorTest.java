@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin;
 
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
@@ -13,7 +14,8 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        LanguageLevelProjectExtension.getInstance(getProject()).setLanguageLevel(LanguageLevel.JDK_11);
+        // newer platform versions assert that the language level is changed in a write action
+        WriteAction.run(() -> LanguageLevelProjectExtension.getInstance(getProject()).setLanguageLevel(LanguageLevel.JDK_11));
     }
 
     @Override
@@ -21,6 +23,11 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
         return "src/test/semanticsAnnotatorTestData";
     }
 
+
+    public void testInlineModifiers() {
+        myFixture.configureByFile("InlineModifiers.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
 
     public void testSpecKindNotAllowedHere() {
         myFixture.configureByFile("SpecKindNotAllowedHere.java");

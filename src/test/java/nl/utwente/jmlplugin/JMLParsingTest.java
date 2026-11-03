@@ -1,5 +1,9 @@
 package nl.utwente.jmlplugin;
 
+import com.intellij.lang.java.JavaLanguage;
+import com.intellij.lang.java.syntax.JavaElementTypeConverterExtension;
+import com.intellij.platform.syntax.psi.ElementTypeConverters;
+import com.intellij.psi.tree.IElementType;
 import com.intellij.testFramework.ParsingTestCase;
 
 /**
@@ -9,6 +13,15 @@ public class JMLParsingTest extends ParsingTestCase {
 
     public JMLParsingTest() {
         super("", "jml", true, new JMLParserDefinition());
+    }
+
+    @Override
+    protected void setUp() throws Exception {
+        super.setUp();
+        // The Java lexer converts its tokens via an extension that the Java plugin registers in the IDE,
+        // but ParsingTestCase does not load the Java plugin
+        addExplicitExtension(ElementTypeConverters.getInstance(), JavaLanguage.INSTANCE,
+                new JavaElementTypeConverterExtension());
     }
 
     @Override
@@ -101,6 +114,15 @@ public class JMLParsingTest extends ParsingTestCase {
 
     public void testQuantifierWithoutParens() {
         doTest(true, false);
+    }
+
+    public void testQuantifierWithoutParensDoesNotRegisterElementTypes() {
+        // the number of element types is limited, so parsing must not keep creating new ones
+        String text = "@\nensures \\forall int i; i > 0 && i < 10; i+5 >= 5;";
+        ensureParsed(createPsiFile("first", text));
+        int allocatedTypes = IElementType.getAllocatedTypesCount();
+        ensureParsed(createPsiFile("second", text));
+        assertEquals(allocatedTypes, IElementType.getAllocatedTypesCount());
     }
 
     public void testRedundantSemicolons() {

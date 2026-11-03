@@ -27,6 +27,12 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
      * used to check for rules in the form of \tokentype( java_expr )
      */
     private static final IElementType parenthesesAroundJava = new IElementType("parentheses around java", JMLLanguage.INSTANCE);
+    /**
+     * pretend token that is expected when a quantifier is not surrounded by parentheses, so that the syntax annotator
+     * can recognize the error message. Created once, as every IElementType is registered globally and the
+     * number of element types is limited
+     */
+    private static final IElementType noLParenBeforeQuantifier = new IElementType("NO_LPAREN_BEFORE_QUANTIFIER", JMLLanguage.INSTANCE);
 
     static {
         tokenTypeToRule.put(JMLTypes.OLD, JMLTypes.OLD_EXPR);
@@ -103,7 +109,7 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
             } else if (JMLTokenSet.quantifiers.contains(builder.getTokenType())) {
                 // it does not start with a parenthesis, so pretend to parse a token with the name
                 // LPAREN_BEFORE_QUANTIFIER, so we can catch the error message containing it in the syntaxAnnotator
-                nextTokenIs(builder, new IElementType("NO_LPAREN_BEFORE_QUANTIFIER", JMLLanguage.INSTANCE));
+                nextTokenIs(builder, noLParenBeforeQuantifier);
                 correct = false;
             }
 
@@ -206,7 +212,7 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         if (builder.getTokenType() != JavaTokenType.LPARENTH) {
             // advance past the keyword
             builder.advanceLexer();
-            nextTokenIs(builder, new IElementType("NO_LPAREN_BEFORE_QUANTIFIER", JMLLanguage.INSTANCE));
+            nextTokenIs(builder, noLParenBeforeQuantifier);
         } else {
             // advance past the L_PARENTH
             builder.advanceLexer();

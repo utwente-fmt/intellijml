@@ -1,6 +1,6 @@
 package nl.utwente.jmlplugin.lexer;
 
-import com.intellij.lang.java.lexer.JavaLexer;
+import com.intellij.lang.java.JavaParserDefinition;
 import com.intellij.lexer.LayeredLexer;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.psi.tree.IElementType;
@@ -18,7 +18,7 @@ public class JMLMultiLayerLexer extends LayeredLexer {
 
     public JMLMultiLayerLexer() {
         super(new JMLMergingLexer());
-        LayeredLexer javaLexer = new LayeredLexer(new JavaLexer(LanguageLevel.HIGHEST));
+        LayeredLexer javaLexer = new LayeredLexer(JavaParserDefinition.createLexer(LanguageLevel.HIGHEST));
         registerSelfStoppingLayer(javaLexer, javaStart, javaStop);
     }
 }

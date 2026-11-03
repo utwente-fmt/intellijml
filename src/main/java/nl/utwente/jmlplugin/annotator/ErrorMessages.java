@@ -50,6 +50,7 @@ public final class ErrorMessages {
     public static final String NO_ARRAY = "This is not an array";
     public static final String NO_CLASS_INSTANCE = "This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?";
     public static final String ASSIGNABLE_VAR_IS_FINAL = "This variable is final, so cannot be assigned";
+    public static final String ASSIGNABLE_PARAMETER = "A method may always assign its parameters, so they do not need to be listed here";
 
     // java expression visitor error messages
     public static final String NO_ARRAY_SO_NO_ACCESS = "Array access is not allowed as this is not an array";

@@ -54,7 +54,9 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
                 fillCodeBlockCompletions(result);
                 break;
             case METHOD_DECLARATION:
-                //nothing
+                // inline modifiers, such as in "public /*@ pure @*/ int f()"
+                fillMethodSpecModifiers(result);
+                break;
             default:
                 break;
         }
