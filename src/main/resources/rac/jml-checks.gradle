@@ -1,0 +1,66 @@
+// Added by the IntelliJML plugin for Run with JML Checks. It compiles the main classes with OpenJML, which adds
+// run time checks of their JML specifications, and runs the tests and applications with these classes, on
+// OpenJML's own Java, which contains the rest of what the checks need. The normal build is not changed.
+// (There are no imports, so that the script can be put after another init script.)
+
+abstract class IntelliJmlCompileWithChecks extends DefaultTask {
+    @InputFiles
+    @SkipWhenEmpty
+    @PathSensitive(PathSensitivity.RELATIVE)
+    abstract ConfigurableFileCollection getSources()
+
+    @Classpath
+    abstract ConfigurableFileCollection getCompileClasspath()
+
+    @Input
+    abstract Property<String> getLauncher()
+
+    @OutputDirectory
+    abstract DirectoryProperty getDestination()
+
+    @javax.inject.Inject
+    abstract ExecOperations getExecOperations()
+
+    @TaskAction
+    void compile() {
+        File destination = getDestination().get().asFile
+        destination.deleteDir()
+        destination.mkdirs()
+        List<String> arguments = ['-d', destination.path, '-cp', getCompileClasspath().asPath]
+        arguments.addAll(getSources().files.findAll { it.name.endsWith('.java') && it.name != 'module-info.java' }*.path)
+        // an argument file avoids the limit on the length of a command line; OpenJML wants -rac outside it
+        File argumentFile = new File(temporaryDir, 'arguments.txt')
+        argumentFile.text = arguments.collect { '"' + it.replace('\\', '/').replace('"', '\\"') + '"' }.join('\n')
+        getExecOperations().exec {
+            commandLine(getLauncher().get(), '-rac', '@' + argumentFile.path.replace('\\', '/'))
+        }
+    }
+}
+
+def intellijmlLauncher = '@LAUNCHER@'
+def intellijmlRuntimeLibrary = '@RUNTIME_LIBRARY@'
+def intellijmlJava = '@JAVA@'
+
+allprojects {
+    // after the build script, as plugins such as application set the class path of their tasks
+    afterEvaluate {
+        if (!plugins.hasPlugin('java')) return
+        def compileWithChecks = tasks.register('compileJavaWithJmlChecks', IntelliJmlCompileWithChecks) {
+            description = 'Compiles the main classes with run time checks of their JML specifications (OpenJML)'
+            def main = project.extensions.getByType(SourceSetContainer).getByName('main')
+            sources.from(main.java)
+            compileClasspath.from(main.compileClasspath)
+            launcher.set(intellijmlLauncher)
+            destination.set(project.layout.buildDirectory.dir('jml-checks/classes'))
+        }
+        def checkedClasses = project.files(compileWithChecks.flatMap { it.destination }, intellijmlRuntimeLibrary)
+        tasks.withType(Test).configureEach {
+            classpath = checkedClasses + classpath
+            executable = intellijmlJava
+        }
+        tasks.withType(JavaExec).configureEach {
+            classpath = checkedClasses + classpath
+            executable = intellijmlJava
+        }
+    }
+}

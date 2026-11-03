@@ -7,6 +7,8 @@
     <!-- https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
+    <!-- Run with JML Checks for Gradle run configurations, such as tests in Gradle projects -->
+    <depends optional="true" config-file="intellijml-gradle.xml">com.intellij.gradle</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <fileType name="JML File" implementationClass="nl.utwente.jmlplugin.JMLFileType"

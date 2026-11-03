@@ -4,7 +4,8 @@
 - **Run with JML Checks**, next to Run and Debug: runs a program or tests with run time checks of their JML
   specifications, made by [OpenJML](https://www.openjml.org). Violated specifications are reported in the Run
   tool window, with links to the source. The plugin offers to download OpenJML (about 220 MB) the first time, or
-  an installation can be chosen in Settings | Tools | IntelliJML.
+  an installation can be chosen in Settings | Tools | IntelliJML. It works for applications and JUnit tests,
+  and for tests and applications that Gradle runs.
 
 ### Changed
 - The plugin can be installed, updated and removed without restarting IntelliJ IDEA

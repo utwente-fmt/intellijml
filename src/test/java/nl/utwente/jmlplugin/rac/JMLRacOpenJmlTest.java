@@ -3,6 +3,7 @@ package nl.utwente.jmlplugin.rac;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.ExecutorRegistry;
 import com.intellij.execution.application.ApplicationConfiguration;
+import com.intellij.execution.configurations.GeneralCommandLine;
 import com.intellij.execution.configurations.JavaCommandLineState;
 import com.intellij.execution.impl.ConsoleViewImpl;
 import com.intellij.execution.process.CapturingProcessHandler;
@@ -13,12 +14,14 @@ import com.intellij.execution.runners.ExecutionEnvironmentBuilder;
 import com.intellij.execution.ui.RunContentDescriptor;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.SystemInfo;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.testFramework.PlatformTestUtil;
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder;
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase;
 import nl.utwente.jmlplugin.settings.JMLApplicationSettings;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
@@ -168,6 +171,39 @@ public class JMLRacOpenJmlTest extends JavaCodeInsightFixtureTestCase {
         String console = runWithJmlChecks("Counter");
         assertTrue(console, console.contains("Counter.java:11: verify: JML postcondition is false"));
         assertTrue(console, console.contains("done"));
+    }
+
+    public void testGradleInitScript() throws Exception {
+        // a Gradle project with an application, run with the Gradle of this repository and the init script that
+        // Run with JML Checks gives Gradle run configurations
+        Path project = Files.createTempDirectory("gradle-project");
+        Files.writeString(project.resolve("settings.gradle"), "rootProject.name = 'counter'\n");
+        Files.writeString(project.resolve("build.gradle"), """
+                plugins {
+                    id 'application'
+                }
+                application {
+                    mainClass = 'Counter'
+                }
+                // the checked program runs on OpenJML's Java 21
+                tasks.withType(JavaCompile).configureEach {
+                    options.release = 21
+                }
+                """);
+        Files.createDirectories(project.resolve("src/main/java"));
+        Files.writeString(project.resolve("src/main/java/Counter.java"), COUNTER);
+        Path initScript = project.resolve("jml-checks.gradle");
+        Files.writeString(initScript, JMLRacGradleProgramRunner.initScript(installation));
+
+        GeneralCommandLine gradle = new GeneralCommandLine(Path.of(SystemInfo.isWindows ? "gradlew.bat" : "gradlew").toAbsolutePath().toString(),
+                "--project-dir", project.toString(), "--init-script", initScript.toString(), "--offline", "--no-daemon", "run");
+        ProcessOutput output = new CapturingProcessHandler(gradle).runProcess(300_000);
+        String text = output.getStdout() + output.getStderr();
+        assertEquals(text, 0, output.getExitCode());
+        assertTrue(text, text.contains("compileJavaWithJmlChecks"));
+        assertTrue(text, text.contains("Counter.java:4: verify: JML precondition is false"));
+        assertTrue(text, text.contains("Counter.java:11: verify: JML postcondition is false"));
+        assertTrue(text, text.contains("done"));
     }
 
     public void testCompilationErrorsInRunToolWindow() throws Exception {

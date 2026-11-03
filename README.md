@@ -24,9 +24,14 @@ time, a notification offers to download it (about 220 MB), or choose an existing
 **Settings | Tools | IntelliJML**. OpenJML compiles the production sources of the run configuration's
 module (and the modules it depends on) into a separate folder; the normal build is not changed. The
 program runs on OpenJML's own Java 21, so the modules must not use a newer language level. This works for
-Application and JUnit run configurations, also in Gradle projects that build and run with Gradle: Gradle only
-takes over Run and Debug, so IntelliJ IDEA runs these itself. Test configurations that Gradle runs (the default
-of **Run tests using** in Gradle projects) are not supported: set it to IntelliJ IDEA to run tests with JML checks.
+Application and JUnit run configurations, also in Gradle projects (Gradle only takes over Run and Debug, so
+IntelliJ IDEA runs these itself).
+
+Gradle run configurations, such as the ones for tests in Gradle projects, run the same Gradle tasks with an init
+script (`src/main/resources/rac/jml-checks.gradle`): it adds a task `compileJavaWithJmlChecks`, which compiles
+the main source set with OpenJML into `build/jml-checks/classes`, and runs the `Test` and `JavaExec` tasks with
+these classes first on the class path, on OpenJML's Java. The build script itself is not changed, and a normal
+run does not get the init script. Maven run configurations are not supported.
 
 ## Build from source
 

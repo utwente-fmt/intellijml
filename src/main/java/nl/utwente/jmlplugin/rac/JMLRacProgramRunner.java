@@ -154,7 +154,7 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
      *
      * @param modules the modules of the program
      */
-    private static void checkLanguageLevel(@NotNull Collection<Module> modules) throws ExecutionException {
+    static void checkLanguageLevel(@NotNull Collection<Module> modules) throws ExecutionException {
         for (Module module : modules) {
             LanguageLevel level = ReadAction.compute(() -> LanguageLevelUtil.getEffectiveLanguageLevel(module));
             if (level.isAtLeast(LanguageLevel.JDK_22)) {

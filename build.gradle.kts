@@ -33,6 +33,8 @@ dependencies {
         // Since 2025.3 IntelliJ IDEA ships as a single unified distribution (no separate Community Edition)
         intellijIdea(providers.gradleProperty("platformVersion"))
         bundledPlugin("com.intellij.java")
+        // optional, for Run with JML Checks of Gradle run configurations
+        bundledPlugin("com.intellij.gradle")
         providers.gradleProperty("platformPlugins").get().split(',').map(String::trim).filter(String::isNotEmpty)
             .forEach { plugin(it) }
 
