@@ -23,12 +23,14 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
     @Override
     protected void tuneFixture(JavaModuleFixtureBuilder<?> moduleBuilder) throws Exception {
         super.tuneFixture(moduleBuilder);
+        // a mock JDK that the test framework downloads, so the tests need no intellij-community checkout
+        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21);
         moduleBuilder.addMavenLibrary(new JavaModuleFixtureBuilder.MavenLib("org.jetbrains:annotations:24.1.0"));
     }
 
     @Override
     protected String getTestDataPath() {
-        return "src/test/typeAnnotatorTestData";
+        return "src/test/testData/typeAnnotatorTestData";
     }
 
     public void testAssignableVars() {

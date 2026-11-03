@@ -4,9 +4,14 @@
 - The plugin can be installed, updated and removed without restarting IntelliJ IDEA
 - The unfinished run time checking is switched off: it hooked into every build without inserting any checks
 - The lexer and parser are generated during the build instead of being committed
+- The tests need no setup any more (they use a mock JDK 21 that is downloaded automatically), and the build
+  fails if a test run is interrupted part-way
 
 ### Fixed
 - `assignable` and `signals_only` lists that continue on a new line starting with `@` gave a syntax error
+- Typing `/*@` at the very end of a file caused an exception
+- The quick documentation of a method showed `<` and `&&` in its JML wrongly, and left out modifiers such as
+  `/*@ pure @*/` between two Java modifiers
 
 ## [1.1.10]
 

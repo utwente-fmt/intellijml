@@ -3,12 +3,20 @@ package nl.utwente.jmlplugin;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
 import com.intellij.pom.java.LanguageLevel;
+import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Tests that correct semantic errors are given
  */
 public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCase {
+
+    @Override
+    protected @NotNull LightProjectDescriptor getProjectDescriptor() {
+        // a mock JDK that the test framework downloads, so the tests need no intellij-community checkout
+        return JAVA_21;
+    }
 
 
     @Override
@@ -20,7 +28,7 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
 
     @Override
     protected String getTestDataPath() {
-        return "src/test/semanticsAnnotatorTestData";
+        return "src/test/testData/semanticsAnnotatorTestData";
     }
 
 

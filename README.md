@@ -44,25 +44,13 @@ of the generated types, which appear in syntax errors, are in `JMLElementType` a
 
 ## Running tests
 
-The Java test fixtures need the mock JDKs from the
-[intellij-community](https://github.com/JetBrains/intellij-community) repository. Only the
-`java/mockJDK-*` directories are needed (a few MB), so a sparse checkout is enough:
-
 ```bash
-git clone --filter=tree:0 --depth 1 --no-checkout https://github.com/JetBrains/intellij-community.git ../intellij-community
-cd ../intellij-community
-git sparse-checkout set --no-cone '/java/mockJDK-1.7/' '/java/mockJDK-1.8/'
-git checkout
+./gradlew test
 ```
 
-(In Git Bash on Windows, prefix the `sparse-checkout` command with `MSYS_NO_PATHCONV=1`.)
-
-Then run the tests with the path to that checkout:
-
-```bash
-./gradlew test -PideaHomePath=../intellij-community
-```
-
-Instead of `-PideaHomePath` you can set the `IDEA_HOME_PATH` environment variable. More background
-on the tests is in chapter 8 of the [maintainer's guide](docs/Maintainers_Guide.pdf); the
-instruction there to clone the whole repository and edit `build.gradle.kts` is no longer needed.
+No setup is needed: the tests use a mock JDK 21 that the IntelliJ test framework downloads from Maven
+the first time (about 6 MB, into `~/.m2`). The test classes are in `src/test/java`, and the files they
+open are in `src/test/testData` (these are not compiled, so they may contain broken Java). The build
+fails if any test is skipped, because that happens when a test run is interrupted part-way. More background on the tests is in chapter 8 of the
+[maintainer's guide](docs/Maintainers_Guide.pdf); the instruction there to clone the intellij-community
+repository and edit `build.gradle.kts` is no longer needed.

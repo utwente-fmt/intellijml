@@ -4,6 +4,7 @@ import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.pom.java.LanguageLevel;
+import com.intellij.testFramework.builders.JavaModuleFixtureBuilder;
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase;
 
 /**
@@ -12,8 +13,15 @@ import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase;
 public class JMLIntegrationTest extends JavaCodeInsightFixtureTestCase {
 
     @Override
+    protected void tuneFixture(JavaModuleFixtureBuilder<?> moduleBuilder) throws Exception {
+        super.tuneFixture(moduleBuilder);
+        // a mock JDK that the test framework downloads, so the tests need no intellij-community checkout
+        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21);
+    }
+
+    @Override
     protected String getTestDataPath() {
-        return "src/test/integrationTestData";
+        return "src/test/testData/integrationTestData";
     }
 
     @Override

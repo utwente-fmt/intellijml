@@ -122,7 +122,7 @@ java {
 }
 
 sourceSets["main"].java.srcDirs(tasks.generateLexer, tasks.generateParser)
-sourceSets["test"].java.srcDirs("src/test")
+// The test data in src/test/testData is not compiled: the fixtures copy it into a test project
 
 tasks {
     wrapper {
@@ -145,22 +145,27 @@ tasks {
     }
 
     test {
-        // The Java test fixtures need the mock JDKs from https://github.com/JetBrains/intellij-community
-        // (only the java/mockJDK-* directories are needed). Point to the checkout with
-        // -PideaHomePath=... or the IDEA_HOME_PATH environment variable.
-        // Passed as an argument provider because the IntelliJ Platform Gradle Plugin sets idea.home.path itself.
-        val projectPath = layout.projectDirectory.asFile.toPath()
-        val ideaHomePath = providers.gradleProperty("ideaHomePath").orElse(providers.environmentVariable("IDEA_HOME_PATH"))
-            .map { projectPath.resolve(it).normalize().toString() }
-        jvmArgumentProviders += CommandLineArgumentProvider {
-            ideaHomePath.orNull?.let { listOf("-Didea.home.path=$it") } ?: emptyList()
-        }
+        // The Java test fixtures use mock JDK 21, which the test framework downloads from Maven on first use
+        // (org.jetbrains.mockjdk:mockjdk-base-java into ~/.m2)
         // Start a new instance for every test suite
         forkEvery = 1
         // Workaround for the test framework, see https://youtrack.jetbrains.com/issue/IDEA-278926
         isScanForTestClasses = false
         // Only run tests from classes that end with "Test"
         include("**/*JML*Test.class")
+        // A test JVM that is interrupted part-way reports its current test as skipped and silently drops the
+        // rest, while the build still passes. No test is skipped on purpose, so treat a skipped test as a failure.
+        addTestListener(object : TestListener {
+            override fun beforeSuite(suite: TestDescriptor) {}
+            override fun beforeTest(testDescriptor: TestDescriptor) {}
+            override fun afterTest(testDescriptor: TestDescriptor, result: TestResult) {}
+            override fun afterSuite(suite: TestDescriptor, result: TestResult) {
+                if (suite.parent == null && result.skippedTestCount > 0) {
+                    throw GradleException("${result.skippedTestCount} test(s) were skipped, so the test run may " +
+                            "have been interrupted; see the test report")
+                }
+            }
+        })
     }
 
     publishPlugin {

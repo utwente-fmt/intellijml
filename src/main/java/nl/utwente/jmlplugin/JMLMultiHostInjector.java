@@ -34,8 +34,10 @@ public class JMLMultiHostInjector implements MultiHostInjector {
         if (!text.substring(2).trim().startsWith("@")) {
             return;
         }
-        // get rid of the // or /* at the start of the comment as it is not needed
-        TextRange textRange = new TextRange(2, text.startsWith("//") ? text.length() : text.length() - 2);
+        // get rid of the // or /* at the start of the comment as it is not needed, and of the */ at the end
+        // (a block comment that is still being typed at the end of the file has none)
+        boolean closedBlockComment = text.startsWith("/*") && text.length() >= 4 && text.endsWith("*/");
+        TextRange textRange = new TextRange(2, closedBlockComment ? text.length() - 2 : text.length());
         registrar.startInjecting(JMLLanguage.INSTANCE);
         registrar.addPlace(null, null, (PsiLanguageInjectionHost) context, textRange);
         registrar.doneInjecting();

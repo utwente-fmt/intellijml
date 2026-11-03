@@ -3,14 +3,19 @@ package nl.utwente.jmlplugin.documentation;
 import com.intellij.lang.java.JavaDocumentationProvider;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiComment;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
+import com.intellij.psi.PsiModifierList;
 import com.intellij.psi.tree.IElementType;
 import nl.utwente.jmlplugin.lexer.JMLMultiLayerLexer;
 import nl.utwente.jmlplugin.syntax_highlighting.JMLSyntaxHighlighter;
 import org.jetbrains.annotations.Nls;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 
 /**
@@ -20,7 +25,6 @@ import java.awt.*;
 
 public class JMLDocumentationProvider extends JavaDocumentationProvider {
 
-    // TODO Unit tests
     @Override
     public @Nls String generateDoc(PsiElement element, PsiElement originalElement) {
         // Original method return
@@ -32,7 +36,13 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
             // search for the JML comment
             boolean jmlFound = false;
             StringBuilder resultBuilder = new StringBuilder(original == null ? "" : original);
-            for (PsiElement elem: element.getChildren()) {
+            List<PsiElement> children = new ArrayList<>();
+            for (PsiElement child : element.getChildren()) {
+                // comments between modifiers, such as in public /*@ pure @*/ static int size(), are in the modifier list
+                if (child instanceof PsiModifierList) children.addAll(Arrays.asList(child.getChildren()));
+                else children.add(child);
+            }
+            for (PsiElement elem: children) {
                 if (elem instanceof PsiComment &&
                         (elem.getText().startsWith("/*@") || elem.getText().startsWith("//@"))) {
 
@@ -64,14 +74,14 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
                             Color fg = attrs.getForegroundColor();
                             resultBuilder.append("<span style=\"color:#").append(Integer.toHexString(fg.getRGB()).substring(2)).append(";");
                             if (attrs.getFontType() == Font.BOLD) resultBuilder.append("font-weight:bold;");
-                            resultBuilder. append("\">").append(lexer.getTokenText()).append("</span>");
+                            resultBuilder. append("\">").append(StringUtil.escapeXmlEntities(lexer.getTokenText())).append("</span>");
                         } else if (lexer.getTokenText().length() == 0) {
                             // don't add span around empty tokens
                             resultBuilder.append(lexer.getTokenText());
                         } else {
-                            // no highlighting found, so just add the text itself,
+                            // no highlighting found, so just add the text itself (escaped, as < and & are HTML),
                             // but do newlines with HTML newlines
-                            String text = lexer.getTokenText().replaceAll("\n[ \t\r]*","<br/>");
+                            String text = StringUtil.escapeXmlEntities(lexer.getTokenText()).replaceAll("\n[ \t\r]*","<br/>");
                             resultBuilder.append("<span>").append(text).append("</span>");
                         }
 

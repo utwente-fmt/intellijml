@@ -31,7 +31,7 @@ public class JMLParsingTest extends ParsingTestCase {
 
     @Override
     protected String getTestDataPath() {
-        return "src/test/parserTestData";
+        return "src/test/testData/parserTestData";
     }
 
     @Override
