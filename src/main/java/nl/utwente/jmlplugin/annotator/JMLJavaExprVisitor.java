@@ -4,6 +4,7 @@ import com.intellij.codeInsight.AnnotationUtil;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
@@ -255,7 +256,7 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         if (!typeErrorGuardForChildren(true, reference)) return;
         JavaResolveResult resolved = reference.advancedResolve(false);
         if (!resolved.isValidResult() && !isSpecVisibilityValid(resolved)) {
-            annotateError(reference, ErrorMessages.REFERENCE_UNRESOLVED);
+            annotateError(reference, isInaccessible(resolved) ? ErrorMessages.NOT_VISIBLE : ErrorMessages.REFERENCE_UNRESOLVED);
         } else {
             resolvedReferences.put(reference, resolved);
         }
@@ -380,7 +381,15 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
             checkPurenessOfMethod(expr, result);
             return;
         }
-        annotateError(expr, ErrorMessages.METHOD_UNRESOLVED);
+        annotateError(expr, isInaccessible(result) ? ErrorMessages.NOT_VISIBLE : ErrorMessages.METHOD_UNRESOLVED);
+    }
+
+    /**
+     * @param result the result of resolving a reference
+     * @return whether the reference resolves to a field, method or class that is not visible here
+     */
+    private static boolean isInaccessible(JavaResolveResult result) {
+        return result.getElement() instanceof PsiMember && !result.isAccessible();
     }
 
     // return true when valid
@@ -403,10 +412,10 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
             PsiClass elemClass = elem instanceof PsiClass ? (PsiClass) elem : PsiTreeUtil.getParentOfType(elem, PsiClass.class);
             PsiElement javaElem = getJavaContext(originalElement);
             PsiClass originalClass = javaElem instanceof PsiClass ? (PsiClass) javaElem : PsiTreeUtil.getParentOfType(javaElem, PsiClass.class);
-            // true if they has the same package name or if the class containing the JML comment is a subclass of class containing the resolved element
-            return elemClass != null && elemClass.getQualifiedName() != null && originalClass != null && originalClass.getQualifiedName() != null
-                    && (elemClass.getQualifiedName().replaceAll("\\..+$", "").equals(originalClass.getQualifiedName().replaceAll("\\..+$", ""))
-                    || Arrays.asList(originalClass.getSupers()).contains(elemClass));
+            // true if they are in the same package or if the class containing the JML comment is a subclass of class containing the resolved element
+            return elemClass != null && originalClass != null
+                    && (JavaPsiFacade.getInstance(project).arePackagesTheSame(elemClass, originalClass)
+                    || originalClass.isInheritor(elemClass, true));
         }
         return false;
     }
@@ -474,9 +483,9 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         PsiExpression operand = expr.getOperand();
         if (!typeErrorGuard(false, operand)) return;
         PsiJavaToken sign = expr.getOperationSign();
+        boolean changesVariable = sign.getTokenType() == JavaTokenType.PLUSPLUS || sign.getTokenType() == JavaTokenType.MINUSMINUS;
         // check that it is a reference for ++ and --
-        if ((sign.getTokenType() == JavaTokenType.PLUSPLUS || sign.getTokenType() == JavaTokenType.MINUSMINUS)
-                && !(operand instanceof PsiReferenceExpression)) {
+        if (changesVariable && !isVariable(operand)) {
             annotateError(expr, ErrorMessages.VARIABLE_EXPECTED);
         }
         // check that operator is allowed
@@ -488,5 +497,20 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
                 annotateError(expr, ErrorMessages.wrongUnary(sign.getText(), operand.getType()));
             }
         }
+        // ++ and -- are assignments, which are not allowed in specifications
+        else if (changesVariable) {
+            annotateError(expr, ErrorMessages.INCREMENT_NOT_PURE);
+        }
+    }
+
+    /**
+     * @param operand an operand of ++ or --
+     * @return whether the operand is a variable: a reference, or a parameter or quantified variable, which are
+     * replaced by a value in the expression that is checked
+     */
+    private boolean isVariable(PsiExpression operand) {
+        if (operand instanceof PsiReferenceExpression) return true;
+        String originalText = rangeManager.getOriginalRange(operand).substring(originalElement.getContainingFile().getText());
+        return StringUtil.isJavaIdentifier(originalText.trim());
     }
 }

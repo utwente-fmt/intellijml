@@ -57,6 +57,16 @@ public class JMLInjectionTest extends LightJavaCodeInsightFixtureTestCase {
         assertEquals(" @ pure", injectedJml("class A {\n    // @ pure\n    int size() { return 0; }\n}"));
     }
 
+    public void testWhitespaceBeforeKeyword() {
+        assertEquals(" @requires x > 0;", injectedJml("class A {\n    // @requires x > 0;\n    void m(int x) {}\n}"));
+    }
+
+    public void testCommentedOutAnnotationsAreNotJml() {
+        assertNull(injectedJml("class A {\n    // @Override\n    public String toString() { return \"\"; }\n}"));
+        assertNull(injectedJml("class A {\n    /* @SuppressWarnings(\"unused\") */\n    void m() {}\n}"));
+        assertNull(injectedJml("class A {\n    // @formatter:off\n    void m() {}\n}"));
+    }
+
     public void testNormalCommentsAreNotJml() {
         assertNull(injectedJml("class A {\n    // requires x > 0;\n    void m(int x) {}\n}"));
         assertNull(injectedJml("class A {\n    /* requires x > 0; */\n    void m(int x) {}\n}"));

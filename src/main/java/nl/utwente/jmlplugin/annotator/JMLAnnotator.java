@@ -12,6 +12,8 @@ import com.intellij.psi.PsiComment;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiErrorElement;
 import com.intellij.psi.PsiWhiteSpace;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.psi.util.PsiTreeUtil;
 import nl.utwente.jmlplugin.JMLLanguage;
 import nl.utwente.jmlplugin.psi.JMLFile;
@@ -74,8 +76,8 @@ public class JMLAnnotator extends HighlightErrorFilter implements Annotator {
         if (!JMLSyntaxAnnotator.annotateSyntax(element, holder)) return;
 
         // skip other checkers when the tree contains errors
-        if (PsiTreeUtil.findChildOfType(getParentOfType(element, JMLFile.class), PsiErrorElement.class) != null)
-            return;
+        JMLFile file = getParentOfType(element, JMLFile.class);
+        if (file != null && containsErrors(file)) return;
 
         // do semantic checking
         if (!JMLSemanticsAnnotator.annotateSemantics(element, jmlRoot, holder)) return;
@@ -84,6 +86,18 @@ public class JMLAnnotator extends HighlightErrorFilter implements Annotator {
         JMLTypeAnnotator.annotateTypes(element, holder);
     }
 
+
+    /**
+     * The annotator runs for every element, so whether the file contains syntax errors is only computed once
+     * for every version of the file
+     *
+     * @param file a JML comment
+     * @return whether the comment contains syntax errors
+     */
+    private static boolean containsErrors(@NotNull JMLFile file) {
+        return CachedValuesManager.getCachedValue(file, () -> CachedValueProvider.Result.create(
+                PsiTreeUtil.findChildOfType(file, PsiErrorElement.class) != null, file));
+    }
 
     // makes sure that the parser does not display its errors, as we already do that in the annotators
     @Override

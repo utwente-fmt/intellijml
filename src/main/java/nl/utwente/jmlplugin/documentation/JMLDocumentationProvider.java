@@ -1,6 +1,8 @@
 package nl.utwente.jmlplugin.documentation;
 
 import com.intellij.lang.java.JavaDocumentationProvider;
+import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.util.text.StringUtil;
@@ -42,6 +44,7 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
                 if (child instanceof PsiModifierList) children.addAll(Arrays.asList(child.getChildren()));
                 else children.add(child);
             }
+            EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
             for (PsiElement elem: children) {
                 if (elem instanceof PsiComment &&
                         (elem.getText().startsWith("/*@") || elem.getText().startsWith("//@"))) {
@@ -67,11 +70,11 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
                         IElementType type = lexer.getTokenType();
                         if (type == null) break;
                         TextAttributesKey[] arr = syntaxHighlighter.getTokenHighlights(type);
-                        if (arr.length > 0) {
-                            // get the first, as that is usually the JML highlighting
-                            TextAttributes attrs = arr[0].getDefaultAttributes();
+                        // get the first, as that is usually the JML highlighting, in the colour scheme that is in use
+                        TextAttributes attrs = arr.length > 0 ? scheme.getAttributes(arr[0]) : null;
+                        Color fg = attrs != null ? attrs.getForegroundColor() : null;
+                        if (fg != null) {
                             // add foreground color and optional font-weight
-                            Color fg = attrs.getForegroundColor();
                             resultBuilder.append("<span style=\"color:#").append(Integer.toHexString(fg.getRGB()).substring(2)).append(";");
                             if (attrs.getFontType() == Font.BOLD) resultBuilder.append("font-weight:bold;");
                             resultBuilder. append("\">").append(StringUtil.escapeXmlEntities(lexer.getTokenText())).append("</span>");

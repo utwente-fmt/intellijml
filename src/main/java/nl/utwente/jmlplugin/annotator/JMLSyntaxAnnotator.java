@@ -9,13 +9,19 @@ import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiErrorElement;
+import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.util.PsiUtil;
 import nl.utwente.jmlplugin.psi.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.intellij.psi.util.PsiTreeUtil.*;
 
@@ -70,6 +76,13 @@ public class JMLSyntaxAnnotator {
     private static void annotateSyntaxError(PsiErrorElement element, TextRange range, boolean errorPutOnPrevious, AnnotationHolder holder) {
         String errorString = element.getErrorDescription();
         String extraText;
+        TextRange unknownKeyword = findUnknownBackslashKeyword(element);
+        if (unknownKeyword != null) {
+            // put the error on the keyword itself
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.unknownBackslashKeyword(
+                    unknownKeyword.substring(element.getContainingFile().getText()))).range(unknownKeyword).create();
+            return;
+        }
         if (checkRequiresNotAsFirstClauseOnError(element)) {
             errorString = ErrorMessages.REQUIRES_FIRST;
         } else if (checkModifierBeforeSpecClausesOnError(element)) {
@@ -88,6 +101,27 @@ public class JMLSyntaxAnnotator {
             errorString = errorString.replace("expected", "expected after this token");
         }
         holder.newAnnotation(HighlightSeverity.ERROR, errorString).range(range != null ? range : element.getTextRange()).create();
+    }
+
+    // a backslash keyword, possibly after whitespace
+    private static final Pattern BACKSLASH_KEYWORD = Pattern.compile("\\s*(\\\\\\w+)");
+
+    // the backslash keywords that the plugin knows, such as \result
+    private static final Set<String> KNOWN_BACKSLASH_KEYWORDS = Arrays.stream(JMLTokenSet.backslashKeywords.getTypes())
+            .map(IElementType::toString).collect(Collectors.toSet());
+
+    /**
+     * Checks whether the syntax error is at a backslash keyword that JML does not have, or that this plugin does not
+     * support, such as \fresh
+     *
+     * @param element the PsiErrorElement for which we are checking
+     * @return the range of the keyword, or null if this error has not occurred
+     */
+    private static TextRange findUnknownBackslashKeyword(PsiErrorElement element) {
+        String text = element.getContainingFile().getText();
+        Matcher matcher = BACKSLASH_KEYWORD.matcher(text).region(element.getTextRange().getStartOffset(), text.length());
+        if (!matcher.lookingAt() || KNOWN_BACKSLASH_KEYWORDS.contains(matcher.group(1))) return null;
+        return new TextRange(matcher.start(1), matcher.end(1));
     }
 
     /**

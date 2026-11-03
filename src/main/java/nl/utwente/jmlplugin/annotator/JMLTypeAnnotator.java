@@ -7,6 +7,7 @@ import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiTypesUtil;
+import com.intellij.psi.util.PsiUtil;
 import com.intellij.psi.util.TypeConversionUtil;
 import com.intellij.util.IncorrectOperationException;
 import nl.utwente.jmlplugin.psi.*;
@@ -167,7 +168,8 @@ public class JMLTypeAnnotator {
 
                 PsiClassType elemType = PsiTypesUtil.getClassType((PsiClass) resolvedException);
                 boolean inheritsRuntimeException = TypeConversionUtil.areTypesConvertible(elemType, runtimeExceptionType);
-                boolean inheritsException = TypeConversionUtil.areTypesConvertible(elemType, exceptionType);
+                // Exception itself or a subclass of it (Runnable or Object can be cast to Exception, but are no exceptions)
+                boolean inheritsException = exceptionType.isAssignableFrom(elemType);
                 // check that our referenced class inherits from Exception and optionally RuntimeException
                 if (!inheritsException) {
                     holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NOT_AN_EXCEPTION_CLASS).create();
@@ -273,7 +275,8 @@ public class JMLTypeAnnotator {
                     continue;
                 }
                 InnerJavaExprResult exprRes = annotateInnerJavaExpr(javaChild, holder, extraVars, false, true);
-                result.add(exprRes.getType().getCanonicalText() + ".class",
+                // a class literal cannot have type arguments or be of a type parameter, so use the erasure
+                result.add(TypeConversionUtil.erasure(exprRes.getType()).getCanonicalText() + ".class",
                         PsiType.getJavaLangClass(currentChild.getManager(), currentChild.getResolveScope()), exprRes.isCorrect(), currentChild);
             } else if (currentChild instanceof JMLElemTypeExpr) {
                 checkElemTypeExpr(holder, extraVars, result, currentChild);
@@ -347,8 +350,9 @@ public class JMLTypeAnnotator {
                 result.setCorrect(false);
             }
 
-            // set the type if not set
-            if ((result.getType() == PsiTypes.nullType()) && expression != null) {
+            // the type is that of the whole expression, not that of the last JML part in it (such as int[] for
+            // \result in \result[i]); keep the type of the JML part if the expression has none
+            if (expression != null && expression.getType() != null) {
                 result.setType(expression.getType());
             }
         }
@@ -547,7 +551,20 @@ public class JMLTypeAnnotator {
     }
 
     /**
-     * Check that the references have the same visibility as the invariant
+     * @param visibility a Java visibility modifier, or PsiModifier.PACKAGE_LOCAL
+     * @return the access level of the modifier, as in PsiUtil.getAccessLevel
+     */
+    private static int accessLevel(String visibility) {
+        return switch (visibility) {
+            case PsiModifier.PUBLIC -> PsiUtil.ACCESS_LEVEL_PUBLIC;
+            case PsiModifier.PROTECTED -> PsiUtil.ACCESS_LEVEL_PROTECTED;
+            case PsiModifier.PRIVATE -> PsiUtil.ACCESS_LEVEL_PRIVATE;
+            default -> PsiUtil.ACCESS_LEVEL_PACKAGE_LOCAL;
+        };
+    }
+
+    /**
+     * Check that the references are at least as visible as the invariant
      *
      * @param classInvariant the invariant expression
      * @param visitor        the visitor after it did all its visiting (so with resolved references)
@@ -590,11 +607,10 @@ public class JMLTypeAnnotator {
                     visitor.annotateError(ref.getKey(), ErrorMessages.FIELD_NO_MODIFIERS);
                     continue;
                 }
-                // check that the visibility is correct, also checks implicit visibility
-                //noinspection MagicConstant
-                if (isSpecPublic ? !visibility.equals(PsiModifier.PUBLIC) :
-                        (isSpecProtected ? !visibility.equals(PsiModifier.PROTECTED) :
-                                !refModifiers.hasModifierProperty(visibility))) {
+                // check that the reference is at least as visible as the invariant, also checks implicit visibility
+                int referenceLevel = isSpecPublic ? PsiUtil.ACCESS_LEVEL_PUBLIC : PsiUtil.getAccessLevel(refModifiers);
+                if (isSpecProtected) referenceLevel = Math.max(referenceLevel, PsiUtil.ACCESS_LEVEL_PROTECTED);
+                if (referenceLevel < accessLevel(visibility)) {
                     visitor.annotateError(ref.getKey(), ErrorMessages.INVARIANT_WRONG_VISIBILITY);
                 }
                 // also check static versus instance, as static invariants cannot mention instance variables

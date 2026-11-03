@@ -46,6 +46,19 @@ public class SignalsExceptionReferences {
     private static class TestException3 extends Exception {
 
     }
+
+    // classes that are not exceptions, even though they can be cast to Exception
+    /*@
+        signals(<error descr="This is not an exception class">Runnable</error> r) true;
+        signals(<error descr="This is not an exception class">Object</error> o) true;
+     */
+    public int div3(int a, int b) {
+        return a / b;
+    }
+
+    // "no exceptions" does not need a throws clause
+    //@ signals (Exception e) false;
+    public int div4(int a, int b) {
+        return a / b;
+    }
 }
-
-

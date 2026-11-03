@@ -116,7 +116,7 @@ public class JMLCompletionUtils {
                 final PsiClass innerClass = importedClass.findInnerClassByName(memberName, true);
                 if (innerClass != null) {
                     if (isAccessibleHere((PsiMember) innerClass, params.getPosition())) {
-                        fillClassCompletions(importedClass, results, params);
+                        results.addElement(getClassLookup(innerClass));
                     }
                 }
             }
@@ -402,20 +402,6 @@ public class JMLCompletionUtils {
     }
 
     /**
-     * Reuse of IntelliJ's completion results sorting algorithm, doesn't work as well as normal as much of the
-     * completion that is made by IntelliJ is heavily dependent on context and a proper Java parse tree.
-     *
-     * But this works better than anything I can come up with, so we use this.
-     *
-     * @param params - completion context.
-     * @param results - completion results holder.
-     */
-
-    public static void sortResults(@NotNull CompletionParameters params, @NotNull CompletionResultSet results) {
-        JavaCompletionSorting.addJavaSorting(params, results);
-    }
-
-    /**
      * Fill in completions for . expressions when they are called on a method parameter, only single dot expressions are
      * supported as we do not have our own recursive type resolver.
      *
@@ -435,7 +421,6 @@ public class JMLCompletionUtils {
                 if (psiClass == null) return false;
 
                 fillClassCompletions(psiClass, results, params);
-                sortResults(params, results);
                 return true;
             }
         }
@@ -474,7 +459,6 @@ public class JMLCompletionUtils {
 
             if (psiClass == null) return true;
             fillClassCompletions(psiClass, results, params);
-            sortResults(params, results);
             return true;
         }
 
@@ -497,7 +481,6 @@ public class JMLCompletionUtils {
                     if (psiClass == null) return true;
 
                     fillClassCompletions(psiClass, results, params);
-                    sortResults(params, results);
                     return true;
                 }
             }

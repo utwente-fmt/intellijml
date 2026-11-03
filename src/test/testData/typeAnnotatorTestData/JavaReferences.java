@@ -15,12 +15,12 @@ public class JavaReferences {
     //@ invariant new Inner().getTestNum() > 0;
 
     // with a different class
-    //@ invariant <error descr="Reference cannot be resolved">JavaReferencesTest.testNum</error> > 0;
-    //@ invariant <error descr="Reference cannot be resolved">new JavaReferencesTest().testNum</error> > 0;
+    //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">JavaReferencesTest.testNum</error> > 0;
+    //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">new JavaReferencesTest().testNum</error> > 0;
     //@ invariant JavaReferencesTest.publicStaticTestNum > 0;
     //@ invariant new JavaReferencesTest().publicStaticTestNum > 0;
-    //@ invariant <error descr="Reference cannot be resolved">JavaReferencesTest.staticTestNum</error> > 0;
-    //@ invariant <error descr="Reference cannot be resolved">new JavaReferencesTest().staticTestNum</error> > 0;
+    //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">JavaReferencesTest.staticTestNum</error> > 0;
+    //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">new JavaReferencesTest().staticTestNum</error> > 0;
     //@ invariant <error descr="Reference cannot be resolved">JavaReferencesTest.protectedTestNum</error> > 0;
     //@ invariant new JavaReferencesTest().protectedTestNum > 0;
     //@ invariant <error descr="Method could not be resolved, maybe the parameters do not correspond?">JavaReferencesTest.getTestNum()</error> > 0;

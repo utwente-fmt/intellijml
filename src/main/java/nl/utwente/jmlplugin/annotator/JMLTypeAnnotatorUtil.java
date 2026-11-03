@@ -143,19 +143,19 @@ class JMLTypeAnnotatorUtil {
             if (JMLTokenSet.javaPrimitives.contains(elemType))
                 return element.getText() + ".class";
             // not a primitive, so need to see whether it is a reference to a classname
-            PsiJavaCodeReferenceElement classReference;
+            PsiType type;
             try {
                 // find the class
-                classReference = JavaPsiFacade.getElementFactory(element.getProject()).createReferenceFromText(ident.getText(), element.getContext());
+                type = JavaPsiFacade.getElementFactory(element.getProject()).createTypeFromText(element.getText(), element.getContext());
             } catch (IncorrectOperationException e) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.INCORRECT_REFERENCE).create();
                 result.setCorrect(false);
                 return "null";
             }
-            JavaResolveResult resolveResult = classReference.advancedResolve(false);
-            if (resolveResult.isValidResult() && resolveResult.getElement() instanceof PsiClass) {
-                // class exists, so return replacement
-                return ((PsiClass) resolveResult.getElement()).getQualifiedName() + ".class";
+            if (PsiTypesUtil.getPsiClass(type.getDeepComponentType()) != null) {
+                // class exists, so return replacement; a class literal cannot have type arguments or be of a type
+                // parameter, so use the erasure (List<String>[] becomes java.util.List[].class, T becomes java.lang.Object.class)
+                return TypeConversionUtil.erasure(type).getCanonicalText() + ".class";
             }
         }
         holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NOT_A_TYPE_NAME).range(ident != null ? ident : element).create();

@@ -45,4 +45,20 @@ public class QuantifiedExpressions {
     public int sumAll(int[] arr) {
         return 0;
     }
+
+    // the type of the body is that of the whole expression, not that of \result in it
+    /*@ ensures (\sum int i; 0 <= i && i < \result.length; \result[i]) >= 0;
+      @ ensures (\max int i; 0 <= i && i < \result.length; \result[i] + 1) > 0;
+     */
+    public int[] positives() {
+        return new int[0];
+    }
+
+    // qualified and generic types of quantified variables
+    /*@ ensures (\forall java.lang.Integer x; x != null; x.intValue() >= 0);
+      @ ensures (\forall java.util.Map.Entry<String, ? extends Number> e; e != null; e.getKey() != null);
+      @ ensures (\forall java.util.List<java.util.List<Integer>> l; l != null; l.size() >= 0);
+     */
+    public void qualifiedAndGeneric() {
+    }
 }

@@ -158,5 +158,22 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testSpecProtectedInOtherPackage() {
+        // spec_protected is in a comment in the other file
+        myFixture.allowTreeAccessForAllFiles();
+        myFixture.copyFileToProject("specprotected/b/Owner.java");
+        myFixture.configureByFile("specprotected/a/User.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testSpecProtectedInSubclassOfSubclass() {
+        // spec_protected is in a comment in the other file
+        myFixture.allowTreeAccessForAllFiles();
+        myFixture.copyFileToProject("specprotected/b/Owner.java");
+        myFixture.copyFileToProject("specprotected/b/Middle.java");
+        myFixture.configureByFile("other/Sub.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
 
 }

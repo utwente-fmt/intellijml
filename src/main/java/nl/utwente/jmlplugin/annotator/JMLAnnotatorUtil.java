@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin.annotator;
 
+import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.lang.java.JavaLanguage;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
@@ -10,6 +11,9 @@ import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -26,6 +30,20 @@ public class JMLAnnotatorUtil {
             regex.append(modifier.toString()).append("|");
         }
         ALL_MODIFIERS_REGEX = regex.replace(regex.length() - 1, regex.length(), ")").toString();
+    }
+
+    // whitespace with at most one line break
+    private static final Pattern AT_MOST_ONE_NEWLINE = Pattern.compile("[ \t ]*(\n|\r\n)?[ \t ]*");
+
+    // the patterns made by countTextMatchesAcrossComments and keywordPattern, as the annotators run for every element
+    private static final Map<String, Pattern> PATTERNS = new ConcurrentHashMap<>();
+
+    /**
+     * @param whitespace the text of whitespace between two elements
+     * @return true if the whitespace has at most one line break, so that the elements are on the same or adjacent lines
+     */
+    public static boolean isAtMostOneNewline(String whitespace) {
+        return AT_MOST_ONE_NEWLINE.matcher(whitespace).matches();
     }
 
     /**
@@ -81,7 +99,7 @@ public class JMLAnnotatorUtil {
             // max 1 newline is allowed between comments for them to still belong to the same group,
             // unless they are a field or a method, then something other than whitespace is also allowed
             else if (currentElement == null || !(parent instanceof PsiField || parent instanceof PsiMethod || (currentElement instanceof PsiWhiteSpace
-                    && currentElement.getText().matches("^[ \t\u00A0]*(\n|\r\n)?[ \t\u00A0]*$")))) {
+                    && isAtMostOneNewline(currentElement.getText())))) {
                 // for local variables and parameters, it could be inside the declaration or before, if we are inside, also go before
                 currentElement = null;
                 if (parent instanceof PsiLocalVariable) {
@@ -114,6 +132,57 @@ public class JMLAnnotatorUtil {
         PsiComment myComment = getCommentContext(element);
         ArrayList<PsiComment> comments = collectPreviousComments(myComment, alsoSearchMyOwnComment);
         return countTextMatchesAcrossComments(comments, regex, (doNotCountMyself ? 2 : 1)) >= (doNotCountMyself ? 2 : 1);
+    }
+
+    /**
+     * Counts how often a keyword occurs in the specification case of an element: from the last "also" before it, in
+     * its own comment or the comments before it, to the next "also" in its own comment
+     *
+     * @param element a JML element
+     * @param keyword the keyword to count
+     * @return the number of times the keyword occurs in the specification case
+     */
+    public static int countInSpecCase(@NotNull PsiElement element, String keyword) {
+        PsiComment myComment = getCommentContext(element);
+        if (myComment == null) return 0;
+        ArrayList<PsiComment> previousComments = collectPreviousComments(myComment, false);
+        Collections.reverse(previousComments);
+        StringBuilder text = new StringBuilder();
+        for (PsiComment comment : previousComments) {
+            if (comment.getText().startsWith("/*@") || comment.getText().startsWith("//@")) {
+                text.append(comment.getText()).append('\n');
+            }
+        }
+        int elementOffset = text.length() - myComment.getTextRange().getStartOffset()
+                + InjectedLanguageManager.getInstance(element.getProject()).injectedToHost(element, element.getTextOffset());
+        text.append(myComment.getText());
+
+        int start = 0;
+        int end = text.length();
+        Matcher also = keywordPattern("also").matcher(text);
+        while (also.find()) {
+            if (also.start() < elementOffset) {
+                start = also.end();
+            } else {
+                end = also.start();
+                break;
+            }
+        }
+        Matcher matcher = keywordPattern(keyword).matcher(text).region(start, end);
+        int count = 0;
+        while (matcher.find()) {
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * @param keyword a JML keyword
+     * @return a pattern that finds the keyword as a whole word
+     */
+    private static Pattern keywordPattern(String keyword) {
+        return PATTERNS.computeIfAbsent("keyword " + keyword,
+                key -> Pattern.compile("(?<![\\w\\\\])" + Pattern.quote(keyword) + "(?!\\w)"));
     }
 
     /**
@@ -165,7 +234,8 @@ public class JMLAnnotatorUtil {
      */
     private static int countTextMatchesAcrossComments(@NotNull ArrayList<PsiComment> comments, String regex, int maxCount) {
         // only captures whole words by using negative lookahead
-        Pattern pattern = Pattern.compile("(?<=@|;|\\*\\)|" + ALL_MODIFIERS_REGEX + ")\\s*(" + regex + ")(?!\\w)");
+        Pattern pattern = PATTERNS.computeIfAbsent(regex,
+                key -> Pattern.compile("(?<=@|;|\\*\\)|" + ALL_MODIFIERS_REGEX + ")\\s*(" + regex + ")(?!\\w)"));
         int count = 0;
         for (PsiComment comment : comments) {
             String commentText = comment.getText();

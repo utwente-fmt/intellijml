@@ -8,6 +8,7 @@ import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import nl.utwente.jmlplugin.psi.JMLTypes;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,7 +19,7 @@ import java.util.Map;
  */
 
 public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
-    private final MergeFunction mergeFunction = new JavaExprJMLKeywordMergeFunction();
+    private final JavaExprJMLKeywordMergeFunction mergeFunction = new JavaExprJMLKeywordMergeFunction();
 
     public JMLInJavaExprMergingLexer() {
         super(new JMLMultiLayerLexer(), TokenSet.EMPTY);
@@ -27,6 +28,13 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
     @Override
     public MergeFunction getMergeFunction() {
         return mergeFunction;
+    }
+
+    @Override
+    public void start(@NotNull CharSequence buffer, int startOffset, int endOffset, int initialState) {
+        // a backslash at the end of the previous text must not affect this text
+        mergeFunction.checkBackslashKeyword = false;
+        super.start(buffer, startOffset, endOffset, initialState);
     }
 
     /**

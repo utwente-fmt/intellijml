@@ -48,4 +48,17 @@ public class BackslashTypeFunctions {
     int getInt() {
         return 0;
     }
+
+    // array types, and type parameters (which cannot be used in a class literal)
+    //@ ensures \typeof(\result) == \type(String[]);
+    String[] getStrings() {
+        return new String[0];
+    }
+
+    static class Box<T> {
+        //@ ensures \result == null || \typeof(\result) == \type(T);
+        T get() {
+            return null;
+        }
+    }
 }

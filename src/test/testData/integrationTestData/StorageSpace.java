@@ -27,7 +27,7 @@ public class StorageSpace {
 
 
     /*@@@@@@@
-      @@@ private invariant nrOfBoxesShipped >= 0 && <error descr="The (specification) visibility of the reference should be the same as the visibility of the invariant">nrOfFullBoxes</error> >= 0;
+      @@@ private invariant nrOfBoxesShipped >= 0 && nrOfFullBoxes >= 0;
       (* \elemtype needs an array and type class *)
       private invariant \elemtype(<error descr="This is not an array">boxes.getClass()</error>) instanceof Box;
       private invariant \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?"><warning descr="JML expressions should be pure and this method might not be pure">boxes.toArray(new Box[0])</warning></error>) == \type(Box);
@@ -56,7 +56,7 @@ public class StorageSpace {
     // some syntactical errors
     //@ ensures \result == (boxes.size() == 0 ? 0 : getTotalWeight() / getNrOfBoxes()<error descr="Semicolon expected after this token">)</error>
     //@ <error descr="Class invariant, in-method specification, method specification, modifiers or at-sign expected, got 'esuress'">esuress</error> \result >= 0;
-    //@ ensures <error descr="'\not_specified' or expression expected, got '\'">\</error>rsul >= 0;
+    //@ ensures <error descr="Unknown keyword \rsul, or a JML keyword that this plugin does not support">\rsul</error> >= 0;
     //@ requires \not_specified;
     // some semantic errors with exceptions
     /*@ <warning descr="Use a single signals_only clause to avoid confusion">signals_only ArithmeticException;</warning>

@@ -63,14 +63,16 @@ public final class ErrorMessages {
     public static final String METHOD_UNRESOLVED = "Method could not be resolved, maybe the parameters do not correspond?";
     public static final String CONSTRUCTOR_UNRESOLVED = "Constructor could not be resolved, maybe the parameters do not correspond?";
     public static final String INCOMPATIBLE_CAST = "Incompatible type cast";
-    public static final String INVARIANT_WRONG_VISIBILITY = "The (specification) visibility of the reference should be the same as the visibility of the invariant";
+    public static final String INVARIANT_WRONG_VISIBILITY = "The (specification) visibility of the reference should be at least the visibility of the invariant";
     public static final String FIELD_NO_MODIFIERS = "The referenced field has no modifiers, so cannot check visibility constraints";
     public static final String INVARIANT_SHOULD_BE_STATIC = "A static invariant can only see static fields";
     public static final String VARIABLE_EXPECTED = "Variable expected";
     public static final String NOT_A_CLASS = "This is not a class";
     public static final String REFERENCE_UNRESOLVED = "Reference cannot be resolved";
+    public static final String NOT_VISIBLE = "This is not visible here, declare it spec_public to use it in specifications";
     public static final String METHOD_NOT_PURE = "JML expressions should be pure and this method might not be pure";
     public static final String ASSIGNMENT_NOT_PURE = "JML expressions should be pure and assignments are not pure";
+    public static final String INCREMENT_NOT_PURE = "JML expressions should be pure and ++ and -- change a variable";
 
     // Other error messages
     public static final String WS_BEFORE_AT_SIGN = "To be considered a JML comment, there should be no whitespace between the start of the comment (/* or //) and the @-sign";
@@ -97,6 +99,10 @@ public final class ErrorMessages {
         String regex = JMLAnnotatorUtil.ALL_MODIFIERS_REGEX + ",?";
         String output = input.replaceAll("(^| )" + regex, "").replaceAll(", (\\w+), or$", " or $1");
         return (output.contains("modifiers") ? "" : "modifier, ") + output;
+    }
+
+    public static String unknownBackslashKeyword(String keyword) {
+        return "Unknown keyword " + keyword + ", or a JML keyword that this plugin does not support";
     }
 
     public static String modifierNotAllowedHere(String modifier, CommentPosition position) {

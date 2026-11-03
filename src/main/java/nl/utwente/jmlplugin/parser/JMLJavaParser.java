@@ -279,7 +279,7 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
 
 
     /**
-     * Parses the type in the variable declarations in quantifiers of the form: (int | boolean | char | float | double | IDENTIFIER | byte | short | long | \TYPE) ([])*
+     * Parses the type in the variable declarations in quantifiers of the form: (int | boolean | char | float | double | class_type | byte | short | long | \TYPE) ([])*
      *
      * @param builder the PSI tree builder
      * @param level   the level in the tree
@@ -287,19 +287,63 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
      */
     private static boolean parseTypeName(PsiBuilder builder, int level) {
         PsiBuilder.Marker typeMarker = enter_section_(builder, level, _NONE_, JMLTypes.TYPE_NAME, "type name");
+        boolean correct = parseType(builder, level);
+        exit_section_(builder, level, typeMarker, correct, false, null);
+        return correct;
+    }
+
+    /**
+     * Parses a type, see {@link #parseTypeName}, without making a type name element for it
+     *
+     * @param builder the PSI tree builder
+     * @param level   the level in the tree
+     * @return true if it could be parsed
+     */
+    private static boolean parseType(PsiBuilder builder, int level) {
+        boolean isClassType = false;
         boolean correct = consumeToken(builder, JavaTokenType.INT_KEYWORD);
         if (!correct) correct = consumeToken(builder, JavaTokenType.BOOLEAN_KEYWORD);
         if (!correct) correct = consumeToken(builder, JavaTokenType.CHAR_KEYWORD);
         if (!correct) correct = consumeToken(builder, JavaTokenType.FLOAT_KEYWORD);
         if (!correct) correct = consumeToken(builder, JavaTokenType.DOUBLE_KEYWORD);
-        if (!correct) correct = consumeToken(builder, JavaTokenType.IDENTIFIER);
+        if (!correct) correct = isClassType = consumeToken(builder, JavaTokenType.IDENTIFIER);
         if (!correct) correct = consumeToken(builder, JavaTokenType.BYTE_KEYWORD);
         if (!correct) correct = consumeToken(builder, JavaTokenType.SHORT_KEYWORD);
         if (!correct) correct = consumeToken(builder, JavaTokenType.LONG_KEYWORD);
         if (!correct) correct = consumeToken(builder, JMLTypes.TYPE_CAPS);
+        if (isClassType) correct = parseClassTypeRest(builder, level);
         correct = correct && optionalDims(builder);
-        exit_section_(builder, level, typeMarker, correct, false, null);
         return correct;
+    }
+
+    /**
+     * Parses the rest of a class type after its first identifier, for qualified and generic names such as
+     * java.util.Map.Entry<String, ? extends Number>, of the form: ('.' IDENTIFIER)* ('<' type_argument (',' type_argument)* '>')?
+     * where a type argument is a type or a wildcard: '?' (('extends' | 'super') type)?
+     *
+     * @param builder the PSI tree builder
+     * @param level   the level in the tree
+     * @return true if it could be parsed
+     */
+    private static boolean parseClassTypeRest(PsiBuilder builder, int level) {
+        while (builder.getTokenType() == JavaTokenType.DOT) {
+            builder.advanceLexer();
+            if (!consumeToken(builder, JavaTokenType.IDENTIFIER)) return false;
+        }
+        if (builder.getTokenType() != JavaTokenType.LT) return true;
+        builder.advanceLexer();
+        do {
+            if (builder.getTokenType() == JavaTokenType.QUEST) {
+                builder.advanceLexer();
+                IElementType bound = builder.getTokenType();
+                if (bound != JavaTokenType.EXTENDS_KEYWORD && bound != JavaTokenType.SUPER_KEYWORD && bound != JMLTypes.SUPER) {
+                    continue;
+                }
+                builder.advanceLexer();
+            }
+            if (!parseType(builder, level + 1)) return false;
+        } while (consumeToken(builder, JavaTokenType.COMMA));
+        return consumeToken(builder, JavaTokenType.GT);
     }
 
 

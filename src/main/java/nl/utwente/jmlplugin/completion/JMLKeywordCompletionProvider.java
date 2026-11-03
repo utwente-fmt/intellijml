@@ -48,8 +48,10 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
                 break;
             case PARAMETER:
                 fillParameterCompletions(result);
+                break;
             case VAR_DECLARATION:
                 fillVariableDeclarationCompletions(result);
+                // fallthrough is intentional: a local variable declaration is also in a code block
             case CODE_BLOCK:
                 fillCodeBlockCompletions(result);
                 break;
@@ -60,8 +62,6 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
             default:
                 break;
         }
-
-        sortResults(parameters, result);
     }
 
     /**

@@ -30,11 +30,9 @@ public class JMLAssignableClauseCompletionProvider extends CompletionProvider<Co
         //account for inner classes
         PsiClass enclosingClass = getEnclosingClass(psiClass);
         while (enclosingClass != null) {
-            fillFieldCompletions(psiClass, result, parameters);
+            fillFieldCompletions(enclosingClass, result, parameters);
             enclosingClass = getEnclosingClass(enclosingClass);
         }
         addTokens(assignableJavaKeywords, result);
-
-        sortResults(parameters, result);
     }
 }

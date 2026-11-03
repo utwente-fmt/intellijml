@@ -6,6 +6,7 @@ import com.intellij.psi.tree.TokenSet;
 import nl.utwente.jmlplugin.parser._JMLLexer;
 import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import nl.utwente.jmlplugin.psi.JMLTypes;
+import org.jetbrains.annotations.NotNull;
 
 import static nl.utwente.jmlplugin.psi.JMLTokenSet.commentsAndWhitespace;
 import static nl.utwente.jmlplugin.psi.JMLTokenSet.skipAfterJavaExpr;
@@ -16,7 +17,7 @@ import static nl.utwente.jmlplugin.psi.JMLTokenSet.skipAfterJavaExpr;
 
 public class JMLMergingLexer extends MergingLexerAdapter {
 
-    private final MergeFunction mergeFunction = new JMLMergeFunction();
+    private final JMLMergeFunction mergeFunction = new JMLMergeFunction();
 
     public JMLMergingLexer() {
         super(new FlexAdapter(new _JMLLexer(null)), TokenSet.EMPTY);
@@ -27,6 +28,26 @@ public class JMLMergingLexer extends MergingLexerAdapter {
         return mergeFunction;
     }
 
+    // added to the state of tokens in the middle of a clause, such as "(Exception e)" in a signals clause
+    private static final int IN_CLAUSE_STATE = 1 << 20;
+
+    @Override
+    public void start(@NotNull CharSequence buffer, int startOffset, int endOffset, int initialState) {
+        // the merge function only remembers things within a clause, and lexing never starts in the middle of one
+        mergeFunction.reset();
+        super.start(buffer, startOffset, endOffset, initialState & ~IN_CLAUSE_STATE);
+    }
+
+    /**
+     * The editor lexes again from a token that has the initial state, so tokens for which the merge function
+     * remembers something from the previous tokens get another state
+     */
+    @Override
+    public int getState() {
+        int state = super.getState();
+        return mergeFunction.inClauseAtTokenStart ? state | IN_CLAUSE_STATE : state;
+    }
+
     /**
      * Contains the merge function to be used in JMLMergingLexer
      */
@@ -34,6 +55,14 @@ public class JMLMergingLexer extends MergingLexerAdapter {
 
         private boolean merging = false;
         private boolean javaExprExpected = false;
+        // whether merging or javaExprExpected was set at the start of the last token
+        private boolean inClauseAtTokenStart = false;
+
+        void reset() {
+            merging = false;
+            javaExprExpected = false;
+            inClauseAtTokenStart = false;
+        }
 
 
         /**
@@ -45,6 +74,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
          */
         @Override
         public IElementType merge(IElementType type, Lexer originalLexer) {
+            inClauseAtTokenStart = merging || javaExprExpected;
             // merge until you see that the expression ended, assuming greedy matching
             LexerPosition startPos;
 

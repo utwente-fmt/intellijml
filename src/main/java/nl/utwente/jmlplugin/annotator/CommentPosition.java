@@ -7,6 +7,7 @@ import nl.utwente.jmlplugin.psi.JMLJmlSpecification;
 import static com.intellij.psi.util.PsiTreeUtil.*;
 import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.getCommentContext;
 import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.getJavaContext;
+import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.isAtMostOneNewline;
 
 /**
  * Enum to keep track of where a JMLComment is placed in the Java file
@@ -92,7 +93,7 @@ public enum CommentPosition {
             PsiElement nextSibling = jmlComment.getNextSibling();
             // skip all comments and whitespaces that have 1 newline max, otherwise it is not right above it
             while (nextSibling instanceof PsiComment || (nextSibling instanceof PsiWhiteSpace
-                    && nextSibling.getText().matches("^[ \t\u00A0]*(\n|\r\n)?[ \t\u00A0]*$"))) {
+                    && isAtMostOneNewline(nextSibling.getText()))) {
                 nextSibling = nextSibling.getNextSibling();
             }
             if (nextSibling instanceof PsiDeclarationStatement) {
@@ -134,7 +135,7 @@ public enum CommentPosition {
             PsiElement nextSibling = jmlComment.getNextSibling();
             // skip all comments and whitespaces that have 1 newline max, otherwise it is not right above it
             while (nextSibling instanceof PsiComment || (nextSibling instanceof PsiWhiteSpace
-                    && nextSibling.getText().matches("^[ \t\u00A0]*(\n|\r\n)?[ \t\u00A0]*$"))) {
+                    && isAtMostOneNewline(nextSibling.getText()))) {
                 nextSibling = nextSibling.getNextSibling();
             }
             if (nextSibling instanceof PsiDeclarationStatement) {

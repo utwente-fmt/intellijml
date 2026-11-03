@@ -86,5 +86,10 @@ public class JMLSyntaxAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testUnknownBackslashKeyword() {
+        myFixture.configureByFile("UnknownBackslashKeyword.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
 
 }

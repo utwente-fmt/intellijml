@@ -1,12 +1,17 @@
 package nl.utwente.jmlplugin;
 
+import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiMember;
 import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
 import nl.utwente.jmlplugin.documentation.JMLDocumentationProvider;
+import nl.utwente.jmlplugin.syntax_highlighting.JMLSyntaxHighlighter;
 import org.jetbrains.annotations.NotNull;
+
+import java.awt.Color;
 
 /**
  * Tests that the quick documentation of methods shows their JML specification
@@ -56,6 +61,41 @@ public class JMLDocumentationTest extends LightJavaCodeInsightFixtureTestCase {
         assertTrue(doc, doc.contains("&lt;"));
         assertTrue(doc, doc.contains("&amp;&amp;"));
         assertFalse(doc, doc.contains(" < "));
+    }
+
+    public void testBracketsAreShown() {
+        // brackets have no colour of their own in the default colour scheme
+        String doc = documentationOf("class A {\n    //@ requires (\\forall int i; 0 <= i && i < a.length; a[i] > 0);\n" +
+                "    void m(int[] a) {}\n}");
+        String shown = shownText(doc);
+        assertTrue(shown, shown.contains("(\\forall int i; 0 &lt;= i &amp;&amp; i &lt; a.length; a[i] &gt; 0);"));
+    }
+
+    /**
+     * @return the colour as it appears in the style of the documentation
+     */
+    private static String colorOf(Color color) {
+        return "color:#" + Integer.toHexString(color.getRGB()).substring(2) + ";";
+    }
+
+    public void testColorsOfCurrentScheme() {
+        // with a dark colour scheme, the colours of the light scheme would be hard to read
+        EditorColorsManager manager = EditorColorsManager.getInstance();
+        EditorColorsScheme original = manager.getGlobalScheme();
+        EditorColorsScheme darcula = manager.getScheme("Darcula");
+        assertNotNull(darcula);
+        // identifiers have a different colour in the light and the dark scheme (colorSchemes/*.xml)
+        String light = colorOf(manager.getScheme("Default").getAttributes(JMLSyntaxHighlighter.IDENTIFIER).getForegroundColor());
+        String dark = colorOf(darcula.getAttributes(JMLSyntaxHighlighter.IDENTIFIER).getForegroundColor());
+        assertFalse(light.equals(dark));
+        try {
+            manager.setGlobalScheme(darcula);
+            String doc = documentationOf("class A {\n    //@ requires x > 0;\n    void m(int x) {}\n}");
+            assertTrue(doc, doc.contains(dark));
+            assertFalse(doc, doc.contains(light));
+        } finally {
+            manager.setGlobalScheme(original);
+        }
     }
 
     public void testInlineModifierIsShown() {

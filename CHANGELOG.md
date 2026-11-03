@@ -6,12 +6,34 @@
 - The lexer and parser are generated during the build instead of being committed
 - The tests need no setup any more (they use a mock JDK 21 that is downloaded automatically), and the build
   fails if a test run is interrupted part-way
+- `x++` and `x--` in a specification are an error, like assignments, as they change a variable
+- An invariant may mention fields and methods that are more visible than the invariant itself (such as a public
+  field in a private invariant); before, they needed exactly the same visibility
+- Using a field or method that is not visible in a specification suggests declaring it `spec_public`, instead of
+  saying that it cannot be resolved
+- An unknown or unsupported backslash keyword, such as `\fresh` or a misspelled `\reslt`, is named in the error
+- Exception classes are only all listed in completion when completion is invoked with Ctrl+Space or part of the
+  name is typed, as searching them on every keystroke was slow
 
 ### Fixed
 - `assignable` and `signals_only` lists that continue on a new line starting with `@` gave a syntax error
 - Typing `/*@` at the very end of a file caused an exception
 - The quick documentation of a method showed `<` and `&&` in its JML wrongly, and left out modifiers such as
   `/*@ pure @*/` between two Java modifiers
+- The quick documentation showed JML in the colours of the light theme, also with a dark theme
+- Comments such as `// @Override` or `// @formatter:off` were treated as JML comments
+- Two specification cases joined by `also` that each have a `signals_only` clause gave a warning
+- `(\sum int i; 0 <= i && i < \result.length; \result[i])` gave "must be numeric, but is int[]"
+- `\type(String[])` was treated as `\type(String)`, and `\type(T)` or `\typeof(x)` with a type parameter `T`
+  gave an error
+- Quantified variables could not have a qualified or generic type, such as `java.util.List<Integer>`
+- `signals (Runnable r)` and other classes that are not exceptions were accepted
+- `spec_protected` allowed other packages whose name starts the same (`com.a` and `com.b`), and did not allow
+  subclasses of subclasses
+- Completion in a JML comment on a parameter offered `nullable` twice and statements such as `assert`;
+  completion in `assignable` left out the fields of the outer class in an inner class; `import static
+  java.util.Map.Entry` made completion offer all members of `Map`
+- Syntax highlighting could go wrong after editing inside a `signals` clause
 
 ## [1.1.10]
 

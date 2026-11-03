@@ -1,6 +1,7 @@
 package nl.utwente.jmlplugin;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import com.intellij.codeInsight.completion.CompletionType;
 import com.intellij.testFramework.LightProjectDescriptor;
@@ -225,6 +226,35 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
         assertContainsElements(strings, "number");
         assertContainsElements(strings, "\\nothing");
         assertContainsElements(strings, "\\everything");
+    }
+
+    public void testAssignableInNestedClass() {
+        List<String> strings = completeIn("AssignableNestedClass.java");
+
+        // the fields of the outer class, and the fields of the inner class only once
+        assertContainsElements(strings, "outerNumber", "innerNumber");
+        assertEquals(strings.toString(), 1, Collections.frequency(strings, "innerNumber"));
+    }
+
+    public void testParameterModifier() {
+        List<String> strings = completeIn("ParameterModifier.java");
+
+        // nullable is the only modifier of a parameter
+        assertSameElements(strings, "nullable");
+    }
+
+    public void testStaticImportOfNestedClass() {
+        List<String> strings = completeIn("StaticImportNestedClass.java");
+
+        // "import static java.util.Map.Entry" imports the class Entry, not the members of Map
+        assertDoesntContain(strings, "containsKey", "put");
+    }
+
+    public void testSignalsOnlyWithPrefix() {
+        List<String> strings = completeIn("SignalsOnlyPrefix.java");
+
+        assertContainsElements(strings, "ArrayIndexOutOfBoundsException");
+        assertDoesntContain(strings, "ArrayList", "Arrays");
     }
 
     public void testModifiable() {

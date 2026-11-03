@@ -67,7 +67,5 @@ public class JMLJavaIdentifierCompletionProvider extends CompletionProvider<Comp
         if (Character.isUpperCase(parameters.getPosition().getText().trim().charAt(0)) && !parameters.getPosition().getText().equals(EMPTY_STRING)) {
             addJavaClassNameCompletions(parameters, result);
         }
-
-        sortResults(parameters, result);
     }
 }

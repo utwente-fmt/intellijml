@@ -139,7 +139,7 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      * @return true if there are multiple signals_only clauses
      */
     private static boolean checkMultipleSignalsOnly(JMLSignalsOnlyClause element) {
-        return doPrevCommentsContain(element, "signals_only", true, true);
+        return countInSpecCase(element, "signals_only") > 1;
     }
 
     /**
@@ -254,7 +254,7 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         // skip all comments and whitespaces that have 1 newline max, otherwise it is not right above it
         PsiElement nextJavaStatement = commentContext.getNextSibling();
         while (nextJavaStatement instanceof PsiComment || (nextJavaStatement instanceof PsiWhiteSpace
-                && nextJavaStatement.getText().matches("^[ \t\u00A0]*(\n|\r\n)?[ \t\u00A0]*$"))) {
+                && isAtMostOneNewline(nextJavaStatement.getText()))) {
             nextJavaStatement = nextJavaStatement.getNextSibling();
         }
         // check that it is not above a loop
