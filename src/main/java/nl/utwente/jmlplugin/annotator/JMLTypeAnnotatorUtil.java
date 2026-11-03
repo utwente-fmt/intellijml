@@ -11,6 +11,7 @@ import com.intellij.util.IncorrectOperationException;
 import nl.utwente.jmlplugin.psi.JMLLoopInvariant;
 import nl.utwente.jmlplugin.psi.JMLReferenceType;
 import nl.utwente.jmlplugin.psi.JMLTokenSet;
+import nl.utwente.jmlplugin.psi.JMLTypes;
 import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLQVarDecl;
 import nl.utwente.jmlplugin.psi.impl.JMLQVarDeclIdentifier;
@@ -50,6 +51,52 @@ class JMLTypeAnnotatorUtil {
             errorFound = true;
         }
         return errorFound ? null : expr;
+    }
+
+    /**
+     * Generates a PSI tree representation of a Java expression from the given text, in a context where the
+     * parameters of the method can be resolved, as well as the members of the class
+     *
+     * @param text         the text of the expression
+     * @param method       the method whose parameters should be visible
+     * @param classContext the class that contains the method
+     * @return a PSI tree representation of the Java expression, or null if the text is not a valid expression
+     */
+    protected static PsiExpression createExpressionWithParameters(String text, PsiMethod method, PsiClass classContext) {
+        PsiElementFactory factory = JavaPsiFacade.getElementFactory(method.getProject());
+        try {
+            // parameters are only visible from inside a method body, so use the body of a method with the same
+            // type parameters and parameters, which is placed in the class so the members of the class are visible
+            PsiTypeParameterList typeParameters = method.getTypeParameterList();
+            boolean isGeneric = typeParameters != null && typeParameters.getTypeParameters().length > 0;
+            PsiMethod methodCopy = factory.createMethodFromText((isGeneric ? typeParameters.getText() + " " : "")
+                    + "void jmlContext" + method.getParameterList().getText() + " {}", classContext);
+            return factory.createExpressionFromText(text, methodCopy.getBody());
+        } catch (IncorrectOperationException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Checks whether the element is an @-sign at the start of a line in a multi-line JML comment, such as the
+     * second one in "/*@ requires a != null &amp;&amp;\n  @ a.length > 0; @*&#47;". These are not part of the
+     * Java expression.
+     *
+     * @param element an element of a Java expression in JML
+     * @return true if the element is an @-sign that is only preceded by whitespace and @-signs on its line
+     */
+    protected static boolean isLineStartAtSign(PsiElement element) {
+        if (!isAtSign(element)) return false;
+        for (PsiElement prev = PsiTreeUtil.prevLeaf(element); prev != null; prev = PsiTreeUtil.prevLeaf(prev)) {
+            if (prev instanceof PsiWhiteSpace) return prev.getText().contains("\n");
+            if (!isAtSign(prev)) return false;
+        }
+        return false;
+    }
+
+    private static boolean isAtSign(PsiElement element) {
+        IElementType type = element.getNode().getElementType();
+        return type == JavaTokenType.AT || type == JMLTypes.AT_SIGN;
     }
 
     /**
@@ -103,7 +150,7 @@ class JMLTypeAnnotatorUtil {
             } catch (IncorrectOperationException e) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.INCORRECT_REFERENCE).create();
                 result.setCorrect(false);
-                return PsiKeyword.NULL;
+                return "null";
             }
             JavaResolveResult resolveResult = classReference.advancedResolve(false);
             if (resolveResult.isValidResult() && resolveResult.getElement() instanceof PsiClass) {

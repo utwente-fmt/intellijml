@@ -289,7 +289,7 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
                         annotateError(dimExpr, ErrorMessages.TYPE_UNKNOWN);
                     }
                     if (!dimExpr.getType().getCanonicalText().equals("java.lang.Integer") && !TypeConversionUtil.isIntegerNumber(dimExpr.getType().getPresentableText())) {
-//                    if (!TypeConversionUtil.areTypesConvertible(dimExpr.getType(), PsiType.INT)) {
+//                    if (!TypeConversionUtil.areTypesConvertible(dimExpr.getType(), PsiTypes.intType())) {
                         annotateError(dimExpr, ErrorMessages.ARRAY_DIM_NO_INT);
                     }
                 }

@@ -49,7 +49,8 @@ public class JMLTypeAnnotator {
      */
     public static void checkAssignableVarScope(PsiElement element, AnnotationHolder holder) {
         // get the class the JML comment is in
-        PsiClass classContext = getParentOfType(getJavaContext(element), PsiClass.class);
+        PsiElement javaContext = getJavaContext(element);
+        PsiClass classContext = getParentOfType(javaContext, PsiClass.class);
         // replace [*] or .* so we only have the name of the reference
         String referenceName = element.getText().replaceAll("\\[\\*]|\\.\\*", "");
 
@@ -78,6 +79,17 @@ public class JMLTypeAnnotator {
             fieldResolved = ((PsiJavaCodeReferenceElement) fieldReference).advancedResolve(false);
         }
         boolean fieldValid = fieldResolved != null && fieldResolved.isValidResult();
+        // if it is not a field, it can start with a parameter of the method, such as a[*] or p.f
+        if (!fieldValid && !incorrectRef && javaContext instanceof PsiMethod) {
+            PsiExpression parameterReference = createExpressionWithParameters(referenceName, (PsiMethod) javaContext, classContext);
+            if (parameterReference instanceof PsiJavaCodeReferenceElement) {
+                JavaResolveResult parameterResolved = ((PsiJavaCodeReferenceElement) parameterReference).advancedResolve(false);
+                if (parameterResolved.isValidResult()) {
+                    fieldResolved = parameterResolved;
+                    fieldValid = true;
+                }
+            }
+        }
         // try to resolve the reference to a class
         JavaResolveResult classResolved = classReference == null ? null : classReference.advancedResolve(false);
         boolean classValid = classResolved != null && classResolved.isValidResult();
@@ -91,23 +103,27 @@ public class JMLTypeAnnotator {
         // divide checking based of whether it ends with [*], .* or nothing
         // [*] is only allowed on arrays
         if (element.getText().contains("[*]")) {
-            if (!(fieldValid && fieldResolved.getElement() instanceof PsiField
-                    && ((PsiField) fieldResolved.getElement()).getType().getArrayDimensions() > 0)) {
-                // reference points to a field, but field is not an array
+            if (!(fieldValid && fieldResolved.getElement() instanceof PsiVariable
+                    && ((PsiVariable) fieldResolved.getElement()).getType().getArrayDimensions() > 0)) {
+                // reference points to a field or parameter, but it is not an array
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_ARRAY_ONLY).create();
             }
             // .* is only allowed on class names
         } else if (element.getText().contains(".*")) {
             if (!((classValid && classResolved.getElement() instanceof PsiClass)
-                    || (fieldValid && fieldResolved.getElement() instanceof PsiField && ((PsiField) fieldResolved.getElement()).getType() instanceof PsiClassType)
+                    || (fieldValid && fieldResolved.getElement() instanceof PsiVariable && ((PsiVariable) fieldResolved.getElement()).getType() instanceof PsiClassType)
                     || referenceName.equals("this") || referenceName.equals("super"))) {
-                // is a static class reference or a reference to a field which holds a class instance
+                // is a static class reference or a reference to a field or parameter which holds a class instance
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_CLASS_ONLY).create();
             }
         } else {
             if (!fieldValid) {
                 // class names are only allowed with .* (you cannot assign a static class reference)
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.UNASSIGNABLE).create();
+            }
+            // a method may always assign its own parameters, so they do not need to be listed
+            else if (fieldResolved.getElement() instanceof PsiParameter) {
+                holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.ASSIGNABLE_PARAMETER).create();
             }
             // reference points to a field, check that it is not final
             else if (fieldResolved.getElement() instanceof PsiField && ((PsiField) fieldResolved.getElement()).hasModifierProperty(PsiModifier.FINAL)) {
@@ -141,7 +157,7 @@ public class JMLTypeAnnotator {
                 PsiClassType runtimeExceptionType = PsiType.getJavaLangRuntimeException(element.getManager(), element.getResolveScope());
                 // find the PsiType of the class java.lang.Exception (PsiType does not have an explicit function for this :( )
                 // we know RuntimeException has Exception as super, so we find it by looping through the super types
-                PsiType exceptionType = PsiType.NULL;
+                PsiType exceptionType = PsiTypes.nullType();
                 for (PsiType superType : runtimeExceptionType.getSuperTypes()) {
                     if (superType.getCanonicalText().equals("java.lang.Exception")) {
                         exceptionType = superType;
@@ -252,7 +268,7 @@ public class JMLTypeAnnotator {
                 if (javaChild == null) {
                     // should not happen, but just in case.
                     // do not add an error to the holder, as the semantics annotator already did that
-                    result.add("null", PsiType.NULL, false, currentChild);
+                    result.add("null", PsiTypes.nullType(), false, currentChild);
                     currentChild = currentChild.getNextSibling();
                     continue;
                 }
@@ -271,7 +287,7 @@ public class JMLTypeAnnotator {
                 if (javaChild == null) {
                     // should not happen, but just in case.
                     // do not add an error to the holder, as the semantics annotator already did that
-                    result.add("null", PsiType.NULL, false, currentChild);
+                    result.add("null", PsiTypes.nullType(), false, currentChild);
                     currentChild = currentChild.getNextSibling();
                     continue;
                 }
@@ -286,6 +302,13 @@ public class JMLTypeAnnotator {
                 result.addText(newText, currentChild);
             } else if (currentChild instanceof PsiComment) {
                 // just remove comments
+                result.addText("", currentChild);
+            } else if (isLineStartAtSign(currentChild)) {
+                // an @-sign at the start of a continuation line is not part of the expression, replace it by a
+                // space so that error ranges stay the same, or remove it if it is at the start of the expression
+                result.addText(result.getText().isBlank() ? "" : " ", currentChild);
+            } else if (currentChild instanceof PsiWhiteSpace && result.getText().isEmpty()) {
+                // the expression cannot start with whitespace, which can follow a removed @-sign
                 result.addText("", currentChild);
             } else {
                 // do no replacements, just add the token to the result
@@ -325,7 +348,7 @@ public class JMLTypeAnnotator {
             }
 
             // set the type if not set
-            if ((result.getType() == PsiType.NULL) && expression != null) {
+            if ((result.getType() == PsiTypes.nullType()) && expression != null) {
                 result.setType(expression.getType());
             }
         }
@@ -346,16 +369,16 @@ public class JMLTypeAnnotator {
             PsiMethod method = (PsiMethod) getJavaContext(element);
             //noinspection ConstantConditions
             PsiType returnType = method.getReturnType();
-            if (returnType == null || returnType.equals(PsiType.VOID)) {
+            if (returnType == null || returnType.equals(PsiTypes.voidType())) {
                 // cannot use \result if the method returns nothing
                 result.setCorrect(false);
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NO_METHOD_RESULT).range(current).create();
-                returnType = PsiType.NULL;
+                returnType = PsiTypes.nullType();
             }
             result.add(getDefaultValueOfType(returnType), returnType, current);
         } else {
             // do not add an error to the holder, as the semantics annotator already did that
-            result.add("null", PsiType.NULL, false, current);
+            result.add("null", PsiTypes.nullType(), false, current);
         }
     }
 
@@ -400,7 +423,7 @@ public class JMLTypeAnnotator {
         JMLInnerJavaExpr innerJavaExpr = PsiTreeUtil.getChildOfType(current, JMLInnerJavaExpr.class);
         if (innerJavaExpr == null) {
             // don't add error as parser already did so
-            result.add("false", PsiType.BOOLEAN, false, current);
+            result.add("false", PsiTypes.booleanType(), false, current);
             return;
         }
         InnerJavaExprResult exprRes = annotateInnerJavaExpr(innerJavaExpr, holder, extraVars, false, true);
@@ -408,7 +431,7 @@ public class JMLTypeAnnotator {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NO_ARRAY).range(innerJavaExpr).create();
             exprRes.setCorrect(false);
         }
-        result.add("false", PsiType.BOOLEAN, exprRes.isCorrect(), current);
+        result.add("false", PsiTypes.booleanType(), exprRes.isCorrect(), current);
     }
 
     /**
@@ -486,7 +509,7 @@ public class JMLTypeAnnotator {
         if (expr == null) {
             // do not add a message to the Annotator, the syntax annotator already did that
             currentResult.addText("null", element);
-            currentResult.setType(PsiType.NULL);
+            currentResult.setType(PsiTypes.nullType());
             return;
         }
         IElementType keyword = element.getKeyword();
@@ -494,16 +517,16 @@ public class JMLTypeAnnotator {
         if (keyword == null) {
             // do not add a message to the Annotator, the syntax annotator already did that
             currentResult.addText("null", element);
-            currentResult.setType(PsiType.NULL);
+            currentResult.setType(PsiTypes.nullType());
             return;
         }
         InnerJavaExprResult specResult;
         if (keyword == JMLTypes.FORALL || keyword == JMLTypes.EXISTS) {
             specResult = annotateInnerJavaExpr((JMLInnerJavaExpr) expr.getFirstChild(), holder, fields, true, true);
-            currentResult.setType(PsiType.BOOLEAN);
+            currentResult.setType(PsiTypes.booleanType());
         } else if (keyword == JMLTypes.NUM_OF) {
             specResult = annotateInnerJavaExpr((JMLInnerJavaExpr) expr.getFirstChild(), holder, fields, true, true);
-            currentResult.setType(PsiType.LONG);
+            currentResult.setType(PsiTypes.longType());
         } else {
             // is \min, \max, \sum or \product
             specResult = annotateInnerJavaExpr((JMLInnerJavaExpr) expr.getFirstChild(), holder, fields, false, true);
@@ -511,11 +534,11 @@ public class JMLTypeAnnotator {
                 // only throw error if inner expression does not have error
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.wrongType("numeric", specResult.getType())).range(expr).create();
                 currentResult.setCorrect(false);
-                currentResult.setType(PsiType.INT);
+                currentResult.setType(PsiTypes.intType());
             } else if (specResult.isCorrect()) {
                 currentResult.setType(specResult.getType());
             } else {
-                currentResult.setType(PsiType.INT);
+                currentResult.setType(PsiTypes.intType());
             }
         }
         // we don't want to add the text of the predicate and the spec expression, only the default value for the resulting type

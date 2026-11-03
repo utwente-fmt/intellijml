@@ -93,6 +93,7 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
                 case ABOVE_CLASS:
                 case PARAMETER:
                 case VAR_DECLARATION:
+                case METHOD_DECLARATION:
                     allowed = jmlSpecKind instanceof JMLModifiers;
                     break;
                 case INSIDE_CLASS:

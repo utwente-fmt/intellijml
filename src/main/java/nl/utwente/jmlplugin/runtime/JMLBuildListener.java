@@ -20,6 +20,7 @@ import com.intellij.task.ProjectTaskRunner;
 import com.intellij.task.impl.ProjectTaskList;
 import nl.utwente.jmlplugin.settings.JMLApplicationSettings;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.concurrency.Promise;
 
 import java.io.IOException;
@@ -49,10 +50,12 @@ public class JMLBuildListener extends ProjectTaskRunner {
      *
      * @param project     The project that is affected by this task
      * @param projectTask The task that is about to be run
+     * @param context     The context of the task
      * @return False, because this class cannot run the build task
      */
     @Override
-    public boolean canRun(@NotNull Project project, @NotNull ProjectTask projectTask) {
+    public boolean canRun(@NotNull Project project, @NotNull ProjectTask projectTask,
+                          @Nullable ProjectTaskContext context) {
         if (!JMLApplicationSettings.getInstance().RUNTIME_CHECKING_ENABLED) {
             return false;
         }
@@ -176,15 +179,14 @@ public class JMLBuildListener extends ProjectTaskRunner {
     }
 
     /**
-     * Should never be called
-     * (the other canRun method should be used instead).
+     * Should never be called (the platform calls the three-argument canRun method).
      * <p>
-     * Throws an exception instead of failing silently
-     * to make catching bugs easier.
+     * Abstract in ProjectTaskRunner up to IntelliJ 2026.1 and scheduled for removal after that,
+     * so it is implemented without @Override to keep compiling once it is removed.
      */
-    @Override
+    @SuppressWarnings("unused")
     public boolean canRun(@NotNull ProjectTask projectTask) {
-        throw new NullPointerException("Project is null");
+        return false;
     }
 
     /**

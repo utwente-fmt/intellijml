@@ -69,8 +69,9 @@ public class RangeManager {
         // rollback all changes that influenced the range of the element
         for (int i = rangeChanges.size() - 1; i >= 0; i--) {
             RangeChange change = rangeChanges.get(i);
-            // change was entirely before the element
-            if (change.startOffset < myStartOffset && change.newEndOffset <= myStartOffset) {
+            // change was entirely before the element (text that was removed right before the element also counts)
+            if ((change.startOffset < myStartOffset || change.startOffset == change.newEndOffset)
+                    && change.newEndOffset <= myStartOffset) {
                 myStartOffset += change.deltaLengthChange;
             }
             // the change was before the end of the element

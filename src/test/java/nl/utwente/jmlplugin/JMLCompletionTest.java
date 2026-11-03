@@ -100,6 +100,17 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
         assertTrue(strings.contains("randomNumber"));
     }
 
+    public void testInlineModifier() {
+        myFixture.configureByFile("InlineModifier.java");
+        myFixture.complete(CompletionType.BASIC, 1);
+
+        List<String> strings = myFixture.getLookupElementStrings();
+        if (strings == null) fail();
+
+        assertTrue(strings.containsAll(METHOD_MODIFIERS));
+        assertEquals(METHOD_MODIFIERS.size(), strings.size());
+    }
+
     public void testMethodSemicolon() {
         myFixture.configureByFile("MethodSemicolon.java");
         myFixture.complete(CompletionType.BASIC, 1);

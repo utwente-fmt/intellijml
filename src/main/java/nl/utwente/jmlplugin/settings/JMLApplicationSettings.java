@@ -1,7 +1,7 @@
 package nl.utwente.jmlplugin.settings;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.PersistentStateComponent;
-import com.intellij.openapi.components.ServiceManager;
 import com.intellij.openapi.components.State;
 import com.intellij.openapi.components.Storage;
 import com.intellij.util.xmlb.XmlSerializerUtil;
@@ -29,7 +29,7 @@ public class JMLApplicationSettings implements PersistentStateComponent<JMLAppli
      * @return the instance of this class
      */
     public static JMLApplicationSettings getInstance() {
-        return ServiceManager.getService(JMLApplicationSettings.class);
+        return ApplicationManager.getApplication().getService(JMLApplicationSettings.class);
     }
 
     @Override

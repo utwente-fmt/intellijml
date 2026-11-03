@@ -3,6 +3,7 @@ package nl.utwente.jmlplugin.annotator;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiExpression;
 import com.intellij.psi.PsiType;
+import com.intellij.psi.PsiTypes;
 import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -26,7 +27,7 @@ class InnerJavaExprResult extends JMLTypeAnnotator {
             this.correct = true;
         }
         this.text = new StringBuilder();
-        this.type = PsiType.NULL;
+        this.type = PsiTypes.nullType();
     }
 
     /**
@@ -105,7 +106,7 @@ class InnerJavaExprResult extends JMLTypeAnnotator {
      * @param newType the new type
      */
     void setType(PsiType newType) {
-        this.type = newType != null ? newType : PsiType.NULL;
+        this.type = newType != null ? newType : PsiTypes.nullType();
     }
 
     @NotNull RangeManager getRangeManager() {

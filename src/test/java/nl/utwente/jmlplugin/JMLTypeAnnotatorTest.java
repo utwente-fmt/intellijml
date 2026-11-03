@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin;
 
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
 import com.intellij.pom.java.LanguageLevel;
@@ -15,7 +16,8 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        LanguageLevelProjectExtension.getInstance(getProject()).setLanguageLevel(LanguageLevel.JDK_1_8);
+        // newer platform versions assert that the language level is changed in a write action
+        WriteAction.run(() -> LanguageLevelProjectExtension.getInstance(getProject()).setLanguageLevel(LanguageLevel.JDK_1_8));
     }
 
     @Override
@@ -31,6 +33,16 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
 
     public void testAssignableVars() {
         myFixture.configureByFile("AssignableVars.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testAssignableParameters() {
+        myFixture.configureByFile("AssignableParameters.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testMultiLineExpressions() {
+        myFixture.configureByFile("MultiLineExpressions.java");
         myFixture.checkHighlighting(true, false, true, false);
     }
 

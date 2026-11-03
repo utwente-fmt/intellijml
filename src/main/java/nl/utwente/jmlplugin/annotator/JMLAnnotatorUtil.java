@@ -10,7 +10,6 @@ import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,7 +36,18 @@ public class JMLAnnotatorUtil {
      */
     public static PsiElement getJavaContext(PsiElement element) {
         PsiComment commentContext = getCommentContext(element);
-        return commentContext != null ? commentContext.getParent() : null;
+        return commentContext != null ? getOwnerIfModifierList(commentContext.getParent()) : null;
+    }
+
+    /**
+     * A comment in between Java modifiers, such as in "public /*@ pure @*&#47; static int f()",
+     * is part of the modifier list, but belongs to the declaration that owns the modifier list
+     *
+     * @param element the parent of a comment
+     * @return the declaration owning the modifier list if the element is a modifier list, otherwise the element itself
+     */
+    public static PsiElement getOwnerIfModifierList(PsiElement element) {
+        return element instanceof PsiModifierList ? element.getParent() : element;
     }
 
     /**
@@ -132,13 +142,16 @@ public class JMLAnnotatorUtil {
     public static boolean doLinkedCommentsContain(@NotNull PsiElement element, String regex, boolean doNotCountMyself) {
         PsiElement javaElement;
         if (element.getLanguage().equals(JavaLanguage.INSTANCE)) {
-            javaElement = element instanceof PsiComment ? element.getParent() : element;
+            javaElement = element instanceof PsiComment ? getOwnerIfModifierList(element.getParent()) : element;
         } else {
             javaElement = getJavaContext(element);
         }
-        PsiComment[] children = PsiTreeUtil.getChildrenOfType(javaElement, PsiComment.class);
-        if (children == null || children.length == 0) return false;
-        ArrayList<PsiComment> comments = new ArrayList<>(Arrays.asList(children));
+        ArrayList<PsiComment> comments = new ArrayList<>(PsiTreeUtil.getChildrenOfTypeAsList(javaElement, PsiComment.class));
+        // comments in between Java modifiers, such as in "public /*@ pure @*/ static int f()"
+        if (javaElement instanceof PsiModifierListOwner) {
+            comments.addAll(PsiTreeUtil.getChildrenOfTypeAsList(((PsiModifierListOwner) javaElement).getModifierList(), PsiComment.class));
+        }
+        if (comments.isEmpty()) return false;
         return countTextMatchesAcrossComments(comments, regex, (doNotCountMyself ? 2 : 1)) >= (doNotCountMyself ? 2 : 1);
     }
 

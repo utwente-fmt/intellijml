@@ -16,7 +16,7 @@ public class AssignableVars extends Test {
         <error descr="This is not a correct reference">int</error>;
     */
     /*@ assignable (* variable references, some are final *)
-        <error descr="Reference cannot be resolved">a</error>,
+        <warning descr="A method may always assign its parameters, so they do not need to be listed here">a</warning>,
         b,
         testRef,
         intArr,

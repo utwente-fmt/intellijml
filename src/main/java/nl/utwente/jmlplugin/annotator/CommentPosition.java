@@ -51,6 +51,16 @@ public enum CommentPosition {
     public static CommentPosition getCommentPosition(PsiComment jmlComment) {
         PsiElement javaContext = jmlComment != null ? jmlComment.getParent() : null;
         if (javaContext == null) return UNKNOWN;
+        if (javaContext instanceof PsiModifierList) {
+            // the comment is in between Java modifiers, such as in "public /*@ pure @*/ static int f()"
+            PsiElement owner = javaContext.getParent();
+            if (owner instanceof PsiMethod) return METHOD_DECLARATION;
+            if (owner instanceof PsiField) return FIELD;
+            if (owner instanceof PsiClass) return ABOVE_CLASS;
+            if (owner instanceof PsiParameter) return PARAMETER;
+            if (owner instanceof PsiLocalVariable) return VAR_DECLARATION;
+            return UNKNOWN;
+        }
         if (javaContext instanceof PsiField) return FIELD;
         if (javaContext instanceof PsiParameter) return PARAMETER;
         if (javaContext instanceof PsiMethod) {

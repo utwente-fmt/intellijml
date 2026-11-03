@@ -33,7 +33,7 @@ public class JMLJavaExceptionClassProvider extends CompletionProvider<Completion
 
         final Query<PsiClass> query = ClassInheritorsSearch
                 .search(superClass, scope, true, true, false);
-        for (PsiClass psiClass: query) {
+        for (PsiClass psiClass: query.findAll()) {
             if (isAccessibleHere(psiClass, parameters.getPosition())) {
                 result.addElement(getClassLookup(psiClass));
             }
