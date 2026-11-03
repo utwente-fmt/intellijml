@@ -158,6 +158,39 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    /**
+     * The errors in this file are the ones that OpenJML 21.0.29 gives for it, with the same messages
+     */
+    public void testOpenJMLVisibility() {
+        myFixture.configureByFile("OpenJMLVisibility.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    /**
+     * The errors in this file are the ones that OpenJML 21.0.29 gives for it, with the same messages
+     */
+    public void testOpenJMLVisibilityEdgeCases() {
+        myFixture.configureByFile("OpenJMLVisibilityEdgeCases.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testSpecPublicQuickFix() {
+        myFixture.configureByText("A.java", "class A {\n    private int count;\n\n" +
+                "    //@ ensures count == \\old(<caret>count) + 1;\n    public void increment() { count++; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'count' spec_public"));
+        myFixture.checkResult("class A {\n    private /*@ spec_public @*/ int count;\n\n" +
+                "    //@ ensures count == \\old(count) + 1;\n    public void increment() { count++; }\n}");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testSpecProtectedQuickFix() {
+        myFixture.configureByText("A.java", "class A {\n    int count;\n\n" +
+                "    //@ requires <caret>count > 0;\n    protected void decrement() { count--; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'count' spec_protected"));
+        myFixture.checkResult("class A {\n    /*@ spec_protected @*/ int count;\n\n" +
+                "    //@ requires count > 0;\n    protected void decrement() { count--; }\n}");
+    }
+
     public void testSpecProtectedInOtherPackage() {
         // spec_protected is in a comment in the other file
         myFixture.allowTreeAccessForAllFiles();

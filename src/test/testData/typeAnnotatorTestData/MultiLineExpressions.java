@@ -1,7 +1,7 @@
 package typeAnnotatorTestData;
 
 public class MultiLineExpressions {
-    private int[] values;
+    private /*@ spec_public @*/ int[] values;
 
     // the @-signs at the start of continuation lines are not part of the expressions
     /*@ requires a != null &&

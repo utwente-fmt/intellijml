@@ -3,12 +3,12 @@ package typeAnnotatorTestData;
 import java.util.List;
 
 public class AssignableVars extends Test {
-    private int b;
-    private int[] intArr = new int[]{1, 2, 3, 4, 5};
-    private final int z = 5;
+    private /*@ spec_public @*/ int b;
+    private /*@ spec_public @*/ int[] intArr = new int[]{1, 2, 3, 4, 5};
+    private /*@ spec_public @*/ final int z = 5;
 
-    private List<String> strList;
-    private Test testRef = new Test();
+    private /*@ spec_public @*/ List<String> strList;
+    private /*@ spec_public @*/ Test testRef = new Test();
 
     /*@ assignable (* just wrong *)
         <error descr="Reference cannot be resolved">b.x</error>,

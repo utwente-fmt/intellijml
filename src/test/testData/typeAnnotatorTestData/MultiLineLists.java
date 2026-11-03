@@ -3,9 +3,9 @@ package typeAnnotatorTestData;
 import java.io.IOException;
 
 public class MultiLineLists {
-    private int[] values;
-    private int count;
-    private Object last;
+    private /*@ spec_public @*/ int[] values;
+    private /*@ spec_public @*/ int count;
+    private /*@ spec_public @*/ Object last;
 
     // lists may continue on a new line starting with @
     /*@ assignable values[*],

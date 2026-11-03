@@ -1,6 +1,7 @@
 package typeAnnotatorTestData;
 
 public class InvariantVisibilityMethods {
+    // as in OpenJML, a method must be at least as visible as the invariant
     /*@ pure */
     public boolean public_method() {
         return true;
@@ -36,23 +37,23 @@ public class InvariantVisibilityMethods {
     /*@ invariant public_method();
       @ invariant protected_method();
       @ invariant default_method();
-      @ invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">private_method()</error>;
+      @ invariant <error descr="An identifier with private visibility may not be used in a invariant clause with package visibility">private_method()</error>;
       @ invariant spec_public_method();
       @ invariant spec_protected_method();
     */
 
     /*@ public invariant public_method();
-      @ public invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">protected_method()</error>;
-      @ public invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">default_method()</error>;
-      @ public invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">private_method()</error>;
+      @ public invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with public visibility">protected_method()</error>;
+      @ public invariant <error descr="An identifier with package visibility may not be used in a invariant clause with public visibility">default_method()</error>;
+      @ public invariant <error descr="An identifier with private visibility may not be used in a invariant clause with public visibility">private_method()</error>;
       @ public invariant spec_public_method();
-      @ public invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">spec_protected_method()</error>;
+      @ public invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with public visibility">spec_protected_method()</error>;
     */
 
     /*@ protected invariant public_method();
       @ protected invariant protected_method();
-      @ protected invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">default_method()</error>;
-      @ protected invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">private_method()</error>;
+      @ protected invariant <error descr="An identifier with package visibility may not be used in a invariant clause with protected visibility">default_method()</error>;
+      @ protected invariant <error descr="An identifier with private visibility may not be used in a invariant clause with protected visibility">private_method()</error>;
       @ protected invariant spec_public_method();
       @ protected invariant spec_protected_method();
     */

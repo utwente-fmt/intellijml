@@ -1,6 +1,8 @@
 package nl.utwente.jmlplugin.annotator;
 
 import com.intellij.codeInsight.AnnotationUtil;
+import com.intellij.codeInsight.intention.IntentionAction;
+import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.project.Project;
@@ -12,6 +14,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiTypesUtil;
 import com.intellij.psi.util.TypeConversionUtil;
 import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -56,6 +59,20 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         } else {
             holder.newAnnotation(HighlightSeverity.ERROR, message).range(rangeManager.getOriginalRange(element)).create();
         }
+        noErrors = false;
+    }
+
+    /**
+     * Adds an error message with a quick fix to the annotation holder
+     *
+     * @param element the element to use the text range of
+     * @param message the error message
+     * @param fix     the quick fix, or null if there is none
+     */
+    public void annotateError(@NotNull PsiElement element, String message, @Nullable IntentionAction fix) {
+        AnnotationBuilder builder = holder.newAnnotation(HighlightSeverity.ERROR, message).range(rangeManager.getOriginalRange(element));
+        if (fix != null) builder = builder.withFix(fix);
+        builder.create();
         noErrors = false;
     }
 
@@ -256,7 +273,11 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         if (!typeErrorGuardForChildren(true, reference)) return;
         JavaResolveResult resolved = reference.advancedResolve(false);
         if (!resolved.isValidResult() && !isSpecVisibilityValid(resolved)) {
-            annotateError(reference, isInaccessible(resolved) ? ErrorMessages.NOT_VISIBLE : ErrorMessages.REFERENCE_UNRESOLVED);
+            if (isInaccessible(resolved)) {
+                annotateError(reference, ErrorMessages.NOT_VISIBLE, SpecVisibility.specPublicFix((PsiMember) resolved.getElement()));
+            } else {
+                annotateError(reference, ErrorMessages.REFERENCE_UNRESOLVED);
+            }
         } else {
             resolvedReferences.put(reference, resolved);
         }
@@ -381,7 +402,11 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
             checkPurenessOfMethod(expr, result);
             return;
         }
-        annotateError(expr, isInaccessible(result) ? ErrorMessages.NOT_VISIBLE : ErrorMessages.METHOD_UNRESOLVED);
+        if (isInaccessible(result)) {
+            annotateError(expr, ErrorMessages.NOT_VISIBLE, SpecVisibility.specPublicFix((PsiMember) result.getElement()));
+        } else {
+            annotateError(expr, ErrorMessages.METHOD_UNRESOLVED);
+        }
     }
 
     /**

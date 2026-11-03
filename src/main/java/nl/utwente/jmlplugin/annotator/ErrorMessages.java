@@ -63,8 +63,6 @@ public final class ErrorMessages {
     public static final String METHOD_UNRESOLVED = "Method could not be resolved, maybe the parameters do not correspond?";
     public static final String CONSTRUCTOR_UNRESOLVED = "Constructor could not be resolved, maybe the parameters do not correspond?";
     public static final String INCOMPATIBLE_CAST = "Incompatible type cast";
-    public static final String INVARIANT_WRONG_VISIBILITY = "The (specification) visibility of the reference should be at least the visibility of the invariant";
-    public static final String FIELD_NO_MODIFIERS = "The referenced field has no modifiers, so cannot check visibility constraints";
     public static final String INVARIANT_SHOULD_BE_STATIC = "A static invariant can only see static fields";
     public static final String VARIABLE_EXPECTED = "Variable expected";
     public static final String NOT_A_CLASS = "This is not a class";
@@ -99,6 +97,12 @@ public final class ErrorMessages {
         String regex = JMLAnnotatorUtil.ALL_MODIFIERS_REGEX + ",?";
         String output = input.replaceAll("(^| )" + regex, "").replaceAll(", (\\w+), or$", " or $1");
         return (output.contains("modifiers") ? "" : "modifier, ") + output;
+    }
+
+    // the same message as OpenJML gives
+    public static String identifierNotVisible(String identifierVisibility, String clause, String specVisibility) {
+        return "An identifier with " + identifierVisibility + " visibility may not be used in a " + clause
+                + " clause with " + specVisibility + " visibility";
     }
 
     public static String unknownBackslashKeyword(String keyword) {

@@ -28,8 +28,16 @@ public class RangeManager {
      * @param textLength the length of the replacement text
      */
     protected void addRangeChange(PsiElement elem, int textLength) {
-        int currentStartOffset = getCurrentOffset(elem.getTextRange().getStartOffset());
-        rangeChanges.add(new RangeChange(currentStartOffset, currentStartOffset + textLength, elem.getTextLength() - textLength));
+        addRangeChange(elem.getTextRange(), textLength);
+    }
+
+    /**
+     * @param original   the range of the original text before the replacement
+     * @param textLength the length of the replacement text
+     */
+    protected void addRangeChange(TextRange original, int textLength) {
+        int currentStartOffset = getCurrentOffset(original.getStartOffset());
+        rangeChanges.add(new RangeChange(currentStartOffset, currentStartOffset + textLength, original.getLength() - textLength));
     }
 
     /**

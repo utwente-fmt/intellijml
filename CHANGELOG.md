@@ -7,10 +7,16 @@
 - The tests need no setup any more (they use a mock JDK 21 that is downloaded automatically), and the build
   fails if a test run is interrupted part-way
 - `x++` and `x--` in a specification are an error, like assignments, as they change a variable
-- An invariant may mention fields and methods that are more visible than the invariant itself (such as a public
-  field in a private invariant); before, they needed exactly the same visibility
+- Visibility in specifications is checked as OpenJML does, with the same error messages:
+  - A method specification has the visibility of the method, so `ensures count == \old(count) + 1;` on a public
+    method gives an error if `count` is private, unless it is declared `spec_public`. This applies to `requires`,
+    `ensures`, `signals` and `assignable`, and was not checked before.
+  - An invariant may use methods and final fields that are at least as visible as the invariant (before, they
+    needed exactly the same visibility), and other fields that have exactly its visibility, as before.
+  - A quick fix (Alt+Enter) declares the field or method `spec_public` or `spec_protected`.
 - Using a field or method that is not visible in a specification suggests declaring it `spec_public`, instead of
   saying that it cannot be resolved
+- Errors inside `\old(...)` are shown on the part of the expression they are about, instead of at `\old`
 - An unknown or unsupported backslash keyword, such as `\fresh` or a misspelled `\reslt`, is named in the error
 - Exception classes are only all listed in completion when completion is invoked with Ctrl+Space or part of the
   name is typed, as searching them on every keystroke was slow

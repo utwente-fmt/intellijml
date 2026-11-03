@@ -8,7 +8,7 @@ public class AssignableParameters {
     public void sort(int[] a) {
     }
 
-    //@ assignable p.count, q.*;
+    //@ assignable <error descr="An identifier with private visibility may not be used in a assignable clause with public visibility">p.count</error>, q.*;
     public void update(AssignableParameters p, AssignableParameters q) {
     }
 

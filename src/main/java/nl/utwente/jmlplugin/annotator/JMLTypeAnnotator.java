@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin.annotator;
 
+import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.psi.*;
@@ -13,6 +14,7 @@ import com.intellij.util.IncorrectOperationException;
 import nl.utwente.jmlplugin.psi.*;
 import nl.utwente.jmlplugin.psi.impl.*;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 
@@ -80,6 +82,8 @@ public class JMLTypeAnnotator {
             fieldResolved = ((PsiJavaCodeReferenceElement) fieldReference).advancedResolve(false);
         }
         boolean fieldValid = fieldResolved != null && fieldResolved.isValidResult();
+        // the reference expression that resolved, for checking the visibility of the fields in it
+        PsiExpression resolvedReference = fieldValid ? fieldReference : null;
         // if it is not a field, it can start with a parameter of the method, such as a[*] or p.f
         if (!fieldValid && !incorrectRef && javaContext instanceof PsiMethod) {
             PsiExpression parameterReference = createExpressionWithParameters(referenceName, (PsiMethod) javaContext, classContext);
@@ -88,6 +92,7 @@ public class JMLTypeAnnotator {
                 if (parameterResolved.isValidResult()) {
                     fieldResolved = parameterResolved;
                     fieldValid = true;
+                    resolvedReference = parameterReference;
                 }
             }
         }
@@ -129,6 +134,32 @@ public class JMLTypeAnnotator {
             // reference points to a field, check that it is not final
             else if (fieldResolved.getElement() instanceof PsiField && ((PsiField) fieldResolved.getElement()).hasModifierProperty(PsiModifier.FINAL)) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_VAR_IS_FINAL).create();
+            }
+        }
+        // the fields in the reference must be visible enough for the method specification
+        if (resolvedReference != null && javaContext instanceof PsiMethod method) {
+            checkAssignableVisibility(resolvedReference, method, holder);
+        }
+    }
+
+    /**
+     * Checks that the fields in a reference in an assignable clause, such as both fields in "next.value", are visible
+     * enough for the method specification
+     *
+     * @param reference the reference, created from the text in the assignable clause
+     * @param method    the method that the specification belongs to
+     * @param holder    the Annotation holder
+     */
+    private static void checkAssignableVisibility(PsiExpression reference, PsiMethod method, AnnotationHolder holder) {
+        int specLevel = SpecVisibility.specAccessLevel(method);
+        for (PsiExpression part = reference; part instanceof PsiReferenceExpression ref; part = ref.getQualifierExpression()) {
+            if (ref.resolve() instanceof PsiField field) {
+                SpecVisibility.Problem problem = SpecVisibility.checkInMethodSpec(field, "assignable", specLevel);
+                if (problem != null) {
+                    AnnotationBuilder builder = holder.newAnnotation(HighlightSeverity.ERROR, problem.message());
+                    if (problem.fix() != null) builder = builder.withFix(problem.fix());
+                    builder.create();
+                }
             }
         }
     }
@@ -285,7 +316,7 @@ public class JMLTypeAnnotator {
             } else if (currentChild instanceof JMLOldExpr) {
                 // \old(expr), checks the expression, but does not type check it, as the expression is not replaced,
                 // so it will be type checked when result is evaluated.
-                // replaces \old(expr) with expr
+                // replaces \old(expr) with (expr)
                 JMLInnerJavaExpr javaChild = getChildOfType(currentChild, JMLInnerJavaExpr.class);
                 if (javaChild == null) {
                     // should not happen, but just in case.
@@ -294,7 +325,18 @@ public class JMLTypeAnnotator {
                     currentChild = currentChild.getNextSibling();
                     continue;
                 }
-                result.add(annotateInnerJavaExpr(javaChild, holder, extraVars, false, false), currentChild);
+                InnerJavaExprResult oldResult = annotateInnerJavaExpr(javaChild, holder, extraVars, false, false);
+                PsiElement beforeExpr = javaChild.getPrevSibling();
+                PsiElement afterExpr = javaChild.getNextSibling();
+                if (beforeExpr == null || afterExpr == null) {
+                    result.add(oldResult, currentChild);
+                } else {
+                    // replace "\old(", the expression and ")" separately, so that errors in the expression are
+                    // shown in the right place
+                    result.addText("(", currentChild.getFirstChild(), beforeExpr);
+                    result.add(oldResult, javaChild);
+                    result.addText(")", afterExpr, currentChild.getLastChild());
+                }
             } else if (currentChild instanceof JMLTypeExpr) {
                 checkTypeExpr(holder, result, currentChild);
             } else if (currentChild instanceof JMLQuantifiedExpr) {
@@ -332,12 +374,15 @@ public class JMLTypeAnnotator {
                 if (doTypeChecking) {
                     JMLJavaExprVisitor visitor = new JMLJavaExprVisitor(holder, result.getRangeManager(), element.getProject(), element);
                     result.setCorrect(visitor.doChecking(expression, false));
-                    // for invariants, also check the visibility of the resolved references
-                    // we do it here, as here we have the resolved variables
+                    // for invariants and method specifications, also check the visibility of the resolved references
+                    // we do it here, as here we have the resolved variables; the expression is still well-typed,
+                    // so other checks still happen
                     JMLClassInvariant invariant = getParentOfType(element, JMLClassInvariant.class);
+                    String clause = methodSpecClause(element);
                     if (result.isCorrect() && invariant != null) {
                         checkInvariantVisibility(invariant, visitor);
-                        result.setCorrect(visitor.isCorrect());
+                    } else if (result.isCorrect() && clause != null && getJavaContext(element) instanceof PsiMethod method) {
+                        checkMethodSpecVisibility(method, clause, visitor);
                     }
                 }
 
@@ -564,7 +609,7 @@ public class JMLTypeAnnotator {
     }
 
     /**
-     * Check that the references are at least as visible as the invariant
+     * Check that the references are visible enough for the invariant, see SpecVisibility
      *
      * @param classInvariant the invariant expression
      * @param visitor        the visitor after it did all its visiting (so with resolved references)
@@ -586,40 +631,55 @@ public class JMLTypeAnnotator {
         } else {
             visibility = visibilityModifier.getText();
         }
-        // for every reference check that it has the same specification visibility,
-        // these references have already been resolved by the visitor
+        // check the fields and methods, which have already been resolved by the visitor
         Map<PsiElement, JavaResolveResult> references = visitor.getResolvedReferences();
         for (Map.Entry<PsiElement, JavaResolveResult> ref : references.entrySet()) {
             PsiElement referredElement = ref.getValue().getElement();
-            // only check if it references a field or method
             if (referredElement instanceof PsiField || referredElement instanceof PsiMethod) {
-                PsiClass containingClass = PsiTreeUtil.getParentOfType(referredElement, PsiClass.class);
-                // skip methods and fields that are not in our class
-                if (ourClass == null || !ourClass.equals(containingClass)) {
-                    continue;
+                PsiMember member = (PsiMember) referredElement;
+                SpecVisibility.Problem problem = SpecVisibility.checkInInvariant(member, accessLevel(visibility));
+                if (problem != null) {
+                    visitor.annotateError(ref.getKey(), problem.message(), problem.fix());
                 }
-                // check if the field has a specification visibility
-                boolean isSpecPublic = doLinkedCommentsContain(referredElement, "spec_public", false);
-                boolean isSpecProtected = !isSpecPublic && doLinkedCommentsContain(referredElement, "spec_protected", false);
-                PsiModifierList refModifiers = ((PsiModifierListOwner) referredElement).getModifierList();
-                if (refModifiers == null) {
-                    // should not happen, but just in case
-                    visitor.annotateError(ref.getKey(), ErrorMessages.FIELD_NO_MODIFIERS);
-                    continue;
-                }
-                // check that the reference is at least as visible as the invariant, also checks implicit visibility
-                int referenceLevel = isSpecPublic ? PsiUtil.ACCESS_LEVEL_PUBLIC : PsiUtil.getAccessLevel(refModifiers);
-                if (isSpecProtected) referenceLevel = Math.max(referenceLevel, PsiUtil.ACCESS_LEVEL_PROTECTED);
-                if (referenceLevel < accessLevel(visibility)) {
-                    visitor.annotateError(ref.getKey(), ErrorMessages.INVARIANT_WRONG_VISIBILITY);
-                }
-                // also check static versus instance, as static invariants cannot mention instance variables
-                // invariants are static by default in interfaces and instance in a class
-                else if ((isStatic || (isInterface && !isInstance)) && !refModifiers.hasModifierProperty(PsiModifier.STATIC)) {
+                // also check static versus instance, as static invariants cannot mention instance variables of
+                // our class; invariants are static by default in interfaces and instance in a class
+                else if (ourClass != null && ourClass.equals(member.getContainingClass())
+                        && (isStatic || (isInterface && !isInstance)) && !member.hasModifierProperty(PsiModifier.STATIC)) {
                     visitor.annotateError(ref.getKey(), ErrorMessages.INVARIANT_SHOULD_BE_STATIC);
                 }
             }
         }
+    }
+
+    /**
+     * Checks that the fields and methods in a clause of a method specification are visible enough
+     *
+     * @param method  the method that the specification belongs to
+     * @param clause  the name of the clause, such as "requires"
+     * @param visitor the visitor after it did all its visiting (so with resolved references)
+     */
+    private static void checkMethodSpecVisibility(PsiMethod method, String clause, JMLJavaExprVisitor visitor) {
+        int specLevel = SpecVisibility.specAccessLevel(method);
+        for (Map.Entry<PsiElement, JavaResolveResult> ref : visitor.getResolvedReferences().entrySet()) {
+            PsiElement referredElement = ref.getValue().getElement();
+            if (referredElement instanceof PsiField || referredElement instanceof PsiMethod) {
+                SpecVisibility.Problem problem = SpecVisibility.checkInMethodSpec((PsiMember) referredElement, clause, specLevel);
+                if (problem != null) {
+                    visitor.annotateError(ref.getKey(), problem.message(), problem.fix());
+                }
+            }
+        }
+    }
+
+    /**
+     * @param element an element in a JML specification
+     * @return the name of the method specification clause it is in, if it is in a requires, ensures or signals clause
+     */
+    private static @Nullable String methodSpecClause(PsiElement element) {
+        if (getParentOfType(element, JMLRequiresClause.class) != null) return "requires";
+        if (getParentOfType(element, JMLEnsuresClause.class) != null) return "ensures";
+        if (getParentOfType(element, JMLSignalsClause.class) != null) return "signals";
+        return null;
     }
 
 

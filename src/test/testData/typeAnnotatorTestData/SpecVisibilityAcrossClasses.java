@@ -4,13 +4,13 @@ public class SpecVisibilityAcrossClasses {
     SpecVisibilityAcrossClassesOtherClass other = new SpecVisibilityAcrossClassesOtherClass();
 
     //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">other.private_field</error>;
-    //@ invariant other.spec_public_field;
-    //@ invariant other.spec_protected_field;
+    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">other.spec_public_field</error>;
+    //@ invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with package visibility">other.spec_protected_field</error>;
 
     //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">other.private_method()</error>;
     //@ invariant other.spec_public_method();
     //@ invariant other.spec_protected_method();
-    //@ invariant new SpecVisibilityAcrossClassesOtherClass(0).spec_public_field;
+    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">new SpecVisibilityAcrossClassesOtherClass(0).spec_public_field</error>;
 }
 
 class SpecVisibilityAcrossClassesOtherClass {

@@ -16,7 +16,7 @@ public class MiscSyntax {
             ;; */
     //@ ensures \result == a / b;;;  ;;
     //@ signals(Exception e);;;;
-    //@ assignable num;;;;;
+    //@ assignable <error descr="An identifier with package visibility may not be used in a assignable clause with public visibility">num</error>;;;;;
     //@ requires \not_specified;;;;;
     public int div2(int a, int b) throws ArithmeticException {
         //@ assert b != 0;;;;

@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin.annotator;
 
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiExpression;
 import com.intellij.psi.PsiType;
@@ -76,6 +77,21 @@ class InnerJavaExprResult extends JMLTypeAnnotator {
         this.text.append(str);
         if (str.length() != originalElem.getTextLength()) {
             rangeManager.addRangeChange(originalElem, str.length());
+        }
+    }
+
+    /**
+     * Adds text that replaces several elements that are next to each other
+     *
+     * @param str   the text to add to the result
+     * @param first the first element of which the text is added
+     * @param last  the last element of which the text is added
+     */
+    void addText(@NotNull String str, @NotNull PsiElement first, @NotNull PsiElement last) {
+        this.text.append(str);
+        TextRange original = new TextRange(first.getTextRange().getStartOffset(), last.getTextRange().getEndOffset());
+        if (str.length() != original.getLength()) {
+            rangeManager.addRangeChange(original, str.length());
         }
     }
 

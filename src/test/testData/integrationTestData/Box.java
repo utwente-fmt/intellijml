@@ -29,9 +29,9 @@ public class Box {
     /*@
         pre item != null && item.getWeight() > 0 && <warning descr="JML expressions should be pure and this method might not be pure">item.getVolume()</warning> > 0;
         also requires this.getItem() == null;
-        post this.item == item;
+        post <error descr="An identifier with private visibility may not be used in a ensures clause with public visibility">this.item</error> == item;
         ensures this.weight == \old(this.weight) + item.getWeight();
-        assignable this.item, this.weight, <error descr="This variable is final, so cannot be assigned">this.volume</error>;
+        assignable <error descr="An identifier with private visibility may not be used in a assignable clause with public visibility">this.item</error>, this.weight, <error descr="This variable is final, so cannot be assigned">this.volume</error>;
         modifiable \everything;
         modifiable \nothing;
     */

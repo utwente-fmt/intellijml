@@ -9,7 +9,7 @@ import java.io.EOFException;
  */
 public class StorageSpace {
 
-    /*@nullable*/private final List<Box> boxes = new ArrayList<>();
+    /*@nullable*/private /*@ spec_public @*/ final List<Box> boxes = new ArrayList<>();
 
     // the total number of boxes that were shipped from this storage space, cannot be negative
     //@ <error descr="Modifier 'pure' is not allowed above a field">pure</error> (* pure is not allowed here. *)
@@ -27,7 +27,7 @@ public class StorageSpace {
 
 
     /*@@@@@@@
-      @@@ private invariant nrOfBoxesShipped >= 0 && nrOfFullBoxes >= 0;
+      @@@ private invariant nrOfBoxesShipped >= 0 && <error descr="An identifier with public visibility may not be used in a invariant clause with private visibility">nrOfFullBoxes</error> >= 0;
       (* \elemtype needs an array and type class *)
       private invariant \elemtype(<error descr="This is not an array">boxes.getClass()</error>) instanceof Box;
       private invariant \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?"><warning descr="JML expressions should be pure and this method might not be pure">boxes.toArray(new Box[0])</warning></error>) == \type(Box);

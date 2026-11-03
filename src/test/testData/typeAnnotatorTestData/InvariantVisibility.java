@@ -11,36 +11,36 @@ public class InvariantVisibility {
     //@ spec_protected
     private boolean spec_protected_field;
 
-    // a reference must be at least as visible as the invariant
-    /*@ invariant public_field;
-      @ invariant protected_field;
+    // as in OpenJML, a field that is not final must have exactly the visibility of the invariant
+    /*@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">public_field</error>;
+      @ invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with package visibility">protected_field</error>;
       @ invariant default_field;
-      @ invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">private_field</error>;
-      @ invariant spec_public_field;
-      @ invariant spec_protected_field;
+      @ invariant <error descr="An identifier with private visibility may not be used in a invariant clause with package visibility">private_field</error>;
+      @ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">spec_public_field</error>;
+      @ invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with package visibility">spec_protected_field</error>;
     */
 
     /*@ public invariant public_field;
-      @ public invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">protected_field</error>;
-      @ public invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">default_field</error>;
-      @ public invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">private_field</error>;
+      @ public invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with public visibility">protected_field</error>;
+      @ public invariant <error descr="An identifier with package visibility may not be used in a invariant clause with public visibility">default_field</error>;
+      @ public invariant <error descr="An identifier with private visibility may not be used in a invariant clause with public visibility">private_field</error>;
       @ public invariant spec_public_field;
-      @ public invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">spec_protected_field</error>;
+      @ public invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with public visibility">spec_protected_field</error>;
     */
 
-    /*@ protected invariant public_field;
+    /*@ protected invariant <error descr="An identifier with public visibility may not be used in a invariant clause with protected visibility">public_field</error>;
       @ protected invariant protected_field;
-      @ protected invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">default_field</error>;
-      @ protected invariant <error descr="The (specification) visibility of the reference should be at least the visibility of the invariant">private_field</error>;
-      @ protected invariant spec_public_field;
+      @ protected invariant <error descr="An identifier with package visibility may not be used in a invariant clause with protected visibility">default_field</error>;
+      @ protected invariant <error descr="An identifier with private visibility may not be used in a invariant clause with protected visibility">private_field</error>;
+      @ protected invariant <error descr="An identifier with public visibility may not be used in a invariant clause with protected visibility">spec_public_field</error>;
       @ protected invariant spec_protected_field;
     */
 
-    /*@ private invariant public_field;
-      @ private invariant protected_field;
-      @ private invariant default_field;
+    /*@ private invariant <error descr="An identifier with public visibility may not be used in a invariant clause with private visibility">public_field</error>;
+      @ private invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with private visibility">protected_field</error>;
+      @ private invariant <error descr="An identifier with package visibility may not be used in a invariant clause with private visibility">default_field</error>;
       @ private invariant private_field;
-      @ private invariant spec_public_field;
-      @ private invariant spec_protected_field;
+      @ private invariant <error descr="An identifier with public visibility may not be used in a invariant clause with private visibility">spec_public_field</error>;
+      @ private invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with private visibility">spec_protected_field</error>;
     */
 }

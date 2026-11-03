@@ -22,7 +22,7 @@ public class RedundantNotSpecified {
 
     /*@
          <warning descr="This clause containing \not_specified is redundant because you already specified it">modifiable \not_specified;</warning>
-         modifies x;
+         modifies <error descr="An identifier with private visibility may not be used in a assignable clause with public visibility">x</error>;
          <warning descr="This clause containing \not_specified is redundant because you already specified it">assignable \not_specified;</warning>
 
     */
