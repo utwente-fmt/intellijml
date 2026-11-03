@@ -10,6 +10,8 @@ plugins {
     id("java")
     // IntelliJ Platform Gradle Plugin
     id("org.jetbrains.intellij.platform") version "2.19.0"
+    // Generates the JML lexer (JFlex) and parser (Grammar-Kit) from src/main/grammar
+    id("org.jetbrains.intellij.platform.grammarkit") version "2.19.0"
     // Gradle Changelog Plugin
     id("org.jetbrains.changelog") version "2.5.0"
 }
@@ -119,12 +121,22 @@ java {
     }
 }
 
-sourceSets["main"].java.srcDirs("src/main/gen")
+sourceSets["main"].java.srcDirs(tasks.generateLexer, tasks.generateParser)
 sourceSets["test"].java.srcDirs("src/test")
 
 tasks {
     wrapper {
         gradleVersion = properties("gradleVersion")
+    }
+
+    generateLexer {
+        sourceFile = layout.projectDirectory.file("src/main/grammar/JML.flex")
+        purgeOldFiles = true
+    }
+
+    generateParser {
+        sourceFile = layout.projectDirectory.file("src/main/grammar/JML.bnf")
+        purgeOldFiles = true
     }
 
     // Emit bytecode for the oldest supported platform (2025.x runs on Java 21)

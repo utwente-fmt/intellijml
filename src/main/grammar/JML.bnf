@@ -9,9 +9,14 @@
   psiPackage="nl.utwente.jmlplugin.psi"
   psiImplPackage="nl.utwente.jmlplugin.psi.impl"
 
-  elementTypeHolderClass="nl.utwente.jmlplugin.psi.JMLTypes"
+  // JMLTypes extends the generated JMLGrammarTypes with the element and token types created by
+  // JMLJavaParser and the lexers; use JMLTypes in code
+  elementTypeHolderClass="nl.utwente.jmlplugin.psi.JMLGrammarTypes"
   elementTypeClass="nl.utwente.jmlplugin.psi.JMLElementType"
   tokenTypeClass="nl.utwente.jmlplugin.psi.JMLTokenType"
+  // the factories give the types the readable names used in syntax error messages
+  elementTypeFactory="nl.utwente.jmlplugin.psi.JMLElementType.create"
+  tokenTypeFactory="nl.utwente.jmlplugin.psi.JMLTokenType.create"
 
   tokens = [
     SIGNALS_ONLY = 'signals_only'
@@ -68,8 +73,9 @@ spec_body ::= (AT_SIGN* (ensures_clause | signals_clause | signals_only_clause |
 requires_clause ::= AT_SIGN* (requires|pre) pred_or_not SEMICOLON+ {pin="pred_or_not"}
 ensures_clause ::= (ensures|post) pred_or_not SEMICOLON+ {pin="pred_or_not"}
 signals_clause ::= signals L_PAREN reference_type IDENT? R_PAREN pred_or_not? SEMICOLON+ {pin="pred_or_not"}
-signals_only_clause ::= SIGNALS_ONLY reference_type (COMMA reference_type)* SEMICOLON+
-assignable_clause ::= (assignable|modifiable|modifies) store_ref_list SEMICOLON+
+// lists may continue on a new line that starts with @-signs, before or after a comma
+signals_only_clause ::= SIGNALS_ONLY <<skipAtSigns>> reference_type (<<skipAtSigns>> COMMA <<skipAtSigns>> reference_type)* SEMICOLON+
+assignable_clause ::= (assignable|modifiable|modifies) <<skipAtSigns>> store_ref_list SEMICOLON+
 private pred_or_not ::= NOT_SPECIFIED | java_expr
 
 // class invariants
@@ -89,7 +95,7 @@ assume_statement ::= assume java_expr SEMICOLON+ {pin="java_expr"}
 
 
 // store refs
-private store_ref_list ::= store_ref_keyword | store_ref (COMMA store_ref)*
+private store_ref_list ::= store_ref_keyword | store_ref (<<skipAtSigns>> COMMA <<skipAtSigns>> store_ref)*
 store_ref_keyword ::= NOTHING | EVERYTHING | NOT_SPECIFIED
 store_ref ::= store_ref_name store_ref_name_suffix*
 private store_ref_name ::= this | super | IDENT

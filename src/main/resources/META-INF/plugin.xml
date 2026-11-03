@@ -11,6 +11,8 @@
     <extensions defaultExtensionNs="com.intellij">
         <fileType name="JML File" implementationClass="nl.utwente.jmlplugin.JMLFileType"
                   fieldName="INSTANCE" language="JML" extensions="jml"/>
+        <editorHighlighterProvider filetype="JML File"
+                                   implementationClass="nl.utwente.jmlplugin.syntax_highlighting.JMLEditorHighlighterProvider"/>
         <lang.parserDefinition language="JML"
                                implementationClass="nl.utwente.jmlplugin.JMLParserDefinition"/>
         <lang.syntaxHighlighterFactory language="JML"
@@ -29,13 +31,14 @@
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/JMLDarculaColorScheme.xml"/>
         <additionalTextAttributes scheme="Default"
                                   file="colorSchemes/JMLDefaultLightColorScheme.xml"/>
-        <applicationConfigurable groupId="tools"
+        <applicationConfigurable groupId="tools" id="nl.utwente.jmlplugin.settings" displayName="IntelliJML"
                                  instance="nl.utwente.jmlplugin.settings.Configuration"/>
         <applicationService
                 serviceImplementation="nl.utwente.jmlplugin.settings.JMLApplicationSettings"/>
-        <projectTaskRunner implementation="nl.utwente.jmlplugin.runtime.JMLBuildListener"/>
-        <compiler.task execute="AFTER"
-                       implementation="nl.utwente.jmlplugin.runtime.JMLRuntimeCheckingCleaner"/>
+        <!-- The run time checking in nl.utwente.jmlplugin.runtime is not registered: it inserts no checks yet,
+             and when enabled it excluded every content root from compilation and copied the project to a
+             temporary directory on every build. Register JMLBuildListener as projectTaskRunner and
+             JMLRuntimeCheckingCleaner as compiler.task (execute="AFTER") again once it works. -->
         <completion.confidence language="JML"
                                implementationClass="nl.utwente.jmlplugin.completion.JMLCompletionConfidence"
                                id="asTrue" order="first"/>
@@ -45,7 +48,4 @@
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLDocumentationProvider"
                                     order="first"/>
     </extensions>
-
-    <applicationListeners>
-    </applicationListeners>
 </idea-plugin>

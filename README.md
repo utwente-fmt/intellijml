@@ -34,6 +34,14 @@ versions it checks are listed in `pluginVerifierIdeVersions` in `gradle.properti
 
 A guide for the plugin architecture can be found [here](docs/Maintainers_Guide.pdf).
 
+The JML lexer and parser are generated during the build from `src/main/grammar/JML.flex` (JFlex) and
+`src/main/grammar/JML.bnf` (Grammar-Kit), into `build/generated/sources`. To change the grammar, edit
+these two files and rebuild; there is no generated code to copy or patch by hand any more (the steps in
+the maintainer's guide are outdated on this point). `./gradlew generateLexer generateParser` regenerates
+just these. Element and token types that the grammar does not know about, such as those of quantified
+expressions, are in `psi/JMLTypes.java`, which extends the generated `JMLGrammarTypes`. The readable names
+of the generated types, which appear in syntax errors, are in `JMLElementType` and `JMLTokenType`.
+
 ## Running tests
 
 The Java test fixtures need the mock JDKs from the

@@ -56,6 +56,21 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
     }
 
     /**
+     * Skips the at-signs at the start of continuation lines, such as in lists that are spread over several lines.
+     * Unlike AT_SIGN* in the grammar, this does not add "at-sign" to the expected tokens in error messages.
+     *
+     * @param builder the PSI tree builder
+     * @param level   the level in the tree
+     * @return always true, as there may be no at-signs
+     */
+    public static boolean skipAtSigns(PsiBuilder builder, int level) {
+        while (builder.getTokenType() == JMLTypes.AT_SIGN) {
+            builder.advanceLexer();
+        }
+        return true;
+    }
+
+    /**
      * Checks that the tokens got consumed by the parser
      *
      * @param builder the PSI tree builder

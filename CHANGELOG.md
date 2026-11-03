@@ -1,3 +1,13 @@
+## [Unreleased]
+
+### Changed
+- The plugin can be installed, updated and removed without restarting IntelliJ IDEA
+- The unfinished run time checking is switched off: it hooked into every build without inserting any checks
+- The lexer and parser are generated during the build instead of being committed
+
+### Fixed
+- `assignable` and `signals_only` lists that continue on a new line starting with `@` gave a syntax error
+
 ## [1.1.10]
 
 ### Changed

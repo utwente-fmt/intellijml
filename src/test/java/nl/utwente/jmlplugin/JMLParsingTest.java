@@ -5,6 +5,11 @@ import com.intellij.lang.java.syntax.JavaElementTypeConverterExtension;
 import com.intellij.platform.syntax.psi.ElementTypeConverters;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.testFramework.ParsingTestCase;
+import nl.utwente.jmlplugin.psi.JMLElementType;
+import nl.utwente.jmlplugin.psi.JMLGrammarTypes;
+import nl.utwente.jmlplugin.psi.JMLTokenType;
+
+import java.lang.reflect.Field;
 
 /**
  * Tests that the parsers generate correct parse trees and error elements at the correct places
@@ -96,6 +101,10 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testMultiLineLists() {
+        doTest(true, true);
+    }
+
     public void testNoWhitespaceAfterKeyword() {
         doTest(true, false);
     }
@@ -123,6 +132,19 @@ public class JMLParsingTest extends ParsingTestCase {
         int allocatedTypes = IElementType.getAllocatedTypesCount();
         ensureParsed(createPsiFile("second", text));
         assertEquals(allocatedTypes, IElementType.getAllocatedTypesCount());
+    }
+
+    public void testGeneratedTypesHaveReadableNames() throws IllegalAccessException {
+        // the names are shown in syntax error messages, so new rules and tokens in JML.bnf need an entry in
+        // JMLElementType or JMLTokenType
+        for (Field field : JMLGrammarTypes.class.getFields()) {
+            Object type = field.get(null);
+            if (type instanceof JMLElementType) {
+                assertFalse(field.getName() + " has no readable name", type.toString().equals(field.getName()));
+            } else if (type instanceof JMLTokenType) {
+                assertTrue(field.getName() + " has no readable name", type.toString().matches(".*[a-zA-Z].*"));
+            }
+        }
     }
 
     public void testRedundantSemicolons() {
