@@ -1,6 +1,7 @@
 // Added by the IntelliJML plugin for Run with JML Checks. It compiles the main classes with OpenJML, which adds
 // run time checks of their JML specifications, and runs the tests and applications with these classes, on
-// OpenJML's own Java, which contains the rest of what the checks need. The normal build is not changed.
+// OpenJML's own Java, which contains the rest of what the checks need. A test that violates a specification
+// fails; an application reports violations and goes on. The normal build is not changed.
 // (There are no imports, so that the script can be put after another init script.)
 
 abstract class IntelliJmlCompileWithChecks extends DefaultTask {
@@ -57,6 +58,10 @@ allprojects {
         tasks.withType(Test).configureEach {
             classpath = checkedClasses + classpath
             executable = intellijmlJava
+            // a test fails when it violates a specification (applications report violations and go on)
+            if (!systemProperties.containsKey('org.jmlspecs.openjml.rac')) {
+                systemProperty('org.jmlspecs.openjml.rac', 'exception')
+            }
         }
         tasks.withType(JavaExec).configureEach {
             classpath = checkedClasses + classpath

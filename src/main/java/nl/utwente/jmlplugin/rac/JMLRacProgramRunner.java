@@ -4,6 +4,7 @@ import com.intellij.execution.DefaultExecutionResult;
 import com.intellij.execution.ExecutionException;
 import com.intellij.execution.ExecutionResult;
 import com.intellij.execution.JavaRunConfigurationBase;
+import com.intellij.execution.JavaTestConfigurationBase;
 import com.intellij.execution.configurations.JavaCommandLineState;
 import com.intellij.execution.configurations.JavaParameters;
 import com.intellij.execution.configurations.RunProfile;
@@ -145,7 +146,9 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
         ProcessOutput output = OpenJmlCompiler.compile(installation, workDirectory, classes,
                 parameters.getClassPath().getPathList(), EncodingProjectManager.getInstance(project).getDefaultCharset(),
                 sources, indicator);
-        if (output.getExitCode() == 0 && !output.isCancelled()) addChecks(parameters, classes, installation);
+        if (output.getExitCode() == 0 && !output.isCancelled()) {
+            addChecks(parameters, classes, installation, environment.getRunProfile() instanceof JavaTestConfigurationBase);
+        }
         return output;
     }
 
@@ -179,12 +182,18 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
      * @param parameters   the parameters of the program
      * @param classes      the directory with the classes with JML checks
      * @param installation the OpenJML installation
+     * @param tests        whether the program runs tests, which fail when they violate a specification; other
+     *                     programs report violations and go on
      */
-    static void addChecks(@NotNull JavaParameters parameters, @NotNull Path classes, @NotNull Path installation) {
+    static void addChecks(@NotNull JavaParameters parameters, @NotNull Path classes, @NotNull Path installation,
+                          boolean tests) {
         parameters.getClassPath().addFirst(classes.toString());
         parameters.getClassPath().add(OpenJml.runtimeLibrary(installation).toString());
         parameters.setJdk(JavaSdk.getInstance().createJdk("OpenJML " + OpenJml.VERSION,
                 OpenJml.jdk(installation).toString(), false));
+        if (tests && !parameters.getVMParametersList().hasProperty(OpenJml.VIOLATIONS_PROPERTY)) {
+            parameters.getVMParametersList().addProperty(OpenJml.VIOLATIONS_PROPERTY, "exception");
+        }
     }
 
     /**

@@ -16,8 +16,11 @@ An installation guide can be found [here](docs/Installation_Guide.pdf)
 
 **Run with JML Checks** (next to Run and Debug, also in the menu of the run icon next to `main` and
 tests) runs a program or tests while checking their JML specifications: a `requires` that does not hold
-when a method is called, an `ensures` or `invariant` that does not hold when it returns, and so on. Each
-violation is reported in the Run tool window, with links to the call and to the specification.
+when a method is called, an `ensures` or `invariant` that does not hold when it returns, and so on. In a
+test, a violated specification makes the test fail, with the specification in the message; an application
+reports each violation in the Run tool window, with links to the call and to the specification, and goes on.
+(OpenJML's system property `org.jmlspecs.openjml.rac` changes this, for example `-Dorg.jmlspecs.openjml.rac=exception`
+in the VM options of an application to stop at the first violation.)
 
 The checks are made by [OpenJML](https://www.openjml.org), which is not included in the plugin: the first
 time, a notification offers to download it (about 220 MB), or choose an existing installation in

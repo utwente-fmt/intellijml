@@ -19,6 +19,10 @@ public final class OpenJml {
     // the version that OpenJmlInstaller downloads, and that the plugin is tested with
     public static final String VERSION = "21.0.29";
 
+    // the system property that tells the run time checks what to do with a violated specification: by default they
+    // report it and go on; with "exception" they throw an org.jmlspecs.runtime.JmlAssertionError with the same message
+    public static final String VIOLATIONS_PROPERTY = "org.jmlspecs.openjml.rac";
+
     private OpenJml() {
     }
 

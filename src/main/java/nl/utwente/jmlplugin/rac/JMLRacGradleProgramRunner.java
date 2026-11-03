@@ -15,6 +15,7 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
+import com.intellij.openapi.util.UserDataHolder;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
 import org.jetbrains.annotations.NotNull;
@@ -54,6 +55,9 @@ public class JMLRacGradleProgramRunner extends AsyncProgramRunner<RunnerSettings
     protected @NotNull Promise<RunContentDescriptor> execute(@NotNull ExecutionEnvironment environment,
                                                              @NotNull RunProfileState state) throws ExecutionException {
         GradleRunConfiguration configuration = (GradleRunConfiguration) environment.getRunProfile();
+        if (!(state instanceof UserDataHolder stateData)) {
+            throw new ExecutionException("JML checks cannot be added to this Gradle run configuration");
+        }
         Path installation = OpenJml.installation();
         if (installation == null) {
             OpenJmlNotifications.notInstalled(environment.getProject());
@@ -62,20 +66,15 @@ public class JMLRacGradleProgramRunner extends AsyncProgramRunner<RunnerSettings
         JMLRacProgramRunner.checkLanguageLevel(gradleModules(configuration));
         FileDocumentManager.getInstance().saveAllDocuments();
 
-        // the state copies the init script from the configuration when it starts the tasks, and the configuration is
-        // also used for normal runs, so it only has the init script while it starts
-        String oldScript = configuration.getUserData(GradleTaskManager.INIT_SCRIPT_KEY);
-        String oldPrefix = configuration.getUserData(GradleTaskManager.INIT_SCRIPT_PREFIX_KEY);
-        ExecutionResult result;
-        try {
-            String script = initScript(installation);
-            configuration.putUserData(GradleTaskManager.INIT_SCRIPT_KEY, oldScript == null ? script : oldScript + "\n" + script);
-            configuration.putUserData(GradleTaskManager.INIT_SCRIPT_PREFIX_KEY, oldPrefix == null ? "jml-checks" : oldPrefix);
-            result = state.execute(environment.getExecutor(), this);
-        } finally {
-            configuration.putUserData(GradleTaskManager.INIT_SCRIPT_KEY, oldScript);
-            configuration.putUserData(GradleTaskManager.INIT_SCRIPT_PREFIX_KEY, oldPrefix);
+        // the state is made for this run, with a copy of the data of the configuration, and gives its data to Gradle
+        // when it starts the tasks; an init script that is already there is kept
+        String oldScript = stateData.getUserData(GradleTaskManager.INIT_SCRIPT_KEY);
+        String script = initScript(installation);
+        stateData.putUserData(GradleTaskManager.INIT_SCRIPT_KEY, oldScript == null ? script : oldScript + "\n" + script);
+        if (stateData.getUserData(GradleTaskManager.INIT_SCRIPT_PREFIX_KEY) == null) {
+            stateData.putUserData(GradleTaskManager.INIT_SCRIPT_PREFIX_KEY, "jml-checks");
         }
+        ExecutionResult result = state.execute(environment.getExecutor(), this);
         return Promises.resolvedPromise(showRunContent(environment, state, result));
     }
 

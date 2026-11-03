@@ -132,12 +132,30 @@ public class JMLRacTest extends BasePlatformTestCase {
         parameters.getClassPath().add("lib.jar");
         Path installation = Files.createTempDirectory("openjml");
         Files.createDirectories(OpenJml.jdk(installation));
-        JMLRacProgramRunner.addChecks(parameters, Path.of("rac"), installation);
+        JMLRacProgramRunner.addChecks(parameters, Path.of("rac"), installation, false);
         // the classes with checks come before the normal classes, and the run time library is added
         assertEquals(List.of("rac", "classes", "lib.jar", OpenJml.runtimeLibrary(installation).toString()),
                 parameters.getClassPath().getPathList());
         // the program runs on OpenJML's Java, which contains the rest of what the checks need
         assertEquals(OpenJml.jdk(installation), Path.of(parameters.getJdk().getHomePath()));
+    }
+
+    public void testTestsFailOnViolations() throws Exception {
+        Path installation = Files.createTempDirectory("openjml");
+        Files.createDirectories(OpenJml.jdk(installation));
+        // an application reports a violated specification and goes on
+        JavaParameters application = new JavaParameters();
+        JMLRacProgramRunner.addChecks(application, Path.of("rac"), installation, false);
+        assertFalse(application.getVMParametersList().hasProperty(OpenJml.VIOLATIONS_PROPERTY));
+        // a test fails: the checks throw an exception
+        JavaParameters tests = new JavaParameters();
+        JMLRacProgramRunner.addChecks(tests, Path.of("rac"), installation, true);
+        assertEquals("exception", tests.getVMParametersList().getPropertyValue(OpenJml.VIOLATIONS_PROPERTY));
+        // unless the run configuration says otherwise
+        JavaParameters own = new JavaParameters();
+        own.getVMParametersList().addProperty(OpenJml.VIOLATIONS_PROPERTY, "stdout");
+        JMLRacProgramRunner.addChecks(own, Path.of("rac"), installation, true);
+        assertEquals("stdout", own.getVMParametersList().getPropertyValue(OpenJml.VIOLATIONS_PROPERTY));
     }
 
     public void testLinksToFileInProject() {
