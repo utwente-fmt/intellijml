@@ -1,8 +1,15 @@
 ## [Unreleased]
 
+### Added
+- **Run with JML Checks**, next to Run and Debug: runs a program or tests with run time checks of their JML
+  specifications, made by [OpenJML](https://www.openjml.org). Violated specifications are reported in the Run
+  tool window, with links to the source. The plugin offers to download OpenJML (about 220 MB) the first time, or
+  an installation can be chosen in Settings | Tools | IntelliJML.
+
 ### Changed
 - The plugin can be installed, updated and removed without restarting IntelliJ IDEA
-- The unfinished run time checking is switched off: it hooked into every build without inserting any checks
+- The unfinished run time checking of earlier versions, which hooked into every build without inserting any checks,
+  is removed in favour of Run with JML Checks
 - The lexer and parser are generated during the build instead of being committed
 - The tests need no setup any more (they use a mock JDK 21 that is downloaded automatically), and the build
   fails if a test run is interrupted part-way

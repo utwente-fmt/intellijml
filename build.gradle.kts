@@ -153,6 +153,13 @@ tasks {
         isScanForTestClasses = false
         // Only run tests from classes that end with "Test"
         include("**/*JML*Test.class")
+        // JMLRacOpenJmlTest runs OpenJML itself, so it needs an installation: ./gradlew test -PopenJml=<folder>
+        val openJml = providers.gradleProperty("openJml")
+        if (openJml.isPresent) {
+            systemProperty("openjml.path", openJml.get())
+        } else {
+            exclude("**/JMLRacOpenJmlTest.class")
+        }
         // A test JVM that is interrupted part-way reports its current test as skipped and silently drops the
         // rest, while the build still passes. No test is skipped on purpose, so treat a skipped test as a failure.
         addTestListener(object : TestListener {

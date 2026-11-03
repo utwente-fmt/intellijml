@@ -12,6 +12,20 @@ The installable plugin file (a .jar file) can be found in the [releases section]
 
 An installation guide can be found [here](docs/Installation_Guide.pdf)
 
+## Running with JML checks
+
+**Run with JML Checks** (next to Run and Debug, also in the menu of the run icon next to `main` and
+tests) runs a program or tests while checking their JML specifications: a `requires` that does not hold
+when a method is called, an `ensures` or `invariant` that does not hold when it returns, and so on. Each
+violation is reported in the Run tool window, with links to the call and to the specification.
+
+The checks are made by [OpenJML](https://www.openjml.org), which is not included in the plugin: the first
+time, a notification offers to download it (about 220 MB), or choose an existing installation in
+**Settings | Tools | IntelliJML**. OpenJML compiles the production sources of the run configuration's
+module (and the modules it depends on) into a separate folder; the normal build is not changed. The
+program runs on OpenJML's own Java 21, so the modules must not use a newer language level. This works for
+run configurations that IntelliJ IDEA runs itself (Application, JUnit), not for ones run by Gradle or Maven.
+
 ## Build from source
 
 1. Import the source code into IntelliJ IDEA.
@@ -51,6 +65,11 @@ of the generated types, which appear in syntax errors, are in `JMLElementType` a
 No setup is needed: the tests use a mock JDK 21 that the IntelliJ test framework downloads from Maven
 the first time (about 6 MB, into `~/.m2`). The test classes are in `src/test/java`, and the files they
 open are in `src/test/testData` (these are not compiled, so they may contain broken Java). The build
-fails if any test is skipped, because that happens when a test run is interrupted part-way. More background on the tests is in chapter 8 of the
+fails if any test is skipped, because that happens when a test run is interrupted part-way.
+
+`JMLRacOpenJmlTest` runs programs with JML checks with a real OpenJML, so it only runs when you give an
+installation: `./gradlew test -PopenJml=<folder of the OpenJML installation>`.
+
+More background on the tests is in chapter 8 of the
 [maintainer's guide](docs/Maintainers_Guide.pdf); the instruction there to clone the intellij-community
 repository and edit `build.gradle.kts` is no longer needed.

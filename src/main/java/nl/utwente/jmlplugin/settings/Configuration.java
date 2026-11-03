@@ -2,11 +2,12 @@ package nl.utwente.jmlplugin.settings;
 
 import com.intellij.openapi.options.BaseConfigurable;
 import com.intellij.openapi.options.ConfigurationException;
-import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.project.ex.ProjectManagerEx;
+import nl.utwente.jmlplugin.rac.OpenJml;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 
 /**
  * Controller of the MVC pattern for the JML settings page.
@@ -38,8 +39,8 @@ public class Configuration extends BaseConfigurable {
      */
     @Override
     public boolean isModified() {
-        return isRuntimeCheckingEnabled() ^ panel.isRuntimeCheckingEnabled()
-                || isEasterEggEnabled() ^ panel.isEasterEggEnabled();
+        return !panel.getOpenJmlPath().equals(settings.OPENJML_PATH)
+                || settings.RAINBOW_MODE ^ panel.isEasterEggEnabled();
     }
 
     /**
@@ -47,8 +48,21 @@ public class Configuration extends BaseConfigurable {
      */
     @Override
     public void apply() throws ConfigurationException {
+        String openJmlPath = panel.getOpenJmlPath();
+        if (!openJmlPath.isEmpty() && !isOpenJmlInstallation(openJmlPath)) {
+            throw new ConfigurationException("This folder does not contain OpenJML: it should contain " +
+                    "openjml and jmlruntime.jar", "OpenJML Installation");
+        }
+        settings.OPENJML_PATH = openJmlPath;
         settings.RAINBOW_MODE = panel.isEasterEggEnabled();
-        settings.RUNTIME_CHECKING_ENABLED = panel.isRuntimeCheckingEnabled();
+    }
+
+    private static boolean isOpenJmlInstallation(String path) {
+        try {
+            return OpenJml.isInstallation(Path.of(path));
+        } catch (InvalidPathException e) {
+            return false;
+        }
     }
 
     /**
@@ -56,26 +70,12 @@ public class Configuration extends BaseConfigurable {
      */
     @Override
     public void reset() {
-        panel.setRuntimeCheckingEnabled(isRuntimeCheckingEnabled());
-        panel.setEasterEggEnabled(isEasterEggEnabled());
+        panel.setOpenJmlPath(settings.OPENJML_PATH);
+        panel.setEasterEggEnabled(settings.RAINBOW_MODE);
     }
 
     @Override
     public void disposeUIResources() {
         panel = null;
     }
-
-    /**
-     * Checks whether runtime checking is enabled in the internal settings
-     *
-     * @return true if runtime checking is enabled in the internal settings
-     */
-    private boolean isRuntimeCheckingEnabled() {
-        return settings.RUNTIME_CHECKING_ENABLED;
-    }
-
-    private boolean isEasterEggEnabled() {
-        return settings.RAINBOW_MODE;
-    }
-
 }

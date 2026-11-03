@@ -15,11 +15,12 @@ import org.jetbrains.annotations.Nullable;
 @State(name = "JMLPluginSettings", storages = @Storage("other.xml"))
 public class JMLApplicationSettings implements PersistentStateComponent<JMLApplicationSettings> {
 
-    public boolean RUNTIME_CHECKING_ENABLED;
+    // the folder of the OpenJML installation for Run with JML Checks, or empty
+    public String OPENJML_PATH;
     public boolean RAINBOW_MODE;
 
     public JMLApplicationSettings() {
-        RUNTIME_CHECKING_ENABLED = false;
+        OPENJML_PATH = "";
         RAINBOW_MODE = false;
     }
 
