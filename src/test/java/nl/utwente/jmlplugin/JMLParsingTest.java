@@ -87,6 +87,15 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testLineComments() {
+        // a comment ends at the end of the line, and does not end the expression; // in a string is not a comment
+        doTest(true, true);
+    }
+
+    public void testOnlyLineComment() {
+        doTest(true, true);
+    }
+
     public void testLoopSpecs() {
         // decreases and loop_writes in all spellings, also with decreasing and decreases as names
         doTest(true, true);

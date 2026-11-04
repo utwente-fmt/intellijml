@@ -90,7 +90,31 @@ public class JMLAnnotatorUtil {
      * the method's specification
      */
     public static boolean isGhostComment(@NotNull PsiComment comment) {
-        return GHOST.matcher(comment.getText()).find();
+        return GHOST.matcher(jmlText(comment)).find();
+    }
+
+    // a comment inside JML, which ends at the end of the line, or a string or character literal, which may contain //
+    private static final Pattern LINE_COMMENT_OR_LITERAL =
+            Pattern.compile("//[^\\r\\n]*|\"(?:[^\"\\\\\\r\\n]|\\\\.)*\"|'(?:[^'\\\\\\r\\n]|\\\\.)*'");
+
+    /**
+     * @param comment a JML comment
+     * @return the text of the comment, with the comments inside it replaced by spaces, such as "// why" in
+     * "//@ assert x > 0; // why", so that searching the text does not find words in them
+     */
+    public static @NotNull String jmlText(@NotNull PsiComment comment) {
+        String text = comment.getText();
+        if (text.indexOf("//", 2) < 0) return text;
+        StringBuilder result = new StringBuilder(text.substring(0, 2));
+        Matcher matcher = LINE_COMMENT_OR_LITERAL.matcher(text).region(2, text.length());
+        int last = 2;
+        while (matcher.find()) {
+            result.append(text, last, matcher.start());
+            String match = matcher.group();
+            result.append(match.startsWith("//") ? " ".repeat(match.length()) : match);
+            last = matcher.end();
+        }
+        return result.append(text, last, text.length()).toString();
     }
 
     /**
@@ -182,12 +206,12 @@ public class JMLAnnotatorUtil {
         StringBuilder text = new StringBuilder();
         for (PsiComment comment : previousComments) {
             if (comment.getText().startsWith("/*@") || comment.getText().startsWith("//@")) {
-                text.append(comment.getText()).append('\n');
+                text.append(jmlText(comment)).append('\n');
             }
         }
         int elementOffset = text.length() - myComment.getTextRange().getStartOffset()
                 + InjectedLanguageManager.getInstance(element.getProject()).injectedToHost(element, element.getTextOffset());
-        text.append(myComment.getText());
+        text.append(jmlText(myComment));
 
         int start = 0;
         int end = text.length();
@@ -282,7 +306,7 @@ public class JMLAnnotatorUtil {
                         + "(?!\\s+(?:normal_|exceptional_)?behaviou?r(?!\\w))"));
         int count = 0;
         for (PsiComment comment : comments) {
-            String commentText = comment.getText();
+            String commentText = jmlText(comment);
             // check that it is a JML comment; the modifiers in a ghost declaration belong to the ghost variable
             if ((commentText.startsWith("/*@") || commentText.startsWith("//@")) && !GHOST.matcher(commentText).find()) {
                 Matcher matcher = pattern.matcher(commentText);

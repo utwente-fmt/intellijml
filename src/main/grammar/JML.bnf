@@ -58,6 +58,7 @@
     WHITE_SPACE = 'regexp:\s+'
 
     INFORMAL_DESCRIPTION = "regexp:\(\s*\*([^*]|\*+[^*)])+\*\s*\)"
+    LINE_COMMENT = "regexp://[^\r\n]*"
     REST = "regexp:[^@;().,:*\[\]\s]"
 
   ]

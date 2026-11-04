@@ -28,7 +28,8 @@ public class JMLTokenType extends IElementType {
             entry("[", "left bracket"),
             entry("]", "right bracket"),
             entry("IDENT", "identifier"),
-            entry("INFORMAL_DESCRIPTION", "informal description"));
+            entry("INFORMAL_DESCRIPTION", "informal description"),
+            entry("LINE_COMMENT", "comment"));
 
     public JMLTokenType(@NonNls @NotNull String debugName) {
         super(debugName, JMLLanguage.INSTANCE);

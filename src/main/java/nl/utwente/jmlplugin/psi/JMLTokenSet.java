@@ -77,7 +77,7 @@ public class JMLTokenSet {
     public static final TokenSet ghostFieldModifiers = TokenSet.orSet(visibilityModifiers, nullityModifiers,
             TokenSet.create(STATIC, INSTANCE));
 
-    public static final TokenSet commentsAndWhitespace = TokenSet.create(INFORMAL_DESCRIPTION, TokenType.WHITE_SPACE);
+    public static final TokenSet commentsAndWhitespace = TokenSet.create(INFORMAL_DESCRIPTION, LINE_COMMENT, TokenType.WHITE_SPACE);
 
     public static final TokenSet skipAfterJavaExpr = TokenSet.orSet(TokenSet.create(AT_SIGN), commentsAndWhitespace);
 

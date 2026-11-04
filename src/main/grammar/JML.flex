@@ -28,6 +28,11 @@ WHITE_SPACE=\s+
 IDENT=[_$a-zA-Z][_$a-zA-Z0-9]*
 WHITE_SPACE=[ \t\n\x0B\f\r]+
 INFORMAL_DESCRIPTION=\([ \t\n\x0B\f\r]*\*([^*]|\*+[^*)])+\*[ \t\n\x0B\f\r]*\)
+// a comment in JML, to the end of the line, such as "//@ assert x > 0; // why"
+LINE_COMMENT="//"[^\r\n]*
+// string and character literals, so that "//" or ";" in them does not end the Java expression
+STRING_LITERAL=\"([^\"\\\r\n]|\\[^\r\n])*\"
+CHAR_LITERAL='([^'\\\r\n]|\\[^\r\n])*'
 REST=[^@;().,:*\[\]\s]
 
 %%
@@ -97,6 +102,9 @@ REST=[^@;().,:*\[\]\s]
   {IDENT}                     { return IDENT; }
   {WHITE_SPACE}               { return WHITE_SPACE; }
   {INFORMAL_DESCRIPTION}      { return INFORMAL_DESCRIPTION; }
+  {LINE_COMMENT}              { return LINE_COMMENT; }
+  {STRING_LITERAL}            { return REST; }
+  {CHAR_LITERAL}              { return REST; }
   {REST}                      { return REST; }
 
 }

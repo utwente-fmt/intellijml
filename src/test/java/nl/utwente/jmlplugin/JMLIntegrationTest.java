@@ -36,6 +36,11 @@ public class JMLIntegrationTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testJmlComments() {
+        myFixture.configureByFile("JmlComments.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testGhostCounter() {
         myFixture.configureByFile("GhostCounter.java");
         myFixture.checkHighlighting(true, false, true, false);
