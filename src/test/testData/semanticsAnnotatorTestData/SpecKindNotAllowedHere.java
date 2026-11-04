@@ -10,7 +10,7 @@ public class SpecKindNotAllowedHere {
     //<error descr="Method specifications are not allowed above a field">@ requires x != 0;</error>
     //<error descr="In-method specifications are not allowed above a field">@ assert x > 10;</error>
     //@ spec_public;
-    public int /*@instance*/ x = 10;//@ nullable;
+    public Integer /*@instance*/ x = 10;//@ nullable;
     //<error descr="Modifiers are not allowed in a class body">@ instance;</error>
 
     //@ public invariant x>5;
@@ -22,13 +22,13 @@ public class SpecKindNotAllowedHere {
     //@ requires x!=0;
     //<error descr="In-method specifications are not allowed above a method">@ assert x > 10;</error>
     //@ pure;
-    public /*<error descr="Method specifications are not allowed in a method declaration">@ requires x != 0;</error> */ int divX(/*@nullable*/ int /*@<warning descr="This modifier has already been used in this specification">nullable</warning>*/ /*<error descr="Method specifications are not allowed before a parameter">@ requires x != 0;</error> */ y /*<error descr="Modifiers are not allowed here">@ nullable</error>*/) /*@ <error descr="All specification cases must be placed before any modifiers">requires x!=0;</error> */ /*<error descr="Modifiers are not allowed before a method body">@ pure</error>  */ {
+    public /*<error descr="Method specifications are not allowed in a method declaration">@ requires x != 0;</error> */ int divX(/*@nullable*/ Integer /*@<warning descr="This modifier has already been used in this specification">nullable</warning>*/ /*<error descr="Method specifications are not allowed before a parameter">@ requires x != 0;</error> */ y /*<error descr="Modifiers are not allowed here">@ nullable</error>*/) /*@ <error descr="All specification cases must be placed before any modifiers">requires x!=0;</error> */ /*<error descr="Modifiers are not allowed before a method body">@ pure</error>  */ {
 
         //<error descr="Class invariants are not allowed above a variable declaration">@ invariant x > 5;</error>
         //<error descr="Method specifications are not allowed above a variable declaration">@ requires x != 0;</error>
         //<error descr="In-method specifications are not allowed above a variable declaration">@ assert x > 10;</error>
         //@ nullable;
-        int /*@<warning descr="This modifier has already been used in this specification">nullable</warning>*/ z /*@<warning descr="This modifier has already been used in this specification">nullable</warning>*/;
+        Integer /*@<warning descr="This modifier has already been used in this specification">nullable</warning>*/ z /*@<warning descr="This modifier has already been used in this specification">nullable</warning>*/;
 
 
         //<error descr="Class invariants are not allowed in a code block">@ invariant x > 5;</error>

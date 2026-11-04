@@ -11,11 +11,15 @@ import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Util class for the annotators containing lookup functions for JML comments
@@ -23,13 +27,12 @@ import java.util.regex.Pattern;
 public class JMLAnnotatorUtil {
     public static final String ALL_MODIFIERS_REGEX;
 
-    // make a regex string that can match any JML modifier
+    // make a regex string that can match any JML modifier; the longest first, so that non_null_by_default is not
+    // matched as non_null
     static {
-        StringBuilder regex = new StringBuilder("(");
-        for (IElementType modifier : JMLTokenSet.allModifiers.getTypes()) {
-            regex.append(modifier.toString()).append("|");
-        }
-        ALL_MODIFIERS_REGEX = regex.replace(regex.length() - 1, regex.length(), ")").toString();
+        ALL_MODIFIERS_REGEX = Arrays.stream(JMLTokenSet.allModifiers.getTypes()).map(IElementType::toString)
+                .sorted(Comparator.comparingInt(String::length).reversed())
+                .collect(Collectors.joining("|", "(", ")"));
     }
 
     // whitespace with at most one line break
@@ -239,6 +242,16 @@ public class JMLAnnotatorUtil {
         }
         if (comments.isEmpty()) return false;
         return countTextMatchesAcrossComments(comments, regex, (doNotCountMyself ? 2 : 1)) >= (doNotCountMyself ? 2 : 1);
+    }
+
+    /**
+     * @param comments comments, of which only the JML comments are searched
+     * @param regex    the regex that should be matched, such as the name of a modifier
+     * @return whether the regex matches in one of the comments, as a whole word after an at-sign, a semicolon or a
+     * modifier, such as a modifier
+     */
+    public static boolean commentsContain(@NotNull List<PsiComment> comments, String regex) {
+        return countTextMatchesAcrossComments(new ArrayList<>(comments), regex, 1) >= 1;
     }
 
     /**

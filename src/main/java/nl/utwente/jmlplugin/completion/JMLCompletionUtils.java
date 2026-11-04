@@ -586,6 +586,9 @@ public class JMLCompletionUtils {
             case "\\elemtype":
             case "\\type":
             case "\\nonnullelements":
+            case "\\fresh":
+            case "\\invariant_for":
+            case "\\not_modified":
                 return true;
             default:
                 return false;
@@ -617,6 +620,7 @@ public class JMLCompletionUtils {
             case ENSURES:
                 //fallthrough is intentional
                 addTokens(result, results);
+                addTokens(postconditionKeywordsInJava, results);
             case OTHER:
                 addTokens(generalJMLKeywordsInJava, results);
                 addTokens(quantifiers, results);

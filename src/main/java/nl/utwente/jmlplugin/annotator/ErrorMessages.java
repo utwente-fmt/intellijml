@@ -30,6 +30,9 @@ public final class ErrorMessages {
     public static final String ENSURES_IN_EXCEPTIONAL_BEHAVIOR = "Ensures clauses are not permitted in exceptional specification cases";
     // OpenJML gives this as a lint warning
     public static final String BEHAVIOR_MORE_VISIBLE = "There is no point to a specification case having more visibility than its method";
+    // OpenJML's messages for nullable and non_null
+    public static final String CONFLICTING_NULLITY = "Entity has conflicting nullity annotations";
+    public static final String CONFLICTING_NULLITY_DEFAULTS = "A declaration may not be both non_null_by_default and nullable_by_default";
     public static final String DUPLICATE_MODIFIER = "This modifier has already been used in this specification";
     public static final String MULTIPLE_VISIBILITY_MODIFIERS = "You cannot have multiple visibility modifiers (public, protected or private)";
     public static final String MULTIPLE_SPEC_VISIBILITY_MODIFIERS = "You cannot have multiple specification visibility modifiers (spec_public or spec_protected)";
@@ -107,6 +110,20 @@ public final class ErrorMessages {
     }
 
     // the same message as OpenJML gives
+    // OpenJML's messages for \fresh and \invariant_for, whose argument must be an object, and for \fresh and
+    // \not_modified in a clause that does not allow them, such as "a requires clause" (and "a invariant clause")
+    public static String notReferenceType(String keyword) {
+        return "The argument of " + keyword + " must be of reference type";
+    }
+
+    public static String notAllowedInClause(String keyword, String clause) {
+        return "A " + keyword + " expression may not be in a " + clause + " clause";
+    }
+
+    public static String nullityOnPrimitive(@NotNull PsiType type) {
+        return "the type modifier/annotation is not permitted on a primitive type: " + type.getPresentableText();
+    }
+
     public static String notIntegral(@Nullable PsiType type) {
         return "Expected an integral type in loop_decreases, not " + (type == null ? "unknown" : type.getCanonicalText());
     }

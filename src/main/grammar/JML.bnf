@@ -28,6 +28,9 @@
 
     SPEC_PUBLIC = 'spec_public'
     SPEC_PROTECTED = 'spec_protected'
+    NON_NULL = 'non_null'
+    NULLABLE_BY_DEFAULT = 'nullable_by_default'
+    NON_NULL_BY_DEFAULT = 'non_null_by_default'
     LOOPINVARIANT = 'loop_invariant'
     LOOP_DECREASES = 'loop_decreases'
     LOOP_WRITES = 'loop_writes'
@@ -100,7 +103,8 @@ private class_invariants ::= (class_invariant AT_SIGN*)+
 class_invariant ::= modifiers? invariant java_expr SEMICOLON+ {pin="java_expr"}
 
 // modifiers for methods and fields
-modifiers ::= ((SPEC_PUBLIC | SPEC_PROTECTED | pure | instance | helper | nullable | java_modifier) SEMICOLON* AT_SIGN*)+
+modifiers ::= ((SPEC_PUBLIC | SPEC_PROTECTED | pure | instance | helper | nullable | NON_NULL | NULLABLE_BY_DEFAULT
+    | NON_NULL_BY_DEFAULT | java_modifier) SEMICOLON* AT_SIGN*)+
 private java_modifier ::= public | private | protected | static
 
 // specification inside a method

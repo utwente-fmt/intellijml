@@ -24,6 +24,9 @@ public interface JMLTypes extends JMLGrammarTypes {
     IElementType ELEM_TYPE_EXPR = new JMLElementType("\\elemtype() expression");
     IElementType TYPE_EXPR = new JMLElementType("\\type() expression");
     IElementType NON_NULL_ELEMENTS_EXPR = new JMLElementType("\\nonnullelements() expression");
+    IElementType FRESH_EXPR = new JMLElementType("\\fresh() expression");
+    IElementType INVARIANT_FOR_EXPR = new JMLElementType("\\invariant_for() expression");
+    IElementType NOT_MODIFIED_EXPR = new JMLElementType("\\not_modified() expression");
     IElementType INNER_JAVA_EXPR = new JMLElementType("expression");
 
     IElementType JAVA_EXPR_TOKEN = new JMLTokenType("JAVA_EXPR_TOKEN");
@@ -41,6 +44,9 @@ public interface JMLTypes extends JMLGrammarTypes {
     IElementType TYPE = new JMLElementType("\\type");
     IElementType TYPE_CAPS = new JMLElementType("\\TYPE");
     IElementType NON_NULL_ELEMENTS = new JMLElementType("\\nonnullelements");
+    IElementType FRESH = new JMLElementType("\\fresh");
+    IElementType INVARIANT_FOR = new JMLElementType("\\invariant_for");
+    IElementType NOT_MODIFIED = new JMLElementType("\\not_modified");
     IElementType LOGICAL_IMPL = new JMLElementType("==>");
     IElementType LOGICAL_EQ = new JMLElementType("<==>");
     IElementType LOGICAL_IMPL_REV = new JMLElementType("<==");
@@ -71,6 +77,8 @@ public interface JMLTypes extends JMLGrammarTypes {
                 return new JMLTypeExpr(node);
             } else if (type == NON_NULL_ELEMENTS_EXPR) {
                 return new JMLNonNullElementsExpr(node);
+            } else if (type == FRESH_EXPR || type == INVARIANT_FOR_EXPR || type == NOT_MODIFIED_EXPR) {
+                return new JMLBackslashFunctionExpr(node);
             } else if (type == INNER_JAVA_EXPR) {
                 return new JMLInnerJavaExpr(node);
             }

@@ -255,7 +255,7 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
         List<String> strings = completeIn("ParameterModifier.java");
 
         // nullable is the only modifier of a parameter
-        assertSameElements(strings, "nullable");
+        assertSameElements(strings, "nullable", "non_null");
     }
 
     public void testStaticImportOfNestedClass() {
@@ -410,6 +410,12 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
         assertContainsElements(strings, "\\old()");
     }
 
+    public void testFresh() {
+        List<String> strings = completeIn("Fresh.java");
+
+        assertContainsElements(strings, "\\fresh()");
+    }
+
     public void testIdentifierClassName() {
         List<String> strings = completeIn("IdentifierClassName.java");
 
@@ -439,13 +445,13 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public void testFieldModifiers() {
         List<String> strings = completeIn("FieldModifiers.java");
 
-        assertSameElements(strings, "instance", "nullable", "spec_protected", "spec_public");
+        assertSameElements(strings, "instance", "nullable", "non_null", "spec_protected", "spec_public");
     }
 
     public void testFieldModifiersSemicolon() {
         List<String> strings = completeIn("FieldModifiersSemicolon.java");
 
-        assertSameElements(strings, "instance", "nullable", "spec_protected", "spec_public");
+        assertSameElements(strings, "instance", "nullable", "non_null", "spec_protected", "spec_public");
     }
 
     public void testNestedClass() {

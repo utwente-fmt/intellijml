@@ -30,7 +30,7 @@ public class ModifierKindNotAllowedHere {
     //@ <error descr="Modifier 'private' is not allowed above a field">private</error>
     //@ <error descr="Modifier 'protected' is not allowed above a field">protected</error>
     //@ <error descr="Modifier 'static' is not allowed above a field">static</error>
-    public int x = 10;
+    public Integer x = 10;
 
     //@ spec_protected
     //@ pure
@@ -54,7 +54,7 @@ public class ModifierKindNotAllowedHere {
     //@ <error descr="Modifier 'private' is not allowed above a method">private</error>
     //@ <error descr="Modifier 'protected' is not allowed above a method">protected</error>
     //@ <error descr="Modifier 'static' is not allowed above a method">static</error>
-    public int divX(int /*@ <error descr="Modifier 'spec_public' is not allowed before a parameter">spec_public</error>; <error descr="Modifier 'spec_protected' is not allowed before a parameter">spec_protected</error>; <error descr="Modifier 'pure' is not allowed before a parameter">pure</error>; <error descr="Modifier 'instance' is not allowed before a parameter">instance</error>; <error descr="Modifier 'helper' is not allowed before a parameter">helper</error>; nullable; <error descr="Modifier 'public' is not allowed before a parameter">public</error>; <error descr="Modifier 'private' is not allowed before a parameter">private</error>; <error descr="Modifier 'protected' is not allowed before a parameter">protected</error>; <error descr="Modifier 'static' is not allowed before a parameter">static</error>;*/ y) {
+    public Integer divX(Integer /*@ <error descr="Modifier 'spec_public' is not allowed before a parameter">spec_public</error>; <error descr="Modifier 'spec_protected' is not allowed before a parameter">spec_protected</error>; <error descr="Modifier 'pure' is not allowed before a parameter">pure</error>; <error descr="Modifier 'instance' is not allowed before a parameter">instance</error>; <error descr="Modifier 'helper' is not allowed before a parameter">helper</error>; nullable; <error descr="Modifier 'public' is not allowed before a parameter">public</error>; <error descr="Modifier 'private' is not allowed before a parameter">private</error>; <error descr="Modifier 'protected' is not allowed before a parameter">protected</error>; <error descr="Modifier 'static' is not allowed before a parameter">static</error>;*/ y) {
 
         //@ <error descr="Modifier 'spec_public' is not allowed above a variable declaration">spec_public</error>
         //@ <error descr="Modifier 'pure' is not allowed above a variable declaration">pure</error>
@@ -65,7 +65,7 @@ public class ModifierKindNotAllowedHere {
         //@ <error descr="Modifier 'private' is not allowed above a variable declaration">private</error>
         //@ <error descr="Modifier 'protected' is not allowed above a variable declaration">protected</error>
         //@ <error descr="Modifier 'static' is not allowed above a variable declaration">static</error>
-        int z;
+        Integer z;
 
         return y / x;
     }

@@ -72,7 +72,7 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
      */
 
     private static void fillVariableDeclarationCompletions(@NotNull CompletionResultSet results) {
-        addTokens(nullable, results);
+        addTokens(nullityModifiers, results);
     }
 
     /**
@@ -84,7 +84,7 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
      */
 
     private static void fillParameterCompletions(@NotNull CompletionResultSet results) {
-        addTokens(nullable, results);
+        addTokens(nullityModifiers, results);
     }
 
     /**

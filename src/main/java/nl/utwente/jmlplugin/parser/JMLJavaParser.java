@@ -39,6 +39,9 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         tokenTypeToRule.put(JMLTypes.TYPE_OF, JMLTypes.TYPE_OF_EXPR);
         tokenTypeToRule.put(JMLTypes.ELEM_TYPE, JMLTypes.ELEM_TYPE_EXPR);
         tokenTypeToRule.put(JMLTypes.NON_NULL_ELEMENTS, JMLTypes.NON_NULL_ELEMENTS_EXPR);
+        tokenTypeToRule.put(JMLTypes.FRESH, JMLTypes.FRESH_EXPR);
+        tokenTypeToRule.put(JMLTypes.INVARIANT_FOR, JMLTypes.INVARIANT_FOR_EXPR);
+        tokenTypeToRule.put(JMLTypes.NOT_MODIFIED, JMLTypes.NOT_MODIFIED_EXPR);
     }
 
     /**
@@ -267,8 +270,8 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
      */
     private static boolean parseQVarDecl(PsiBuilder builder, int level) {
         PsiBuilder.Marker marker = enter_section_(builder, level, _NONE_, JMLTypes.Q_VAR_DECL, JMLTypes.Q_VAR_DECL.toString());
-        // optional nullable
-        consumeToken(builder, JMLTypes.NULLABLE);
+        // optional nullable or non_null
+        if (!consumeToken(builder, JMLTypes.NULLABLE)) consumeToken(builder, JMLTypes.NON_NULL);
         // parse the type of the variable declaration
         boolean correct = parseTypeName(builder, level + 1);
         // parse the identifiers

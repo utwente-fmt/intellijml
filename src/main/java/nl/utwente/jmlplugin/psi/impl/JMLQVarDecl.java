@@ -19,8 +19,8 @@ public class JMLQVarDecl extends ASTWrapperPsiElement {
      * @return the name of the type that all the variables have
      */
     public JMLTypeName getTypeName() {
-        if (this.getFirstChild() instanceof JMLTypeName) return (JMLTypeName) this.getFirstChild();
-        return null;
+        // after an optional nullable or non_null
+        return PsiTreeUtil.getChildOfType(this, JMLTypeName.class);
     }
 
     /**

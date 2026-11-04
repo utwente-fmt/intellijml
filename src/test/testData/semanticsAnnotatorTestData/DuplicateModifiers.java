@@ -2,7 +2,7 @@ package semanticsAnnotatorTestData;
 
 public class DuplicateModifiers {
     //@ nullable
-    private int x; //@ <warning descr="This modifier has already been used in this specification">nullable</warning>
+    private Integer x; //@ <warning descr="This modifier has already been used in this specification">nullable</warning>
 
     /*@
         <warning descr="This modifier has already been used in this specification">pure</warning>;

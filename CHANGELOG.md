@@ -24,6 +24,12 @@
   have an integral type, and `loop_writes` (also `loop_modifies`, `loop_assigns` and `loop_assignable`), which may
   name the local variables of the method. As in OpenJML, `decreases` and `decreasing` can still be the names of
   variables, and a loop specification that is not right above a loop gets OpenJML's message.
+- `non_null`, the counterpart of `nullable`, on fields, parameters, local variables, method results and the variables
+  of quantifiers, and `non_null_by_default` and `nullable_by_default` on classes. As in OpenJML, a declaration that is
+  both `non_null` and `nullable` gives an error, and so does either one on a primitive type such as `int`.
+- `\fresh(x)`, `\invariant_for(x)` and `\not_modified(x, ...)` in expressions, with OpenJML's checks: the argument of
+  `\fresh` and `\invariant_for` must be an object, and `\fresh` and `\not_modified` are not allowed in `requires`
+  clauses and invariants (`\not_modified` also not in loop invariants)
 - Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in
   `// @` or `/* @`, which makes the comment an ordinary comment instead of JML
 
@@ -45,7 +51,7 @@
 - Using a field or method that is not visible in a specification suggests declaring it `spec_public`, instead of
   saying that it cannot be resolved
 - Errors inside `\old(...)` are shown on the part of the expression they are about, instead of at `\old`
-- An unknown or unsupported backslash keyword, such as `\fresh` or a misspelled `\reslt`, is named in the error
+- An unknown or unsupported backslash keyword, such as `\reach` or a misspelled `\reslt`, is named in the error
 - Exception classes are only all listed in completion when completion is invoked with Ctrl+Space or part of the
   name is typed, as searching them on every keystroke was slow
 

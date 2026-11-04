@@ -55,6 +55,18 @@ public class JMLLexerTest extends BasePlatformTestCase {
         checkCorrectRestart("@ requires x > 0\n@ ensures \\result > 0");
     }
 
+    public void testRestartInQuantifierWithNullity() {
+        checkCorrectRestart("@ assert (\\forall non_null Object o; o != null) && \\fresh(x) && \\not_modified(a, b);");
+    }
+
+    public void testNullityInQuantifier() {
+        // the nullity modifier of the variable of a quantifier is a JML keyword, also inside the Java expression
+        String tokens = tokens("@ ensures (\\forall non_null Object o; o != null) && (\\exists nullable Object p; p == null);");
+        assertTrue(tokens, tokens.contains("non_null ('non_null')"));
+        assertTrue(tokens, tokens.contains("nullable ('nullable')"));
+        assertFalse(tokens, tokens.contains("IDENTIFIER ('non_null')"));
+    }
+
     public void testRestartInLoopSpecifications() {
         checkCorrectRestart("@ loop_invariant 0 <= i; decreases n - i; loop_writes i, decreasing, a[*];\n"
                 + "@ decreasing (\\sum int j; 0 <= j; j);");

@@ -6,9 +6,16 @@ import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import nl.utwente.jmlplugin.psi.*;
+import nl.utwente.jmlplugin.psi.impl.JMLBackslashFunctionExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
+import nl.utwente.jmlplugin.psi.impl.JMLQVarDecl;
 import nl.utwente.jmlplugin.psi.impl.JMLOldExpr;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 import static com.intellij.psi.util.PsiTreeUtil.*;
 import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.*;
@@ -53,11 +60,19 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         } else if (element instanceof JMLBehaviorHeader behavior && isMoreVisibleThanMethod(behavior)) {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.BEHAVIOR_MORE_VISIBLE).create();
             return true;
+        } else if (element.getParent() instanceof JMLQVarDecl) {
+            // the nullable or non_null of the variable of a quantifier
+            return true;
         } else if (element.getParent() instanceof JMLBehaviorHeader) {
             // the visibility of a specification case is not a modifier of the method
             return true;
         } else if (element.getNode().getElementType() == JMLTypes.RESULT && checkBackslashResultAllowed(element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.BACKSLASH_RESULT_NOT_ALLOWED).create();
+        } else if (element instanceof JMLBackslashFunctionExpr && clauseNotAllowing(element) != null) {
+            PsiElement argument = getChildOfType(element, JMLInnerJavaExpr.class);
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.notAllowedInClause(
+                    element.getFirstChild().getText(), clauseNotAllowing(element)))
+                    .range(argument != null ? argument : element).create();
         } else if (element instanceof JMLOldExpr && checkOldExprAllowed((JMLOldExpr) element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.OLD_EXPR_NOT_ALLOWED).create();
         } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())) {
@@ -72,6 +87,13 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.MULTIPLE_SPEC_VISIBILITY_MODIFIERS).create();
             } else if (checkStaticAndInstance(element)) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.STATIC_AND_INSTANCE).create();
+            } else if (checkConflictingModifier(element, JMLTypes.NON_NULL, JMLTypes.NULLABLE)) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.CONFLICTING_NULLITY).create();
+            } else if (checkConflictingModifier(element, JMLTypes.NON_NULL_BY_DEFAULT, JMLTypes.NULLABLE_BY_DEFAULT)) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.CONFLICTING_NULLITY_DEFAULTS).create();
+            } else if (JMLTokenSet.nullityModifiers.contains(element.getNode().getElementType())
+                    && nullityType(element) instanceof PsiPrimitiveType primitive) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.nullityOnPrimitive(primitive)).create();
             } else if (checkDuplicateModifiers(element, modifierPosition)) {
                 holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.DUPLICATE_MODIFIER).create();
                 return true;
@@ -186,17 +208,94 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             case ABOVE_METHOD:
                 return !JMLTokenSet.methodDeclModifiers.contains(modifier);
             case ABOVE_CONSTRUCTOR:
-                return !TokenSet.andNot(JMLTokenSet.methodDeclModifiers, TokenSet.create(JMLTypes.NULLABLE)).contains(modifier);
+                return !TokenSet.andNot(JMLTokenSet.methodDeclModifiers, JMLTokenSet.nullityModifiers).contains(modifier);
             case CLASS_INVARIANT:
                 return !JMLTokenSet.invariantModifiers.contains(modifier);
             case ABOVE_CLASS:
                 return !JMLTokenSet.classModifiers.contains(modifier);
             case PARAMETER:
             case VAR_DECLARATION:
-                return modifier != JMLTypes.NULLABLE;
+                return !JMLTokenSet.nullityModifiers.contains(modifier);
             default:
                 return true;
         }
+    }
+
+    /**
+     * Checks whether a declaration has two modifiers that exclude each other, such as non_null and nullable, in
+     * any of its JML comments
+     *
+     * @param element a modifier
+     * @param first   one of the two modifiers
+     * @param second  the other one
+     * @return true if the element is one of the two, and the declaration also has the other
+     */
+    private static boolean checkConflictingModifier(PsiElement element, IElementType first, IElementType second) {
+        IElementType type = element.getNode().getElementType();
+        if (type != first && type != second) return false;
+        return commentsContain(declarationComments(element), (type == first ? second : first).toString());
+    }
+
+    /**
+     * @param element a modifier
+     * @return the declaration that the modifier belongs to: a field, parameter, local variable, method or class
+     */
+    private static PsiElement modifiedDeclaration(PsiElement element) {
+        PsiElement context = getJavaContext(element);
+        PsiComment comment = getCommentContext(element);
+        if (context instanceof PsiParameterList || context instanceof PsiCodeBlock) {
+            // a comment before a parameter or above a local variable declaration
+            PsiElement next = comment == null ? null : skipWhitespacesAndCommentsForward(comment);
+            return next instanceof PsiDeclarationStatement declaration && declaration.getDeclaredElements().length > 0
+                    ? declaration.getDeclaredElements()[0] : next;
+        }
+        if (context instanceof PsiVariable || context instanceof PsiMethod || context instanceof PsiClass) return context;
+        return getParentOfType(comment, PsiLocalVariable.class);
+    }
+
+    /**
+     * @param element a modifier
+     * @return the comments of the declaration that the modifier belongs to: in it, in its modifiers, and right
+     * before it, as for a parameter or a local variable
+     */
+    private static List<PsiComment> declarationComments(PsiElement element) {
+        Set<PsiComment> comments = new LinkedHashSet<>();
+        PsiComment own = getCommentContext(element);
+        if (own != null) comments.add(own);
+        PsiElement declaration = modifiedDeclaration(element);
+        if (declaration == null) return new ArrayList<>(comments);
+        for (PsiComment comment : getChildrenOfTypeAsList(declaration, PsiComment.class)) {
+            // the comments in the body of a class belong to its members
+            if (!(declaration instanceof PsiClass psiClass) || psiClass.getLBrace() == null
+                    || comment.getTextOffset() < psiClass.getLBrace().getTextOffset()) {
+                comments.add(comment);
+            }
+        }
+        if (declaration instanceof PsiModifierListOwner owner) {
+            comments.addAll(getChildrenOfTypeAsList(owner.getModifierList(), PsiComment.class));
+        }
+        // a comment before a parameter or a local variable declaration is not in it, but before it; a comment before a
+        // field can belong to the field before it, as in "int x; //@ nullable"
+        if (declaration instanceof PsiParameter || declaration instanceof PsiLocalVariable) {
+            PsiElement start = declaration.getParent() instanceof PsiDeclarationStatement statement ? statement : declaration;
+            for (PsiElement prev = start.getPrevSibling(); prev instanceof PsiComment || prev instanceof PsiWhiteSpace;
+                 prev = prev.getPrevSibling()) {
+                if (prev instanceof PsiComment comment) comments.add(comment);
+            }
+        }
+        return new ArrayList<>(comments);
+    }
+
+    /**
+     * @param element a nullable or non_null modifier
+     * @return the type that the modifier is about: of the field, parameter or local variable, or the result type of
+     * the method; null if there is none, as for a constructor
+     */
+    private static PsiType nullityType(PsiElement element) {
+        PsiElement declaration = modifiedDeclaration(element);
+        if (declaration instanceof PsiVariable variable) return variable.getType();
+        if (declaration instanceof PsiMethod method) return method.getReturnType();
+        return null;
     }
 
     /**
@@ -331,6 +430,22 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      */
     private static boolean checkBackslashResultAllowed(PsiElement element) {
         return getParentOfType(element, JMLEnsuresClause.class) == null;
+    }
+
+    /**
+     * @param element a JML function such as \fresh(x)
+     * @return the name of the clause that it is in, as OpenJML calls it, if that clause does not allow it: \fresh is
+     * not allowed in preconditions and invariants, \not_modified also not in loop invariants
+     */
+    private static String clauseNotAllowing(PsiElement element) {
+        IElementType type = element.getNode().getElementType();
+        if (type != JMLTypes.FRESH_EXPR && type != JMLTypes.NOT_MODIFIED_EXPR) return null;
+        if (getParentOfType(element, JMLRequiresClause.class) != null) return "requires";
+        if (getParentOfType(element, JMLClassInvariant.class) != null) return "invariant";
+        if (type == JMLTypes.NOT_MODIFIED_EXPR && getParentOfType(element, JMLLoopInvariant.class) != null) {
+            return "loop_invariant";
+        }
+        return null;
     }
 
     /**

@@ -8,6 +8,8 @@ import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import nl.utwente.jmlplugin.psi.JMLTypes;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Set;
+
 import static nl.utwente.jmlplugin.psi.JMLTokenSet.commentsAndWhitespace;
 import static nl.utwente.jmlplugin.psi.JMLTokenSet.skipAfterJavaExpr;
 
@@ -56,6 +58,8 @@ public class JMLMergingLexer extends MergingLexerAdapter {
      * Contains the merge function to be used in JMLMergingLexer
      */
     private static class JMLMergeFunction implements MergeFunction {
+        // the words after the backslash of the quantifiers, which are lexed as identifiers here
+        private static final Set<String> QUANTIFIER_WORDS = Set.of("forall", "exists", "max", "min", "sum", "product", "num_of");
 
         private boolean merging = false;
         private boolean javaExprExpected = false;
@@ -66,6 +70,8 @@ public class JMLMergingLexer extends MergingLexerAdapter {
         private int parenDepth = 0;
         // the last token that is not whitespace or a comment
         private IElementType previous = null;
+        // the text of the last token in the Java expression that is being merged that is not whitespace
+        private String lastWord = null;
         // whether a contextual keyword would start a clause at the start of the last token
         private boolean clauseStartAtTokenStart = true;
 
@@ -76,6 +82,16 @@ public class JMLMergingLexer extends MergingLexerAdapter {
             parenDepth = 0;
             previous = null;
             clauseStartAtTokenStart = true;
+            lastWord = null;
+        }
+
+        /**
+         * @param type the next token in a Java expression
+         * @return whether it is a nullity modifier of the variable of a quantifier, as in "(\forall non_null Object o; ...)",
+         * which does not end the Java expression
+         */
+        private boolean isQuantifierModifier(IElementType type) {
+            return JMLTokenSet.nullityModifiers.contains(type) && QUANTIFIER_WORDS.contains(lastWord);
         }
 
         private void countParenthesis(IElementType type) {
@@ -155,12 +171,16 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                         originalLexer.restore(startPos);
                         return JMLTypes.JAVA_EXPR_TOKEN;
                     }
-                } else if (JMLTokenSet.allOuterKeywords.contains(originalLexer.getTokenType())) {
+                } else if (JMLTokenSet.allOuterKeywords.contains(originalLexer.getTokenType())
+                        && !isQuantifierModifier(originalLexer.getTokenType())) {
                     // found a JML keyword such as ensures, so Java expression is over, but user forgot semicolon
                     merging = false;
                     return JMLTypes.JAVA_EXPR_TOKEN;
                 } else {
                     countParenthesis(originalLexer.getTokenType());
+                    if (!commentsAndWhitespace.contains(originalLexer.getTokenType())) {
+                        lastWord = originalLexer.getTokenText();
+                    }
                     originalLexer.advance();
                 }
             }
@@ -176,6 +196,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                 if (originalLexer.getTokenType() != JMLTypes.SEMICOLON && originalLexer.getTokenType() != JMLTypes.NOT_SPECIFIED) {
                     merging = true;
                     parenDepth = 0;
+                    lastWord = null;
                 }
                 javaExprExpected = false;
                 originalLexer.restore(startPos);
@@ -195,6 +216,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                 if (originalLexer.getTokenType() != JMLTypes.NOT_SPECIFIED && originalLexer.getTokenType() != JMLTypes.SEMICOLON) {
                     merging = true;
                     parenDepth = 0;
+                    lastWord = null;
                 }
                 // restore to undo our lookahead
                 originalLexer.restore(startPos);

@@ -7,6 +7,7 @@ import com.intellij.psi.JavaTokenType;
 import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
+import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import nl.utwente.jmlplugin.psi.JMLTypes;
 import org.jetbrains.annotations.NotNull;
 
@@ -33,7 +34,7 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
     @Override
     public void start(@NotNull CharSequence buffer, int startOffset, int endOffset, int initialState) {
         // a backslash at the end of the previous text must not affect this text
-        mergeFunction.checkBackslashKeyword = false;
+        mergeFunction.reset();
         super.start(buffer, startOffset, endOffset, initialState);
     }
 
@@ -58,9 +59,26 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
             textToToken.put("type", JMLTypes.TYPE);
             textToToken.put("TYPE", JMLTypes.TYPE_CAPS);
             textToToken.put("nonnullelements", JMLTypes.NON_NULL_ELEMENTS);
+            textToToken.put("fresh", JMLTypes.FRESH);
+            textToToken.put("invariant_for", JMLTypes.INVARIANT_FOR);
+            textToToken.put("not_modified", JMLTypes.NOT_MODIFIED);
         }
 
+        // the nullity modifiers that the variable of a quantifier can have, as in "(\forall non_null Object o; ...)"
+        private static final Map<String, IElementType> quantifierModifiers = Map.of(
+                "nullable", JMLTypes.NULLABLE, "non_null", JMLTypes.NON_NULL);
+
         private boolean checkBackslashKeyword = false;
+        // whether the last token that is not whitespace is a quantifier, such as \forall
+        private boolean afterQuantifier = false;
+        // the type for the next token, an identifier that is a nullity modifier after a quantifier
+        private IElementType remapNext = null;
+
+        void reset() {
+            checkBackslashKeyword = false;
+            afterQuantifier = false;
+            remapNext = null;
+        }
 
         /**
          * Merges certain tokens together and returns the new element type for those merged tokens
@@ -71,6 +89,25 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
          */
         @Override
         public IElementType merge(IElementType type, Lexer originalLexer) {
+            IElementType result;
+            if (remapNext != null) {
+                result = remapNext;
+                remapNext = null;
+            } else {
+                result = mergeToken(type, originalLexer);
+            }
+            if (JMLTokenSet.quantifiers.contains(result)) {
+                afterQuantifier = true;
+            } else if (result != TokenType.WHITE_SPACE) {
+                afterQuantifier = false;
+            }
+            if (afterQuantifier && originalLexer.getTokenType() == JavaTokenType.IDENTIFIER) {
+                remapNext = quantifierModifiers.get(originalLexer.getTokenText().toString());
+            }
+            return result;
+        }
+
+        private IElementType mergeToken(IElementType type, Lexer originalLexer) {
             if (checkBackslashKeyword) {
                 // we found a backslash, so check if JML keyword is after it
                 IElementType result = type;

@@ -332,6 +332,20 @@ public class JMLTypeAnnotator {
     @NotNull
     private static InnerJavaExprResult annotateInnerJavaExpr(JMLInnerJavaExpr element, AnnotationHolder holder,
                                                              ExtraVariables extraVars, boolean mustReturnBoolean, boolean doTypeChecking) {
+        return annotateInnerJavaExpr(element, holder, extraVars, mustReturnBoolean, doTypeChecking, true);
+    }
+
+    /**
+     * See {@link #annotateInnerJavaExpr(JMLInnerJavaExpr, AnnotationHolder, ExtraVariables, boolean, boolean)}
+     *
+     * @param isExpression whether the text is one Java expression; if not, as for the comma-separated list of
+     *                     \not_modified(a, b), only the replacements are made, and the text is checked as part of the
+     *                     expression around it
+     */
+    @NotNull
+    private static InnerJavaExprResult annotateInnerJavaExpr(JMLInnerJavaExpr element, AnnotationHolder holder,
+                                                             ExtraVariables extraVars, boolean mustReturnBoolean,
+                                                             boolean doTypeChecking, boolean isExpression) {
         InnerJavaExprResult result = new InnerJavaExprResult(element);
         if (element == null) return result;
         PsiElement currentChild = element.getFirstChild();
@@ -365,6 +379,8 @@ public class JMLTypeAnnotator {
                 checkElemTypeExpr(holder, extraVars, result, currentChild);
             } else if (currentChild instanceof JMLNonNullElementsExpr) {
                 checkNonNullElementsExpr(holder, extraVars, result, currentChild);
+            } else if (currentChild instanceof JMLBackslashFunctionExpr) {
+                checkBackslashFunctionExpr(holder, extraVars, result, currentChild);
             } else if (currentChild instanceof JMLOldExpr) {
                 // \old(expr), checks the expression, but does not type check it, as the expression is not replaced,
                 // so it will be type checked when result is evaluated.
@@ -417,7 +433,7 @@ public class JMLTypeAnnotator {
 
         // collected the entire java expression string with its replacements,
         // now perform type checking and some other checks on it
-        if (result.isCorrect()) {
+        if (result.isCorrect() && isExpression) {
             // get the actual java expression
             PsiExpression expression = getJavaExprFromText(element, result, holder);
             if (expression != null) {
@@ -542,6 +558,41 @@ public class JMLTypeAnnotator {
             exprRes.setCorrect(false);
         }
         result.add("false", PsiTypes.booleanType(), exprRes.isCorrect(), current);
+    }
+
+    /**
+     * \fresh(expr) and \invariant_for(expr): checks that the argument is an object, and replaces it with "false".
+     * \not_modified(expr, ...): replaces it with "(new java.lang.Object[]{expr, ...} != null)", so that every
+     * expression in it is checked when the whole expression is
+     *
+     * @param holder    the Annotation holder
+     * @param extraVars an Object that holds extra variables that the Java resolver would not be able to resolve
+     * @param result    the result up until now
+     * @param current   the element we are checking for
+     */
+    private static void checkBackslashFunctionExpr(AnnotationHolder holder, ExtraVariables extraVars, InnerJavaExprResult result, PsiElement current) {
+        JMLInnerJavaExpr javaChild = getChildOfType(current, JMLInnerJavaExpr.class);
+        PsiElement beforeExpr = javaChild == null ? null : javaChild.getPrevSibling();
+        PsiElement afterExpr = javaChild == null ? null : javaChild.getNextSibling();
+        if (beforeExpr == null || afterExpr == null) {
+            // the parser already gave an error
+            result.add("false", PsiTypes.booleanType(), false, current);
+            return;
+        }
+        if (current.getNode().getElementType() == JMLTypes.NOT_MODIFIED_EXPR) {
+            InnerJavaExprResult arguments = annotateInnerJavaExpr(javaChild, holder, extraVars, false, false, false);
+            result.addText("(new java.lang.Object[]{", current.getFirstChild(), beforeExpr);
+            result.add(arguments, javaChild);
+            result.addText("} != null)", afterExpr, current.getLastChild());
+            return;
+        }
+        InnerJavaExprResult argument = annotateInnerJavaExpr(javaChild, holder, extraVars, false, true);
+        if (argument.isCorrect() && TypeConversionUtil.isPrimitiveAndNotNull(argument.getType())) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.notReferenceType(current.getFirstChild().getText()))
+                    .range(javaChild).create();
+            argument.setCorrect(false);
+        }
+        result.add("false", PsiTypes.booleanType(), argument.isCorrect(), current);
     }
 
     /**

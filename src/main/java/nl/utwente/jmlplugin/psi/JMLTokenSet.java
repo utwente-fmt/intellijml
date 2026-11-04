@@ -17,26 +17,30 @@ public class JMLTokenSet {
     );
 
     public static final TokenSet allModifiers = TokenSet.create(
-            SPEC_PUBLIC, SPEC_PROTECTED, PURE, INSTANCE, HELPER, NULLABLE,
-            PUBLIC, PRIVATE, PROTECTED, STATIC
+            SPEC_PUBLIC, SPEC_PROTECTED, PURE, INSTANCE, HELPER, NULLABLE, NON_NULL, NULLABLE_BY_DEFAULT,
+            NON_NULL_BY_DEFAULT, PUBLIC, PRIVATE, PROTECTED, STATIC
     );
+
+    // the modifiers for whether a field, parameter, variable or method result may be null
+    public static final TokenSet nullityModifiers = TokenSet.create(NULLABLE, NON_NULL);
+
+    // the modifiers for the default nullity of the declarations in a class
+    public static final TokenSet nullityDefaults = TokenSet.create(NULLABLE_BY_DEFAULT, NON_NULL_BY_DEFAULT);
 
     public static final TokenSet visibilityModifiers = TokenSet.create(PUBLIC, PROTECTED, PRIVATE);
 
     public static final TokenSet specVisibilityModifiers = TokenSet.create(SPEC_PUBLIC, SPEC_PROTECTED);
 
     // used for annotators
-    public static final TokenSet classModifiers = TokenSet.orSet(specVisibilityModifiers, TokenSet.create(PURE));
+    public static final TokenSet classModifiers = TokenSet.orSet(specVisibilityModifiers, nullityDefaults, TokenSet.create(PURE));
 
     public static final TokenSet invariantModifiers = TokenSet.orSet(visibilityModifiers, TokenSet.create(INSTANCE, STATIC));
 
     public static final TokenSet fieldModifiers = TokenSet.orSet(
-            specVisibilityModifiers, TokenSet.create(NULLABLE, INSTANCE));
+            specVisibilityModifiers, nullityModifiers, TokenSet.create(INSTANCE));
 
     public static final TokenSet methodDeclModifiers = TokenSet.orSet(
-            specVisibilityModifiers, TokenSet.create(PURE, NULLABLE, HELPER));
-
-    public static final TokenSet nullable = TokenSet.create(NULLABLE);
+            specVisibilityModifiers, nullityModifiers, TokenSet.create(PURE, HELPER));
 
     public static final TokenSet also = TokenSet.create(ALSO);
 
@@ -54,7 +58,11 @@ public class JMLTokenSet {
 
     public static final TokenSet javaKeywords = TokenSet.create(THIS, SUPER);
 
-    public static final TokenSet generalJMLKeywordsInJava = TokenSet.create(NOT_SPECIFIED, OLD, TYPE_OF, TYPE_CAPS, ELEM_TYPE, TYPE, NON_NULL_ELEMENTS);
+    public static final TokenSet generalJMLKeywordsInJava = TokenSet.create(NOT_SPECIFIED, OLD, TYPE_OF, TYPE_CAPS, ELEM_TYPE, TYPE,
+            NON_NULL_ELEMENTS, INVARIANT_FOR);
+
+    // the JML functions that are only allowed in postconditions and assertions
+    public static final TokenSet postconditionKeywordsInJava = TokenSet.create(FRESH, NOT_MODIFIED);
 
     // used for lexers / parsers
     public static final TokenSet keywordsBeforeJavaExpr = TokenSet.orSet(loopVariantKeywords, TokenSet.create(
@@ -78,7 +86,8 @@ public class JMLTokenSet {
     public static final TokenSet assignableJavaKeywords = TokenSet.create(NOTHING, EVERYTHING);
 
     public static final TokenSet backslashKeywordsInJavaExpr = TokenSet.orSet(quantifiers,
-            TokenSet.create(RESULT, OLD, TYPE_OF, ELEM_TYPE, TYPE, TYPE_CAPS, NON_NULL_ELEMENTS));
+            TokenSet.create(RESULT, OLD, TYPE_OF, ELEM_TYPE, TYPE, TYPE_CAPS, NON_NULL_ELEMENTS, FRESH, INVARIANT_FOR,
+                    NOT_MODIFIED));
 
     // the keywords that end a Java expression, also without a semicolon before them; see contextualKeywords
     public static final TokenSet allOuterKeywords = TokenSet.orSet(methodSpecCaseKeywords, allModifiers, behaviors,
@@ -92,7 +101,7 @@ public class JMLTokenSet {
     // does not contain \type() because that one does not take an expression
     public static final TokenSet parenthesesAroundJavaTokenSet =
             TokenSet.create(JMLTypes.OLD, JMLTypes.TYPE_OF, JMLTypes.ELEM_TYPE,
-                    JMLTypes.NON_NULL_ELEMENTS);
+                    JMLTypes.NON_NULL_ELEMENTS, JMLTypes.FRESH, JMLTypes.INVARIANT_FOR, JMLTypes.NOT_MODIFIED);
 
     public static final TokenSet javaPrimitives = TokenSet.create(
             JavaTokenType.INT_KEYWORD, JavaTokenType.BOOLEAN_KEYWORD, JavaTokenType.CHAR_KEYWORD,

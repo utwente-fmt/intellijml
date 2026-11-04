@@ -48,6 +48,11 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testBackslashFresh() {
+        myFixture.configureByFile("BackslashFresh.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testMultiLineExpressions() {
         myFixture.configureByFile("MultiLineExpressions.java");
         myFixture.checkHighlighting(true, false, true, false);

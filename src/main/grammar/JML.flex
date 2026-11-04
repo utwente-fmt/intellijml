@@ -41,6 +41,9 @@ REST=[^@;().,:*\[\]\s]
   "\\into"                    { return INTO; }
   "spec_public"               { return SPEC_PUBLIC; }
   "spec_protected"            { return SPEC_PROTECTED; }
+  "non_null"                  { return NON_NULL; }
+  "nullable_by_default"       { return NULLABLE_BY_DEFAULT; }
+  "non_null_by_default"       { return NON_NULL_BY_DEFAULT; }
   "loop_invariant"            { return LOOPINVARIANT; }
   "decreases"                 { return DECREASES; }
   "decreasing"                { return DECREASING; }

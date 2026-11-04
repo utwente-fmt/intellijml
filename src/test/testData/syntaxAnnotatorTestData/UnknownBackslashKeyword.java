@@ -1,7 +1,7 @@
 package syntaxAnnotatorTestData;
 
 public class UnknownBackslashKeyword {
-    //@ ensures <error descr="Unknown keyword \fresh, or a JML keyword that this plugin does not support">\fresh</error>(\result);
+    //@ ensures <error descr="Unknown keyword \reach, or a JML keyword that this plugin does not support">\reach</error>(\result);
     public Object create() {
         return new Object();
     }
