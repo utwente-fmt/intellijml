@@ -117,6 +117,7 @@ REST=[^@;().,:*\[\]\s]
   "private"                   { return PRIVATE; }
   "protected"                 { return PROTECTED; }
   "static"                    { return STATIC; }
+  "final"                     { return FINAL; }
   "maintaining"               { return MAINTAINING; }
   "assert"                    { return ASSERT; }
   "assume"                    { return ASSUME; }

@@ -150,7 +150,7 @@ modifiers ::= ((SPEC_PUBLIC | SPEC_PROTECTED | pure | instance | helper | nullab
     | NON_NULL_BY_DEFAULT | SPEC_PURE | math_modifier | java_modifier) SEMICOLON* AT_SIGN*)+
 private math_modifier ::= CODE_JAVA_MATH | SPEC_JAVA_MATH | CODE_SAFE_MATH | SPEC_SAFE_MATH | CODE_BIGINT_MATH
     | SPEC_BIGINT_MATH
-private java_modifier ::= public | private | protected | static
+private java_modifier ::= public | private | protected | static | final
 
 // specification inside a method
 in_method_spec ::= (AT_SIGN* (loop_invariant | loop_variant | loop_assignable_clause | assert_statement | assume_statement

@@ -125,7 +125,7 @@ final class SpecCases {
         return null;
     }
 
-    private static boolean startsWithAlso(@NotNull JMLMethodJml methodJml) {
+    static boolean startsWithAlso(@NotNull JMLMethodJml methodJml) {
         for (PsiElement child = methodJml.getFirstChild(); child != null; child = child.getNextSibling()) {
             if (child.getNode().getElementType() == JMLTypes.ALSO) return true;
             if (child instanceof JMLMethodSpec) return false;
@@ -136,7 +136,7 @@ final class SpecCases {
     /**
      * @return the method specification in a JML comment, or null if it has none
      */
-    private static @Nullable JMLMethodJml methodJml(@NotNull PsiComment comment) {
+    static @Nullable JMLMethodJml methodJml(@NotNull PsiComment comment) {
         String text = comment.getText();
         if (!text.startsWith("//@") && !text.startsWith("/*@")) return null;
         // the JML of a comment that continues the one before it is found from that comment

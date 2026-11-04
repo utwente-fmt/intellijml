@@ -21,8 +21,8 @@ public class AssignableVars extends Test {
         testRef,
         intArr,
         Test.five,
-        <error descr="This variable is final, so cannot be assigned">z</error>,
-        <error descr="This variable is final, so cannot be assigned">Test.Inner.inner</error>, (* fields in interfaces are always final *)
+        <warning descr="This variable is final, so cannot be assigned">z</warning>,
+        <warning descr="This variable is final, so cannot be assigned">Test.Inner.inner</warning>, (* fields in interfaces are always final *)
         <error descr="Reference cannot be resolved">AssignableVars.b</error>; (* not static *)
     */
     /*@ assignable (* '.*' is only allowed on classes or references to classes *)

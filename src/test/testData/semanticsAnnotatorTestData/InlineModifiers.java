@@ -21,7 +21,7 @@ public class InlineModifiers {
         return count;
     }
 
-    public /*<error descr="Method specifications are not allowed in a method declaration">@ requires true; @</error>*/ int notAllowed() {
+    public /*<error descr="A method specification incorrectly follows non-JML modifiers">@ requires true; @</error>*/ int notAllowed() {
         return count;
     }
 
@@ -31,7 +31,7 @@ public class InlineModifiers {
         return count + total;
     }
 
-    //@ ensures \result == <warning descr="JML expressions should be pure and this method might not be pure">notPure()</warning>;
+    //@ ensures \result == <warning descr="A non-pure method is being called where it is not permitted: semanticsAnnotatorTestData.InlineModifiers.notPure()">notPure()</warning>;
     public int other() {
         return count;
     }

@@ -15,11 +15,11 @@ public class JavaCallExpressions {
     //@ invariant <error descr="Method could not be resolved, maybe the parameters do not correspond?">sumNum("String")</error> > 0;
 
     // using ... parameter
-    //@ invariant concat() == null;
-    //@ invariant concat(null) == null;
+    //@ invariant <warning descr="A non-pure method is being called where it is not permitted: typeAnnotatorTestData.JavaCallExpressions.concat(java.lang.String...)">concat()</warning> == null;
+    //@ invariant <warning descr="A non-pure method is being called where it is not permitted: typeAnnotatorTestData.JavaCallExpressions.concat(java.lang.String...)">concat(null)</warning> == null;
     //@ invariant <error descr="Method could not be resolved, maybe the parameters do not correspond?">concat(10)</error> == null;
-    //@ invariant concat("test") == null;
-    //@ invariant concat("test","test2") == null;
+    //@ invariant <warning descr="A non-pure method is being called where it is not permitted: typeAnnotatorTestData.JavaCallExpressions.concat(java.lang.String...)">concat("test")</warning> == null;
+    //@ invariant <warning descr="A non-pure method is being called where it is not permitted: typeAnnotatorTestData.JavaCallExpressions.concat(java.lang.String...)">concat("test","test2")</warning> == null;
 
     // overloading
     //@ invariant overload(7);

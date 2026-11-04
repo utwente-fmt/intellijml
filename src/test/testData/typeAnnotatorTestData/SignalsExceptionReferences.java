@@ -8,7 +8,7 @@ public class SignalsExceptionReferences {
         signals(<error descr="This is not an exception class">TestNoException</error> e) true;
         signals(TestException e) true;
         signals(TestException2 e) true;
-        signals(<error descr="This exception (or a superclass or subclass of it) should be mentioned in the throws clause of this method">TestException3</error> e) true;
+        signals(<warning descr="This exception (or a superclass or subclass of it) should be mentioned in the throws clause of this method">TestException3</warning> e) true;
         signals(<error descr="This class could not be resolved, did you forget to import it?">NonExistent</error> e) true ;
         signals(<error descr="This class could not be resolved, did you forget to import it?">test</error> e) true ;
      */
@@ -23,7 +23,7 @@ public class SignalsExceptionReferences {
             <error descr="This is not an exception class">TestNoException</error>,
             TestException,
             TestException2,
-            <error descr="This exception (or a superclass or subclass of it) should be mentioned in the throws clause of this method">TestException3</error>,
+            <warning descr="This exception (or a superclass or subclass of it) should be mentioned in the throws clause of this method">TestException3</warning>,
             <error descr="This class could not be resolved, did you forget to import it?">NonExistent</error>,
             <error descr="This class could not be resolved, did you forget to import it?">test</error>;
      */

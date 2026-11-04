@@ -33,6 +33,11 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
      * can recognize the error message. Created once, as every IElementType is registered globally and the
      * number of element types is limited
      */
+    // the operators after which a quantified expression can be without parentheses, as in "a && \forall int i; ..."
+    private static final com.intellij.psi.tree.TokenSet OPERATORS_BEFORE_QUANTIFIER = com.intellij.psi.tree.TokenSet.create(
+            JavaTokenType.ANDAND, JavaTokenType.OROR, JavaTokenType.AND, JavaTokenType.OR, JavaTokenType.XOR,
+            JavaTokenType.EXCL, JavaTokenType.EQEQ, JavaTokenType.NE, JavaTokenType.QUEST, JavaTokenType.COLON,
+            JMLTypes.LOGICAL_IMPL, JMLTypes.LOGICAL_EQ, JMLTypes.LOGICAL_IMPL_REV, JMLTypes.LOGICAL_NOT_EQ);
     private static final IElementType noLParenBeforeQuantifier = new IElementType("NO_LPAREN_BEFORE_QUANTIFIER", JMLLanguage.INSTANCE);
 
     static {
@@ -148,6 +153,8 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         int openedBracesCount = 0;
         int pos = current_position_(builder);
         IElementType type = builder.getTokenType();
+        // the token before the current one in this expression, if it is not part of a JML expression
+        IElementType previousType = null;
         while (correct && !builder.eof() && type != null && (type.getLanguage() == JavaLanguage.INSTANCE
                 || JMLTokenSet.backslashKeywordsInJavaExpr.contains(type) || JMLTokenSet.logicalOperators.contains(type))) {
             // check if there is a JML expression
@@ -162,15 +169,17 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
                 // continue otherwise the parenthesis will be counted below
                 type = builder.getTokenType();
                 continue;
-            } else if (JMLTokenSet.quantifiers.contains(builder.lookAhead(1))) {
+            } else if (type == JavaTokenType.LPARENTH && JMLTokenSet.quantifiers.contains(builder.lookAhead(1))) {
                 correct = parseQuantifiedExpr(builder, level, true);
                 // continue otherwise the parenthesis will be counted below
                 type = builder.getTokenType();
                 continue;
             } else if (JMLTokenSet.quantifiers.contains(builder.getTokenType())) {
-                if (parent == null && current_position_(builder) == pos && startsVariableDeclaration(builder.lookAhead(1))) {
+                // as in OpenJML, also after an operator such as && or ==>, as in "a.length > 0 && \forall int i; ..."
+                boolean expressionStart = current_position_(builder) == pos || OPERATORS_BEFORE_QUANTIFIER.contains(previousType);
+                if (parent == null && expressionStart && startsVariableDeclaration(builder.lookAhead(1))) {
                     // as in OpenJML, a whole expression can be a quantified expression without parentheses, as in
-                    // "assert orall int i; 0 <= i < n; a[i] > 0;"
+                    // "assert \forall int i; 0 <= i < n; a[i] > 0;"
                     correct = parseQuantifiedExpr(builder, level, false);
                     type = builder.getTokenType();
                     continue;
@@ -206,6 +215,7 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
                 openedBracesCount--;
             }
             // update the variables for the next iteration of the loop
+            previousType = type;
             builder.advanceLexer();
             type = builder.getTokenType();
         }
@@ -487,7 +497,10 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         exit_section_(builder, level + 1, innerJavaMarker, null, correct, correct, null);
         // found spec_expression, which ends at the right parenthesis, or at the end of the whole expression for a
         // quantified expression without parentheses
-        if (!parenthesized && isEndOfExpression(builder) || parenthesized && nextTokenIs(builder, JavaTokenType.RPARENTH)) {
+        // without parentheses, it can end at the closing parenthesis of a surrounding expression, as in
+        // "(a && \forall int i; b)"
+        if (!parenthesized && (isEndOfExpression(builder) || builder.getTokenType() == JavaTokenType.RPARENTH)
+                || parenthesized && nextTokenIs(builder, JavaTokenType.RPARENTH)) {
             // throw an error when nothing was parsed, we do it here instead of telling the java recursive parser,
             // because you can have an empty predicate
             if (current_position_(builder) <= pos) {

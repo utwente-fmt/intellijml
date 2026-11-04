@@ -19,7 +19,21 @@ public final class ErrorMessages {
     public static final String SIGNALS_WITHOUT_PARENS = "A signals clause must have parentheses around the exception type";
     public static final String SQUARE_BRACKET_BUT_NOT_STAR = "Only '*' in between the square brackets is supported";
     public static final String EXCEPTION_REFERENCE_EXPECTED = "Reference(s) to one or more exceptions expected";
-    public static final String NO_MODIFIER_BEFORE_SPEC = "All specification cases must be placed before any modifiers";
+    public static final String PUBLIC_AND_SPEC_PUBLIC = "There is no point to a declaration being both public and spec_public";
+
+    // OpenJML's messages for modifiers before a specification case
+    public static final String MODIFIER_BEFORE_LIGHTWEIGHT_CASE = "No modifiers are allowed prior to a lightweight specification case";
+    public static final String MODIFIER_BEFORE_HEAVYWEIGHT_CASE = "This JML modifier is not allowed for a specification case";
+
+    // OpenJML's [strict-jml] warnings about also
+    public static String shouldBeginWithAlso(String method, String overrides) {
+        return "Method " + method + " overrides parent class methods and so its specification should begin with 'also' ("
+                + overrides + ")";
+    }
+
+    public static String mayNotBeginWithAlso(String method) {
+        return "Method " + method + " does not override parent class methods and so its specification may not begin with 'also'";
+    }
     public static final String NO_PARENS_AROUND_QUANTIFIER = "A quantified expression should be inside parentheses, including the keyword";
 
     // Semantic error messages
@@ -45,8 +59,14 @@ public final class ErrorMessages {
     public static final String COUNT_OUTSIDE_LOOP = "A \\count token is used outside the scope of a foreach loop";
     public static final String NOT_SPECIFIED_REDUNDANT = "This clause containing \\not_specified is redundant because you already specified it";
     public static final String STATIC_AND_INSTANCE = "You cannot use both instance and static, choose one";
-    public static final String BACKSLASH_RESULT_NOT_ALLOWED = "You can only use \\result in an ensures clause";
-    public static final String OLD_EXPR_NOT_ALLOWED = "You can only use an \\old() expressions in ensures and signals clauses, assert and assume statements, and in loop invariants";
+    // OpenJML's messages for \result and \old in a clause that does not allow them
+    public static String resultNotAllowed(String clause) {
+        return "A \\result expression may not be in a " + clause + " clause";
+    }
+
+    public static String oldNotAllowed(String clause) {
+        return "A \\old token with no label may not be present in a " + clause + " clause";
+    }
 
     // Type error messages
     public static final String INVALID_EXPR = "Not a valid expression";
@@ -86,7 +106,18 @@ public final class ErrorMessages {
     public static final String NOT_A_CLASS = "This is not a class";
     public static final String REFERENCE_UNRESOLVED = "Reference cannot be resolved";
     public static final String NOT_VISIBLE = "This is not visible here, declare it spec_public to use it in specifications";
-    public static final String METHOD_NOT_PURE = "JML expressions should be pure and this method might not be pure";
+    // OpenJML's warning for a call in a specification of a method that is not spec_pure (or pure, with a primitive result)
+    public static String nonPureCall(String method) {
+        return "A non-pure method is being called where it is not permitted: " + method;
+    }
+
+    public static String pureReturnsObjectTooltip(String method) {
+        return "<html>A non-pure method is being called where it is not permitted.<br>" + method + " is pure, but a pure "
+                + "method may return a new object, so a specification may only call it if it is spec_pure, as in "
+                + "OpenJML 21: declare it spec_pure if it returns an object that already existed, such as the value of "
+                + "a field.</html>";
+    }
+
     public static final String ASSIGNMENT_NOT_PURE = "JML expressions should be pure and assignments are not pure";
     public static final String INCREMENT_NOT_PURE = "JML expressions should be pure and ++ and -- change a variable";
 
@@ -271,6 +302,8 @@ public final class ErrorMessages {
         if (specKind instanceof JMLModifiers) {
             specKindStr = "Modifiers";
         } else if (specKind instanceof JMLMethodJml) {
+            // OpenJML's message for a specification after a Java annotation or modifier, as in "@Override //@ ensures ..."
+            if (position == CommentPosition.METHOD_DECLARATION) return "A method specification incorrectly follows non-JML modifiers";
             specKindStr = "Method specifications";
         } else if (specKind instanceof JMLInMethodSpec) {
             specKindStr = "In-method specifications";

@@ -1,9 +1,9 @@
 package semanticsAnnotatorTestData;
 
 public class OldExpressionAllowed {
-    //@ invariant <error descr="You can only use an \old() expressions in ensures and signals clauses, assert and assume statements, and in loop invariants">\old(1 > 0)</error>;
+    //@ invariant \old(1 > 0);
 
-    //@ requires <error descr="You can only use an \old() expressions in ensures and signals clauses, assert and assume statements, and in loop invariants">\old(a > 0)</error>;
+    //@ requires <error descr="A \old token with no label may not be present in a requires clause">\old(a > 0)</error>;
     //@ ensures \old(a > 0);
     //@ signals (Exception e) \old(a > 0);
     public int div(int a, int b) {

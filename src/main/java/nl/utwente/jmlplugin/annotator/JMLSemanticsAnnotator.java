@@ -62,7 +62,13 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             if (fix != null) builder = builder.withFix(fix);
             builder.create();
         } else if (element instanceof JMLMethodJml && checkModifierBeforeSpecClauses((JMLMethodJml) element)) {
-            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NO_MODIFIER_BEFORE_SPEC).create();
+            holder.newAnnotation(HighlightSeverity.ERROR, isHeavyweight((JMLMethodJml) element)
+                    ? ErrorMessages.MODIFIER_BEFORE_HEAVYWEIGHT_CASE : ErrorMessages.MODIFIER_BEFORE_LIGHTWEIGHT_CASE).create();
+        } else if (element instanceof JMLMethodJml methodJml && alsoProblem(methodJml) != null) {
+            // OpenJML's [strict-jml] warning: the specification of a method that overrides another one starts with also
+            PsiElement first = getDeepestFirst(methodJml);
+            holder.newAnnotation(HighlightSeverity.WARNING, alsoProblem(methodJml)).range(first).create();
+            return true;
         } else if (isLoopSpec(element) && checkLoopSpecAboveLoop(element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.LOOP_SPEC_NOT_ABOVE_LOOP).create();
         } else if (isStatement(element) && isBetweenLoopSpecAndLoop(element)) {
@@ -100,14 +106,14 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             // the visibility of a specification case is not a modifier of the method
             return true;
         } else if (element.getNode().getElementType() == JMLTypes.RESULT && checkBackslashResultAllowed(element)) {
-            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.BACKSLASH_RESULT_NOT_ALLOWED).create();
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.resultNotAllowed(clauseName(element))).create();
         } else if (element instanceof JMLBackslashFunctionExpr && clauseNotAllowing(element) != null) {
             PsiElement argument = getChildOfType(element, JMLInnerJavaExpr.class);
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.notAllowedInClause(
                     element.getFirstChild().getText(), clauseNotAllowing(element)))
                     .range(argument != null ? argument : element).create();
         } else if (element instanceof JMLOldExpr && checkOldExprAllowed((JMLOldExpr) element)) {
-            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.OLD_EXPR_NOT_ALLOWED).create();
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.oldNotAllowed(clauseName(element))).create();
         } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())
                 && getParentOfType(element, JMLGhostDeclaration.class) instanceof JMLGhostDeclaration ghost) {
             return checkGhostModifier(element, ghost, holder);
@@ -142,6 +148,12 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.nullityOnPrimitive(primitive)).create();
             } else if (checkDuplicateModifiers(element, modifierPosition)) {
                 holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.DUPLICATE_MODIFIER).create();
+                return true;
+            } else if (element.getNode().getElementType() == JMLTypes.SPEC_PUBLIC
+                    && modifiedDeclaration(element) instanceof PsiModifierListOwner owner && owner.getModifierList() != null
+                    && owner.getModifierList().hasExplicitModifier(PsiModifier.PUBLIC)) {
+                // OpenJML's lint warning
+                holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.PUBLIC_AND_SPEC_PUBLIC).create();
                 return true;
             } else {
                 return true;
@@ -318,7 +330,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
     private static boolean checkGhostModifier(PsiElement element, JMLGhostDeclaration ghost, AnnotationHolder holder) {
         IElementType type = element.getNode().getElementType();
         boolean field = Ghosts.isField(ghost);
-        TokenSet allowed = field ? JMLTokenSet.ghostFieldModifiers : JMLTokenSet.nullityModifiers;
+        TokenSet allowed = field ? JMLTokenSet.ghostFieldModifiers
+                : TokenSet.orSet(JMLTokenSet.nullityModifiers, TokenSet.create(JMLTypes.FINAL));
         List<PsiElement> modifiers = Ghosts.modifiers(ghost);
         List<IElementType> types = new ArrayList<>();
         for (PsiElement modifier : modifiers) types.add(modifier.getNode().getElementType());
@@ -328,7 +341,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         IElementType otherVisibility = before.stream()
                 .filter(other -> other != type && JMLTokenSet.visibilityModifiers.contains(other)).findFirst().orElse(null);
         if (!allowed.contains(type)) {
-            boolean javaModifier = JMLTokenSet.visibilityModifiers.contains(type) || type == JMLTypes.STATIC;
+            boolean javaModifier = JMLTokenSet.visibilityModifiers.contains(type) || type == JMLTypes.STATIC
+                    || type == JMLTypes.FINAL;
             message = javaModifier ? ErrorMessages.javaModifierNotAllowedHere(element.getText())
                     : ErrorMessages.jmlModifierNotAllowedIn(!field ? "local variable"
                     : Ghosts.isModel(ghost) ? "model field" : "ghost field");
@@ -350,6 +364,41 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         if (message == null) return true;
         holder.newAnnotation(HighlightSeverity.ERROR, message).create();
         return false;
+    }
+
+    /**
+     * @return whether the first specification case of the method specification is a heavyweight one, with a behavior
+     */
+    private static boolean isHeavyweight(JMLMethodJml methodJml) {
+        JMLMethodSpec spec = getChildOfType(methodJml, JMLMethodSpec.class);
+        PsiElement first = spec == null ? null : spec.getFirstChild();
+        while (first != null && (first instanceof PsiWhiteSpace || first.getNode().getElementType() == JMLTypes.AT_SIGN)) {
+            first = first.getNextSibling();
+        }
+        return first instanceof JMLBehaviorHeader;
+    }
+
+    /**
+     * @param methodJml a method specification
+     * @return OpenJML's warning if it is the first JML specification of its method and starts with also although the
+     * method does not override another method, or the other way round; null if there is no problem
+     */
+    private static String alsoProblem(JMLMethodJml methodJml) {
+        if (!(getJavaContext(methodJml) instanceof PsiMethod method) || method.isConstructor()) return null;
+        PsiComment comment = getCommentContext(methodJml);
+        if (comment == null) return null;
+        // the first JML specification of the method decides
+        for (PsiComment previous : collectPreviousComments(comment, false)) {
+            if (SpecCases.methodJml(previous) != null) return null;
+        }
+        PsiMethod[] overridden = method.findSuperMethods();
+        boolean also = SpecCases.startsWithAlso(methodJml);
+        if (overridden.length > 0 && !also) {
+            return ErrorMessages.shouldBeginWithAlso(method.getName(),
+                    Purity.qualifiedName(method) + " overrides " + Purity.qualifiedName(overridden[0]));
+        }
+        if (overridden.length == 0 && also) return ErrorMessages.mayNotBeginWithAlso(method.getName());
+        return null;
     }
 
     /**
@@ -448,7 +497,7 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
     private static boolean checkOldModifier(PsiElement element, JMLOldClause old, AnnotationHolder holder) {
         IElementType type = element.getNode().getElementType();
         String message = null;
-        if (JMLTokenSet.visibilityModifiers.contains(type) || type == JMLTypes.STATIC) {
+        if (JMLTokenSet.visibilityModifiers.contains(type) || type == JMLTypes.STATIC || type == JMLTypes.FINAL) {
             message = ErrorMessages.javaModifierInOldClause(element.getText());
         } else if (!JMLTokenSet.nullityModifiers.contains(type)) {
             message = ErrorMessages.jmlModifierNotAllowedIn("old clause");
@@ -566,11 +615,10 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      * @return true if this error has occurred
      */
     private static boolean checkHelperNotAllowed(PsiElement element) {
-        // as in OpenJML, a helper method must be pure (or spec_pure), private or final
-        if (doLinkedCommentsContain(element, "pure|spec_pure", false))
-            return false;
+        // as in OpenJML, a helper method must be pure (or spec_pure, also by an annotation or inherited), private or final
         PsiElement method = getJavaContext(element);
         if (method == null) return false;
+        if (method instanceof PsiMethod psiMethod && Purity.of(psiMethod) != Purity.NONE) return false;
         PsiModifierList modifierList = getChildOfType(method, PsiModifierList.class);
         if (modifierList == null) return false;
         return !modifierList.hasModifierProperty(PsiModifier.PRIVATE) && !modifierList.hasModifierProperty(PsiModifier.FINAL);
@@ -783,12 +831,29 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      * @return true if it is not allowed
      */
     private static boolean checkOldExprAllowed(JMLOldExpr element) {
-        // a history constraint relates the states before and after a method, and OpenJML also allows \old in an
-        // initially clause
-        JMLClassInvariant invariant = getParentOfType(element, JMLClassInvariant.class);
-        if (invariant != null && !invariantKeyword(invariant).equals("invariant")) return false;
+        // as in OpenJML, also in invariants, initially clauses and history constraints (which relate the states before
+        // and after a method), and in the values of ghost variables
         return getParentOfType(element, JMLEnsuresClause.class, JMLSignalsClause.class, JMLAssumeStatement.class,
                 JMLAssertStatement.class, JMLLoopInvariant.class, JMLLoopVariant.class, JMLCheckStatement.class,
-                JMLShowStatement.class, JMLSplitStatement.class) == null;
+                JMLShowStatement.class, JMLSplitStatement.class, JMLClassInvariant.class, JMLSetStatement.class,
+                JMLGhostDeclaration.class) == null;
+    }
+
+    /**
+     * @return the name of the clause that an element is in, as OpenJML calls it in its messages, such as "requires"
+     */
+    private static String clauseName(PsiElement element) {
+        PsiElement clause = getParentOfType(element, JMLRequiresClause.class, JMLEnsuresClause.class,
+                JMLSignalsClause.class, JMLSignalsOnlyClause.class, JMLDivergesClause.class, JMLOldClause.class,
+                JMLRepresentsClause.class, JMLClassInvariant.class, JMLLoopInvariant.class, JMLLoopVariant.class,
+                JMLAssertStatement.class, JMLAssumeStatement.class, JMLCheckStatement.class, JMLSetStatement.class,
+                JMLGhostDeclaration.class, JMLShowStatement.class, JMLSplitStatement.class);
+        if (clause instanceof JMLSignalsClause) return "signals";
+        if (clause instanceof JMLOldClause) return "old";
+        if (clause instanceof JMLRepresentsClause) return "represents";
+        if (clause instanceof JMLGhostDeclaration declaration && Ghosts.keyword(declaration) != null) {
+            return Ghosts.keyword(declaration).getText();
+        }
+        return clause == null ? "" : statementName(clause);
     }
 }

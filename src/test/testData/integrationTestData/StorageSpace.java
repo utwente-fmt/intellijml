@@ -30,9 +30,9 @@ public class StorageSpace {
       @@@ private invariant nrOfBoxesShipped >= 0 && <error descr="An identifier with public visibility may not be used in a invariant clause with private visibility">nrOfFullBoxes</error> >= 0;
       (* \elemtype needs an array and type class *)
       private invariant \elemtype(<error descr="This is not an array">boxes.getClass()</error>) instanceof Box;
-      private invariant \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?"><warning descr="JML expressions should be pure and this method might not be pure">boxes.toArray(new Box[0])</warning></error>) == \type(Box);
+      private invariant \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?"><warning descr="A non-pure method is being called where it is not permitted: java.util.List.toArray(T[])">boxes.toArray(new Box[0])</warning></error>) == \type(Box);
       private invariant \elemtype(<error descr="Not a valid expression">boxes.toArray(new Box[0]).class</error>) == \type(Box);
-      private invariant \elemtype(<warning descr="JML expressions should be pure and this method might not be pure">boxes.toArray(new Box[0])</warning>.getClass()) instanceof \TYPE;
+      private invariant \elemtype(<warning descr="A non-pure method is being called where it is not permitted: java.util.List.toArray(T[])">boxes.toArray(new Box[0])</warning>.getClass()) instanceof \TYPE;
       private invariant \nonnullelements(boxes.toArray());
       @@@@@@@*/
     /*@ private invariant \elemtype(boxes.toArray(new Box[0]).getClass( == \type(Box)<error descr="Right parenthesis expected, got ';'">;</error>
@@ -40,7 +40,7 @@ public class StorageSpace {
     */
 
     // returns the weight of all the boxes together
-    //@   ensures \result == (\sum int i; i >= 0 && i < boxes.size(); <warning descr="JML expressions should be pure and this method might not be pure">boxes.get(i).getWeight()</warning>);
+    //@   ensures \result == (\sum int i; i >= 0 && i < boxes.size(); <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.getWeight()">boxes.get(i).getWeight()</warning>);
     //@ pure
     public float getTotalWeight() {
         int currentWeight = 0;
@@ -52,9 +52,9 @@ public class StorageSpace {
     }
 
     // returns the average weight of the boxes, or 0 if there are no boxes
-    //@ ensures <error descr="This must be of type boolean, but is float">\result == boxes.size() == 0 ? 0 : getTotalWeight() / <warning descr="JML expressions should be pure and this method might not be pure">getNrOfBoxes()</warning></error>; (* need parentheses around conditional expression *)
+    //@ ensures <error descr="This must be of type boolean, but is float">\result == boxes.size() == 0 ? 0 : getTotalWeight() / <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.StorageSpace.getNrOfBoxes()">getNrOfBoxes()</warning></error>; (* need parentheses around conditional expression *)
     // some syntactical errors
-    //@ ensures \result == (boxes.size() == 0 ? 0 : getTotalWeight() / <warning descr="JML expressions should be pure and this method might not be pure">getNrOfBoxes()</warning><error descr="Incorrectly formed or terminated ensures statement near here -- perhaps a missing semicolon">)</error>
+    //@ ensures \result == (boxes.size() == 0 ? 0 : getTotalWeight() / <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.StorageSpace.getNrOfBoxes()">getNrOfBoxes()</warning><error descr="Incorrectly formed or terminated ensures statement near here -- perhaps a missing semicolon">)</error>
     //@ <error descr="Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'esuress'">esuress</error> \result >= 0;
     //@ ensures <error descr="Unknown keyword \rsul, or a JML keyword that this plugin does not support">\rsul</error> >= 0;
     //@ requires \not_specified;
@@ -62,7 +62,7 @@ public class StorageSpace {
     /*@ <warning descr="Use a single signals_only clause to avoid confusion">signals_only ArithmeticException;</warning>
     signals (ArithmeticException)  nrOfFullBoxes == 0;
     signals (<error descr="This class could not be resolved, did you forget to import it?">IOException</error>) nrOfFullBoxes == 0;
-    <warning descr="Use a single signals_only clause to avoid confusion">signals_only <error descr="This exception (or a superclass or subclass of it) should be mentioned in the throws clause of this method">EOFException</error>;</warning>
+    <warning descr="Use a single signals_only clause to avoid confusion">signals_only <warning descr="This exception (or a superclass or subclass of it) should be mentioned in the throws clause of this method">EOFException</warning>;</warning>
     signals (<error descr="This class could not be resolved, did you forget to import it?">AritheeemeticException</error> e) <error descr="Reference cannot be resolved">e</error> instanceof RuntimeException;
     */
     public float getAverageWeight() /*<error descr="Modifiers are not allowed before a method body">@pure</error>*/ {
@@ -98,11 +98,11 @@ public class StorageSpace {
     // returns the heaviest box, or null if there are no boxes
     // mix of syntactical and type errors
     //@ requires <error descr="Not a valid expression">boxes != null && boxes.size) > 0</error>;
-    //@ ensures (\forall int i; i > 0 && i < <error descr="Reference cannot be resolved">boxes.lenght</error>; <warning descr="JML expressions should be pure and this method might not be pure">boxes.get(i).getWeight()</warning> <= <error descr="Reference cannot be resolved">\result.weigh</error>);
+    //@ ensures (\forall int i; i > 0 && i < <error descr="Reference cannot be resolved">boxes.lenght</error>; <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.getWeight()">boxes.get(i).getWeight()</warning> <= <error descr="Reference cannot be resolved">\result.weigh</error>);
     public Box getHeaviestBox() {
         if (getNrOfBoxes() != 0) {
             Box heaviest = boxes.get(0);
-            //@maintaining <warning descr="JML expressions should be pure and this method might not be pure">boxes.get(i).getWeight()</warning> > 0;
+            //@maintaining <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.getWeight()">boxes.get(i).getWeight()</warning> > 0;
             for (int i = 1; i < getNrOfBoxes(); i++) {
                 Box current = boxes.get(i);
                 if (current.getWeight() > heaviest.getWeight()) {
@@ -153,11 +153,11 @@ public class StorageSpace {
     // returns true if a box could be filled
     /*@
       @ requires item != null;
-      @ requires <warning descr="JML expressions should be pure and this method might not be pure">item.getVolume()</warning> > 0 && item.getWeight() > 0;
+      @ requires <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.BoxItem.getVolume()">item.getVolume()</warning> > 0 && item.getWeight() > 0;
       @ ensures boxes.size() == 0 ==> \result == false;
       @ ensures (\exists int i;
            0 <= i && i < boxes.size();
-           boxes.get(i).getItem() == null && boxes.get(i).getVolume() >= <warning descr="JML expressions should be pure and this method might not be pure">item.getVolume()</warning>
+           <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.getItem()">boxes.get(i).getItem()</warning> == null && boxes.get(i).getVolume() >= <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.BoxItem.getVolume()">item.getVolume()</warning>
         ) <==> \old(nrOfFullBoxes) + 1 == nrOfFullBoxes && \result == true;
     */
     public boolean fillABox(Box.BoxItem item) {
@@ -174,7 +174,7 @@ public class StorageSpace {
     // add a box to the storage space
     //@ requires box != null;
     //@ ensures \old(boxes.size()) + 1 == boxes.size(<warning descr="Inserting missing semicolon at the end of a ensures statement">)</warning>
-    public void addBox(Box box) /*@ ensures nrOfFullBoxes == \old(nrOfFullBoxes) + (box.getItem() != null ? 1 : 0);*/ {
+    public void addBox(Box box) /*@ ensures nrOfFullBoxes == \old(nrOfFullBoxes) + (<warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.getItem()">box.getItem()</warning> != null ? 1 : 0);*/ {
         boxes.add(box);
         nrOfFullBoxes += box.getItem() != null ? 1 : 0;
     }

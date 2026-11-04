@@ -1,7 +1,6 @@
 package typeAnnotatorTestData;
 
-// OpenJML 21.0.29 gives errors on the same lines, with the same messages, except for the unknown names and type, and
-// for \result and \old, which it says may not be in an old clause
+// OpenJML 21.0.29 gives errors on the same lines, with the same messages, except for the unknown names and type
 public class OldClauses {
     private int priv;
     public int f;
@@ -33,9 +32,9 @@ public class OldClauses {
     //@ old int d = 1;
     //@ old int <error descr="variable d is already defined in method errors()">d</error> = 2;
     //@ old boolean e = <error descr="incompatible types: int cannot be converted to boolean">3</error>;
-    //@ old int g = <error descr="You can only use \result in an ensures clause">\result</error>;
+    //@ old int g = <error descr="A \result expression may not be in a old clause">\result</error>;
     //@ old int h = <error descr="An identifier with private visibility may not be used in a old clause with public visibility">priv</error>;
-    //@ old int i = <error descr="You can only use an \old() expressions in ensures and signals clauses, assert and assume statements, and in loop invariants">\old(f)</error>;
+    //@ old int i = <error descr="A \old token with no label may not be present in a old clause">\old(f)</error>;
     //@ old <error descr="This class could not be resolved, did you forget to import it?">Unknown</error> u = null;
     //@ ensures \result == d;
     public int errors() {

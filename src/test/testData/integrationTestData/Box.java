@@ -14,7 +14,7 @@ public class Box {
     /*@ spec_public */private float weight;
 
     //@ <error descr="Modifier 'pure' is not allowed before a class_invariant">pure</error> public invariant weight > 0;
-    //@ private invariant item == null ? true : <warning descr="JML expressions should be pure and this method might not be pure">item.getVolume()</warning> > 0 && item.getWeight() > 0;
+    //@ private invariant item == null ? true : <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.BoxItem.getVolume()">item.getVolume()</warning> > 0 && item.getWeight() > 0;
 
     private BoxItem item = null;
 
@@ -27,11 +27,11 @@ public class Box {
 
     // fills the box with an item, the box needs to be empty for this
     /*@
-        pre item != null && item.getWeight() > 0 && <warning descr="JML expressions should be pure and this method might not be pure">item.getVolume()</warning> > 0;
-        also requires this.getItem() == null;
+        pre item != null && item.getWeight() > 0 && <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.BoxItem.getVolume()">item.getVolume()</warning> > 0;
+        also requires <warning descr="A non-pure method is being called where it is not permitted: integrationTestData.Box.getItem()">this.getItem()</warning> == null;
         post <error descr="An identifier with private visibility may not be used in a ensures clause with public visibility">this.item</error> == item;
         ensures this.weight == \old(this.weight) + item.getWeight();
-        assignable <error descr="An identifier with private visibility may not be used in a assignable clause with public visibility">this.item</error>, this.weight, <error descr="This variable is final, so cannot be assigned">this.volume</error>;
+        assignable <error descr="An identifier with private visibility may not be used in a assignable clause with public visibility">this.item</error>, this.weight, <warning descr="This variable is final, so cannot be assigned">this.volume</warning>;
         modifiable \everything;
         modifiable \nothing;
     */

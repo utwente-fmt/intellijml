@@ -32,13 +32,35 @@ class SpecVisibility {
      * @return its visibility for specifications, as in PsiUtil.getAccessLevel, taking spec_public and spec_protected into account
      */
     static int specAccessLevel(@NotNull PsiMember member) {
-        if (doLinkedCommentsContain(member, "spec_public", false)) return PsiUtil.ACCESS_LEVEL_PUBLIC;
+        if (doLinkedCommentsContain(member, "spec_public", false) || hasAnnotation(member, "SpecPublic")) {
+            return PsiUtil.ACCESS_LEVEL_PUBLIC;
+        }
         PsiModifierList modifiers = member.getModifierList();
         int level = modifiers == null ? PsiUtil.ACCESS_LEVEL_PUBLIC : PsiUtil.getAccessLevel(modifiers);
-        if (doLinkedCommentsContain(member, "spec_protected", false)) {
+        if (doLinkedCommentsContain(member, "spec_protected", false) || hasAnnotation(member, "SpecProtected")) {
             level = Math.max(level, PsiUtil.ACCESS_LEVEL_PROTECTED);
         }
         return level;
+    }
+
+    /**
+     * @param member a field or method
+     * @param name   the simple name of an annotation of OpenJML, such as SpecPublic
+     * @return whether the member has the annotation, also when it cannot be resolved
+     */
+    static boolean hasAnnotation(@NotNull PsiMember member, @NotNull String name) {
+        PsiModifierList modifiers = member.getModifierList();
+        if (modifiers == null) return false;
+        for (PsiAnnotation annotation : modifiers.getAnnotations()) {
+            PsiJavaCodeReferenceElement reference = annotation.getNameReferenceElement();
+            String qualifiedName = annotation.getQualifiedName();
+            if (reference != null && name.equals(reference.getReferenceName())
+                    && (qualifiedName == null || qualifiedName.equals(name)
+                    || qualifiedName.equals("org.jmlspecs.annotation." + name))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

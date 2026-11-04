@@ -43,7 +43,7 @@ public class LoopVariants {
         }
         //@ loop_writes \nothing;
         while (n > 0) { n--; }
-        //@ loop_writes <error descr="Reference cannot be resolved">unknown</error>, <error descr="This variable is final, so cannot be assigned">limit</error>, <error descr="This variable is final, so cannot be assigned">size</error>;
+        //@ loop_writes <error descr="Reference cannot be resolved">unknown</error>, <warning descr="This variable is final, so cannot be assigned">limit</warning>, <warning descr="This variable is final, so cannot be assigned">size</warning>;
         while (n > 0) { n--; }
         //@ loop_writes <error descr="You can only use '[*]' on arrays">sum[*]</error>, <error descr="You can only use '.*' on classes and interfaces">sum.*</error>, this.*;
         while (n > 0) { n--; }

@@ -72,8 +72,17 @@ public class JMLMergingLexer extends MergingLexerAdapter {
         private int parenDepth = 0;
         // the last token that is not whitespace or a comment
         private IElementType previous = null;
-        // the text of the last token in the Java expression that is being merged that is not whitespace
+        // the text of the last token in the Java expression that is being merged that is not whitespace, and its type
         private String lastWord = null;
+        private IElementType lastType = null;
+        // the tokens after which a JML keyword in a Java expression is a name, as in "invariant()" or "(Object) pure;"
+        private static final TokenSet NAME_FOLLOWERS = TokenSet.create(JMLTypes.L_PAREN, JMLTypes.R_PAREN, JMLTypes.DOT,
+                JMLTypes.L_SQ_BRAC, JMLTypes.R_SQ_BRAC, JMLTypes.COMMA, JMLTypes.SEMICOLON);
+        private static final String OPERATOR_CHARACTERS = "=!<>&|+-*/%^?:";
+        // the keywords of lists of fields, after which a JML keyword is the name of a field
+        private static final TokenSet FRAME_KEYWORDS = TokenSet.create(JMLTypes.ASSIGNABLE, JMLTypes.MODIFIABLE,
+                JMLTypes.MODIFIES, JMLTypes.ASSIGNS, JMLTypes.LOOP_WRITES, JMLTypes.LOOP_MODIFIES, JMLTypes.LOOP_ASSIGNS,
+                JMLTypes.LOOP_ASSIGNABLE, JMLTypes.READS, JMLTypes.ACCESSIBLE, JMLTypes.IN);
         // whether a contextual keyword would start a clause at the start of the last token
         private boolean clauseStartAtTokenStart = true;
 
@@ -86,6 +95,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
             previous = null;
             clauseStartAtTokenStart = true;
             lastWord = null;
+            lastType = null;
         }
 
         /**
@@ -140,11 +150,59 @@ public class JMLMergingLexer extends MergingLexerAdapter {
             return clauseStartAtTokenStart || (JMLTokenSet.keywordsAfterModifiers.contains(type) && JMLTokenSet.allModifiers.contains(previous));
         }
 
+        /**
+         * @param lexer the lexer, at a JML keyword in a Java expression
+         * @return whether the keyword is the name of a field, variable or method there, as OpenJML allows, as in
+         * "instance != null", "a == instance", "invariant()" or "(Object) instance": not after the end of an operand,
+         * or before a parenthesis, dot, bracket, comma, semicolon or operator
+         */
+        private boolean isUsedAsName(Lexer lexer) {
+            // after an operator; at the start of the expression, as in "requires instance != null;" (but not in
+            // "requires ensures true;"), the token after it decides
+            if (lastType != null && !endsOperand()) return true;
+            // no name follows a literal, this or super, as in "ensures y > 7 pure;" with a missing semicolon; after a
+            // name, parenthesis or bracket it can, in a declaration "int instance;" or a cast "(Object) instance"
+            if (lastType == JMLTypes.REST || lastType == JMLTypes.THIS || lastType == JMLTypes.SUPER) return false;
+            LexerPosition position = lexer.getCurrentPosition();
+            lexer.advance();
+            while (commentsAndWhitespace.contains(lexer.getTokenType()) || lexer.getTokenType() == JMLTypes.AT_SIGN) {
+                lexer.advance();
+            }
+            IElementType next = lexer.getTokenType();
+            CharSequence nextText = next == null ? "" : lexer.getTokenText();
+            lexer.restore(position);
+            if (next == null) return false;
+            if (NAME_FOLLOWERS.contains(next)) return true;
+            // an operator, such as == or +, but not a backslash keyword such as \result
+            return next == JMLTypes.REST && nextText.length() > 0 && OPERATOR_CHARACTERS.indexOf(nextText.charAt(0)) >= 0;
+        }
+
+        /**
+         * @return whether the last token of the Java expression ends an operand, such as a name, a literal or a closing
+         * parenthesis, after which a keyword starts the next clause
+         */
+        private boolean endsOperand() {
+            if (lastType == null) return false;
+            if (lastType == JMLTypes.REST) {
+                if (lastWord == null || lastWord.isEmpty()) return true;
+                char last = lastWord.charAt(lastWord.length() - 1);
+                return Character.isLetterOrDigit(last) || last == '_' || last == '"' || last == '\'';
+            }
+            return lastType == JMLTypes.IDENT || lastType == JMLTypes.R_PAREN || lastType == JMLTypes.R_SQ_BRAC
+                    || lastType == JMLTypes.THIS || lastType == JMLTypes.SUPER
+                    || JMLTokenSet.allClauseKeywords.contains(lastType);
+        }
+
         private IElementType mergeToken(IElementType type, Lexer originalLexer) {
             inClauseAtTokenStart = merging || javaExprExpected || declarationExpected;
             // outside a Java expression, a keyword such as decreases that does not start a clause is a name, as in
             // "loop_writes x, decreasing;"
             if (!merging && JMLTokenSet.contextualKeywords.contains(type) && !atClauseStart(type)) {
+                return JMLTypes.IDENT;
+            }
+            // as is any keyword in a list of fields, as in "assignable instance, behavior;" or "assignable this.pre;"
+            if (!merging && JMLTokenSet.allClauseKeywords.contains(type) && previous != null
+                    && (previous == JMLTypes.COMMA || previous == JMLTypes.DOT || FRAME_KEYWORDS.contains(previous))) {
                 return JMLTypes.IDENT;
             }
             if (JMLTokenSet.declarationKeywords.contains(type)) {
@@ -159,12 +217,22 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                     merging = true;
                     parenDepth = 0;
                     lastWord = null;
+                    lastType = null;
                 }
             }
             // merge until you see that the expression ended, assuming greedy matching
             LexerPosition startPos;
 
-            if (merging) countParenthesis(type);
+            if (merging) {
+                countParenthesis(type);
+                // the first token of the expression, which ends where the next token starts; its last character is
+                // enough for endsOperand
+                if (!commentsAndWhitespace.contains(type) && type != JMLTypes.AT_SIGN) {
+                    lastType = type;
+                    int end = originalLexer.getTokenStart();
+                    lastWord = end > 0 ? String.valueOf(originalLexer.getBufferSequence().charAt(end - 1)) : null;
+                }
+            }
             while (merging) {
                 // EOF and no end-marker found for the expression
                 // (possible that ';' has not been typed by the user yet)
@@ -191,14 +259,17 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                         return JMLTypes.JAVA_EXPR_TOKEN;
                     }
                 } else if (JMLTokenSet.allOuterKeywords.contains(originalLexer.getTokenType())
-                        && !isQuantifierModifier(originalLexer.getTokenType())) {
+                        && !isQuantifierModifier(originalLexer.getTokenType()) && !isUsedAsName(originalLexer)) {
                     // found a JML keyword such as ensures, so Java expression is over, but user forgot semicolon
                     merging = false;
                     return JMLTypes.JAVA_EXPR_TOKEN;
                 } else {
                     countParenthesis(originalLexer.getTokenType());
-                    if (!commentsAndWhitespace.contains(originalLexer.getTokenType())) {
+                    // the at-signs at the start of lines are not part of the expression
+                    if (!commentsAndWhitespace.contains(originalLexer.getTokenType())
+                            && originalLexer.getTokenType() != JMLTypes.AT_SIGN) {
                         lastWord = originalLexer.getTokenText();
+                        lastType = originalLexer.getTokenType();
                     }
                     originalLexer.advance();
                 }
@@ -216,6 +287,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                     merging = true;
                     parenDepth = 0;
                     lastWord = null;
+                    lastType = null;
                 }
                 javaExprExpected = false;
                 originalLexer.restore(startPos);
@@ -236,6 +308,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                     merging = true;
                     parenDepth = 0;
                     lastWord = null;
+                    lastType = null;
                 }
                 // restore to undo our lookahead
                 originalLexer.restore(startPos);

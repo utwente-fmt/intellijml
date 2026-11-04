@@ -1,6 +1,6 @@
 package semanticsAnnotatorTestData;
 
-//@ spec_public
+//@ <warning descr="There is no point to a declaration being both public and spec_public">spec_public</warning>
 //@ pure
 //@ <error descr="Modifier 'instance' is not allowed above a class">instance</error>
 //@ <error descr="Modifier 'helper' is not allowed above a class">helper</error>

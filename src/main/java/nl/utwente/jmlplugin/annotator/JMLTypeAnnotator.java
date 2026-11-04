@@ -7,6 +7,7 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
+import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiTypesUtil;
 import com.intellij.psi.util.PsiUtil;
@@ -123,7 +124,7 @@ public class JMLTypeAnnotator {
                 holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.modelInInterfaceNotStaticOrInstance(name))
                         .range(declarator.getNameIdentifier()).create();
             }
-            if (initializer != null) {
+            if (initializer != null && !Ghosts.hasModifier(declaration, JMLTypes.FINAL)) {
                 holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.MODEL_FIELD_INITIALIZER).range(initializer).create();
             }
         }
@@ -606,7 +607,7 @@ public class JMLTypeAnnotator {
             }
             // reference points to a field, check that it is not final
             else if (assignable && fieldResolved.getElement() instanceof PsiField && ((PsiField) fieldResolved.getElement()).hasModifierProperty(PsiModifier.FINAL)) {
-                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_VAR_IS_FINAL).create();
+                holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.ASSIGNABLE_VAR_IS_FINAL).create();
             }
         }
         // the fields in the reference must be visible enough for the method specification
@@ -720,7 +721,7 @@ public class JMLTypeAnnotator {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_CLASS_ONLY).create();
             }
         } else if (variable.hasModifierProperty(PsiModifier.FINAL)) {
-            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_VAR_IS_FINAL).create();
+            holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.ASSIGNABLE_VAR_IS_FINAL).create();
         }
     }
 
@@ -758,16 +759,27 @@ public class JMLTypeAnnotator {
                 }
 
                 PsiClassType elemType = PsiTypesUtil.getClassType((PsiClass) resolvedException);
-                boolean inheritsRuntimeException = TypeConversionUtil.areTypesConvertible(elemType, runtimeExceptionType);
-                // Exception itself or a subclass of it (Runnable or Object can be cast to Exception, but are no exceptions)
-                boolean inheritsException = exceptionType.isAssignableFrom(elemType);
-                // check that our referenced class inherits from Exception and optionally RuntimeException
-                if (!inheritsException) {
+                PsiClass throwable = JavaPsiFacade.getInstance(element.getProject())
+                        .findClass("java.lang.Throwable", element.getResolveScope());
+                PsiClass error = JavaPsiFacade.getInstance(element.getProject())
+                        .findClass("java.lang.Error", element.getResolveScope());
+                PsiClass resolvedClass = (PsiClass) resolvedException;
+                // an Error, as a RuntimeException, need not be declared
+                boolean unchecked = TypeConversionUtil.areTypesConvertible(elemType, runtimeExceptionType)
+                        && exceptionType.isAssignableFrom(elemType)
+                        || (error != null && InheritanceUtil.isInheritorOrSelf(resolvedClass, error, true));
+                // as in OpenJML, Throwable or a subclass of it, such as an Exception or an Error (Runnable or Object can
+                // be cast to Throwable, but are no exceptions)
+                boolean isThrowable = throwable == null ? exceptionType.isAssignableFrom(elemType)
+                        : InheritanceUtil.isInheritorOrSelf(resolvedClass, throwable, true);
+                if (!isThrowable) {
                     holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NOT_AN_EXCEPTION_CLASS).create();
                 }
 
-                // if it is not a runtime exception, it should be mentioned in the throws clause of the context
-                else if (!inheritsRuntimeException && context instanceof PsiMethod) {
+                // a checked exception that is not mentioned in the throws clause cannot be thrown; OpenJML accepts it,
+                // so this is a warning
+                else if (!unchecked && !"java.lang.Throwable".equals(resolvedClass.getQualifiedName())
+                        && !"java.lang.Exception".equals(resolvedClass.getQualifiedName()) && context instanceof PsiMethod) {
                     PsiMethod psiMethod = (PsiMethod) context;
                     PsiClassType[] throwsList = psiMethod.getThrowsList().getReferencedTypes();
                     // go through all exceptions in the throws clause till you find a matching exception
@@ -780,7 +792,7 @@ public class JMLTypeAnnotator {
                     }
                     if (!found) {
                         // no matching exception found in the throws-clause
-                        holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.PUT_IN_THROWS_CLAUSE).create();
+                        holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.PUT_IN_THROWS_CLAUSE).create();
                     }
                 }
             } else {
@@ -824,6 +836,14 @@ public class JMLTypeAnnotator {
             }
             // the ghost variables, unless a parameter or another variable has the same name
             Ghosts.addVisible(element, extraVars);
+            // as in Java, an assert statement can have a message after a colon, as in "assert x > 0 : "negative";"
+            PsiElement colon = element.getParent() instanceof JMLAssertStatement ? messageColon(element.getFirstChild()) : null;
+            if (colon != null) {
+                JMLInnerJavaExpr inner = (JMLInnerJavaExpr) element.getFirstChild();
+                annotateInnerJavaExpr(inner, holder, extraVars, true, true, true, null, colon);
+                annotateInnerJavaExpr(inner, holder, extraVars, false, true, true, colon);
+                return;
+            }
             // a decreases clause has an integral type, all other expressions are boolean
             boolean variant = element.getParent() instanceof JMLLoopVariant;
             // do the actual checking of the java expression
@@ -834,6 +854,29 @@ public class JMLTypeAnnotator {
             }
 
         }
+    }
+
+    /**
+     * @param inner the Java expression of an assert statement
+     * @return the colon before its message, outside parentheses and not part of a conditional expression "a ? b : c",
+     * or null if it has none
+     */
+    private static @Nullable PsiElement messageColon(@Nullable PsiElement inner) {
+        if (inner == null) return null;
+        int depth = 0;
+        int conditionals = 0;
+        for (PsiElement child = inner.getFirstChild(); child != null; child = child.getNextSibling()) {
+            IElementType type = child.getNode().getElementType();
+            if (type == JavaTokenType.LPARENTH || type == JavaTokenType.LBRACKET || type == JavaTokenType.LBRACE) depth++;
+            if (type == JavaTokenType.RPARENTH || type == JavaTokenType.RBRACKET || type == JavaTokenType.RBRACE) depth--;
+            if (depth != 0) continue;
+            if (type == JavaTokenType.QUEST) conditionals++;
+            if (type == JavaTokenType.COLON) {
+                if (conditionals == 0) return child;
+                conditionals--;
+            }
+        }
+        return null;
     }
 
     /**

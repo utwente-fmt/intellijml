@@ -448,7 +448,9 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
     private boolean isSpecVisibilityValid(JavaResolveResult result) {
         // can still be valid through spec_public or spec_protected
         PsiElement elem = result.getElement();
-        if (elem != null && JMLAnnotatorUtil.doLinkedCommentsContain(elem, "spec_public", false)) {
+        if (elem != null && (JMLAnnotatorUtil.doLinkedCommentsContain(elem, "spec_public", false)
+                || (elem instanceof PsiMember member && SpecVisibility.hasAnnotation(member, "SpecPublic")))) {
+            // spec_public, also as the annotation @SpecPublic
             return true;
         }
         // for spec_protected, it is allowed if it is in the same package or the caller is a subclass
@@ -472,27 +474,31 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
      * @param result the found method
      */
     private void checkPurenessOfMethod(PsiCallExpression expr, JavaResolveResult result) {
-        // check that the user put JML pure above method
-        //noinspection ConstantConditions
-        if (!doLinkedCommentsContain(result.getElement(), "pure|spec_pure", false)) {
-            // if use did not use @pure, so look for IntelliJ contracts (also inferred ones)
-            PsiAnnotation[] annotations = AnnotationUtil.getAllAnnotations((PsiMethod) result.getElement(), true, null, true);
-            boolean pureFound = false;
+        if (!(result.getElement() instanceof PsiMethod method)) return;
+        // as in OpenJML, a spec_pure method, or a pure one whose result is not an object (see Purity)
+        if (Purity.callableInSpecification(method)) return;
+        Purity purity = Purity.of(method);
+        if (purity == Purity.NONE) {
+            // a method without JML, such as one of the Java library, which IntelliJ's contracts (also inferred ones)
+            // can declare pure
+            PsiAnnotation[] annotations = AnnotationUtil.getAllAnnotations(method, true, null, true);
             for (PsiAnnotation annotation : annotations) {
                 // found a contract
                 if ("org.jetbrains.annotations.Contract".equals(annotation.getQualifiedName())) {
                     PsiAnnotationMemberValue pureVal = annotation.findAttributeValue("pure");
                     // check whether there is a value for pure and whether that value equals true
-                    if (pureVal != null && JavaPsiFacade.getInstance(project).getConstantEvaluationHelper().computeConstantExpression(pureVal, false).equals(true)) {
-                        pureFound = true;
-                        break;
+                    if (pureVal != null && Boolean.TRUE.equals(JavaPsiFacade.getInstance(project).getConstantEvaluationHelper()
+                            .computeConstantExpression(pureVal, false))) {
+                        return;
                     }
                 }
             }
-            if (!pureFound) {
-                this.holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.METHOD_NOT_PURE).range(rangeManager.getOriginalRange(expr)).create();
-            }
         }
+        AnnotationBuilder builder = this.holder.newAnnotation(HighlightSeverity.WARNING,
+                ErrorMessages.nonPureCall(Purity.qualifiedName(method))).range(rangeManager.getOriginalRange(expr));
+        // a pure method that returns an object needs spec_pure, which is not obvious
+        if (purity == Purity.PURE) builder = builder.tooltip(ErrorMessages.pureReturnsObjectTooltip(method.getName()));
+        builder.create();
     }
 
 
@@ -512,11 +518,39 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
             if (!TypeConversionUtil.areTypesConvertible(operand.getType(), castType.getType(), LanguageLevel.HIGHEST)) {
                 annotateError(expr, ErrorMessages.wrongCast(operand.getType(), castType.getType()));
             }
-            // give a warning when trying to cast to a sub-class
-            else if (Arrays.asList(castType.getType().getSuperTypes()).contains(operand.getType())) {
+            // give a warning when trying to cast to a sub-class, unless an instanceof check before it guards it
+            else if (Arrays.asList(castType.getType().getSuperTypes()).contains(operand.getType())
+                    && !isGuardedByInstanceof(expr, operand, castType.getType())) {
                 this.holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.castToSubType(
                         operand.getType(), castType.getType())).range(rangeManager.getOriginalRange(expr)).create();
             }
+    }
+
+    /**
+     * @return whether an instanceof check of the same operand and type comes before the cast, as in
+     * "o instanceof Point &amp;&amp; ((Point) o).x == x" (also with ==&gt;), or "o instanceof Point ? ((Point) o).x : 0",
+     * which is common in the specification of equals
+     */
+    private static boolean isGuardedByInstanceof(PsiTypeCastExpression cast, PsiExpression operand, PsiType type) {
+        String operandText = operand.getText();
+        for (PsiElement current = cast; current.getParent() instanceof PsiExpression parent; current = parent) {
+            if (parent instanceof PsiPolyadicExpression polyadic && polyadic.getOperationTokenType() == JavaTokenType.ANDAND) {
+                for (PsiExpression previous : polyadic.getOperands()) {
+                    if (previous == current) break;
+                    if (isInstanceofCheck(previous, operandText, type)) return true;
+                }
+            } else if (parent instanceof PsiConditionalExpression conditional && conditional.getThenExpression() == current
+                    && isInstanceofCheck(conditional.getCondition(), operandText, type)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isInstanceofCheck(PsiExpression expression, String operandText, PsiType type) {
+        PsiExpression check = com.intellij.psi.util.PsiUtil.skipParenthesizedExprDown(expression);
+        return check instanceof PsiInstanceOfExpression instanceOf && instanceOf.getCheckType() != null
+                && instanceOf.getOperand().getText().equals(operandText) && instanceOf.getCheckType().getType().equals(type);
     }
 
     /**

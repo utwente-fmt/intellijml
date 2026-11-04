@@ -7,6 +7,8 @@ import com.intellij.pom.java.LanguageLevel;
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder;
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase;
 
+import java.util.List;
+
 /**
  * Tests that all the type checking is done correctly so that the error messages are shown at the
  * correct spot and that they are only shown when there is an actual type error
@@ -90,6 +92,28 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
 
     public void testModelFieldClauses() {
         myFixture.configureByFile("ModelFieldClauses.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testKeywordNames() {
+        myFixture.configureByFile("KeywordNames.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    /**
+     * The annotations of OpenJML are in its jar, which the test project does not have
+     */
+    public void testPurityRules() {
+        for (String annotation : List.of("Pure", "SpecPure", "SpecPublic")) {
+            myFixture.addFileToProject("org/jmlspecs/annotation/" + annotation + ".java",
+                    "package org.jmlspecs.annotation;\npublic @interface " + annotation + " {}\n");
+        }
+        myFixture.configureByFile("PurityRules.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testAcceptedByOpenJml() {
+        myFixture.configureByFile("AcceptedByOpenJml.java");
         myFixture.checkHighlighting(true, false, true, false);
     }
 

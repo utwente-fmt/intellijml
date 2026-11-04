@@ -72,8 +72,16 @@
   - `\java_math(...)`, `\safe_math(...)` and `\bigint_math(...)`, labels such as `(\lbl POSITIVE x > 0)` (also `\lblpos`
     and `\lblneg`), and `(\choose int i; ...; ...)`
   - the types `\bigint` and `\real`, which the plugin checks as `long` and `double`
-  - a quantified expression without parentheses as a whole clause, such as `//@ assert \forall int i; 0 <= i < n; a[i] > 0;`
+  - a quantified expression without parentheses as a whole clause, such as `//@ assert \forall int i; 0 <= i < n; a[i] > 0;`,
+    or after an operator, such as `//@ ensures a.length > 0 && \forall int i; 0 <= i < a.length; a[i] >= 0;`
   - `non_null` and `nullable` in a cast, such as `(/*@ non_null @*/ String[]) array`
+  - a message in an `assert` statement, as in Java: `//@ assert x >= 0 : "x is negative";`
+  - `final` ghost variables and model fields, such as `//@ public static final ghost int MAX = 10;`
+  - OpenJML's annotations `@Pure`, `@SpecPure`, `@SpecPublic` and `@SpecProtected` (from `org.jmlspecs.annotation`),
+    which mean the same as the modifiers in a JML comment
+- OpenJML's warnings about `also`: the specification of a method that overrides another one should begin with `also`,
+  as it adds to the specification of the overridden method, and that of a method that overrides nothing may not
+- OpenJML's warning "There is no point to a declaration being both public and spec_public"
 - Warnings for quantified expressions that do not mean what they seem to:
   - OpenJML's warning "Runtime assertion checking is not implemented for this type or number of declarations in a
     quantified expression" (a weak warning), as Run with JML Checks treats such a quantified expression as false (or
@@ -122,12 +130,29 @@
   - A quick fix (Alt+Enter) declares the field or method `spec_public` or `spec_protected`.
 - Using a field or method that is not visible in a specification suggests declaring it `spec_public`, instead of
   saying that it cannot be resolved
+- Calls in specifications are checked as OpenJML 21 does, with its warning "A non-pure method is being called where it
+  is not permitted": a specification may call a `spec_pure` method, and a `pure` method only if it returns a primitive
+  value, such as an `int` or a `boolean`, as a `pure` method may return a new object. A method is also pure when the
+  method it overrides is, or when its class is declared `pure`. The tooltip explains when `spec_pure` is needed.
+- `\result` and `\old` in a clause that does not allow them give OpenJML's messages, such as "A \result expression may
+  not be in a requires clause"; as in OpenJML, `\old` is allowed in invariants, `set` statements and the initializers
+  of ghost variables
+- As in OpenJML, `signals` and `signals_only` may name any `Throwable`, such as an `Error`, and a checked exception
+  that is not in the `throws` clause of the method, or a `final` field in an `assignable` clause, gives a warning
+  instead of an error
+- Modifiers before a specification case, and a specification between the Java modifiers of a method, give OpenJML's
+  messages
 - Errors inside `\old(...)` are shown on the part of the expression they are about, instead of at `\old`
 - An unknown or unsupported backslash keyword, such as `\reach` or a misspelled `\reslt`, is named in the error
 - Exception classes are only all listed in completion when completion is invoked with Ctrl+Space or part of the
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- Fields, methods and variables named after a JML keyword, such as `instance`, `behavior`, `model` or `invariant()`,
+  gave syntax errors in expressions, as in `//@ ensures instance != null;`, and in `assignable` clauses. As in
+  OpenJML, a keyword is a name where a name fits.
+- A cast to a subclass that an `instanceof` check guards, as in the specification of `equals`:
+  `o instanceof Point && ((Point) o).x == x`, gave a warning
 - A clause that continues in the `//@` comments on the next lines, as in
   `//@ ensures \result <==> 0 <= pile` followed by `//@         && pile < piles.size();`, gave syntax errors. As in
   OpenJML, the comments are one JML text when a parenthesis is still open, or when a line without a semicolon at its end

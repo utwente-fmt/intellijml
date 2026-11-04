@@ -88,7 +88,10 @@ public class JMLSyntaxAnnotator {
         if (checkRequiresNotAsFirstClauseOnError(element)) {
             errorString = ErrorMessages.REQUIRES_FIRST;
         } else if (checkModifierBeforeSpecClausesOnError(element)) {
-            errorString = ErrorMessages.NO_MODIFIER_BEFORE_SPEC;
+            // OpenJML's messages, for a heavyweight specification case, which starts with a behavior, or a lightweight one
+            PsiElement first = element.getFirstChild();
+            boolean heavyweight = first != null && JMLTokenSet.behaviors.contains(first.getNode().getElementType());
+            errorString = heavyweight ? ErrorMessages.MODIFIER_BEFORE_HEAVYWEIGHT_CASE : ErrorMessages.MODIFIER_BEFORE_LIGHTWEIGHT_CASE;
         } else if (checkSignalsWithoutParens(element)) {
             errorString = ErrorMessages.SIGNALS_WITHOUT_PARENS;
         } else if (checkRefSquareBraceButNotStar(element)) {

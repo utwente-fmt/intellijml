@@ -22,7 +22,7 @@ public class JMLTokenSet {
 
     public static final TokenSet allModifiers = TokenSet.orSet(mathModifiers, TokenSet.create(
             SPEC_PUBLIC, SPEC_PROTECTED, PURE, INSTANCE, HELPER, NULLABLE, NON_NULL, NULLABLE_BY_DEFAULT,
-            NON_NULL_BY_DEFAULT, SPEC_PURE, PUBLIC, PRIVATE, PROTECTED, STATIC
+            NON_NULL_BY_DEFAULT, SPEC_PURE, PUBLIC, PRIVATE, PROTECTED, STATIC, FINAL
     ));
 
     // the modifiers for whether a field, parameter, variable or method result may be null
@@ -89,7 +89,7 @@ public class JMLTokenSet {
 
     // the modifiers that a ghost field can have; a ghost local variable can only have nullable or non_null
     public static final TokenSet ghostFieldModifiers = TokenSet.orSet(visibilityModifiers, nullityModifiers,
-            TokenSet.create(STATIC, INSTANCE));
+            TokenSet.create(STATIC, INSTANCE, FINAL));
 
     public static final TokenSet commentsAndWhitespace = TokenSet.create(INFORMAL_DESCRIPTION, LINE_COMMENT, TokenType.WHITE_SPACE);
 
