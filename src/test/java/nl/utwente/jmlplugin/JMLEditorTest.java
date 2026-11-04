@@ -393,6 +393,38 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
                 """);
     }
 
+    public void testPutContainsFirst() {
+        quickFix("""
+                import java.util.List;
+                class A {
+                    //@ requires (\\forall String s; s != null && (list.contains(s)); s.length() > 0);
+                    void m(List<String> list) {}
+                }
+                """, "Put list.contains(s) first", """
+                import java.util.List;
+                class A {
+                    //@ requires (\\forall String s; list.contains(s) && s != null; s.length() > 0);
+                    void m(List<String> list) {}
+                }
+                """);
+    }
+
+    public void testMoveContainsToRange() {
+        quickFix("""
+                import java.util.Set;
+                class A {
+                    //@ requires (\\forall String s; s.length() > 0 && set.contains(s));
+                    void m(Set<String> set) {}
+                }
+                """, "Move the bounds of s to the range", """
+                import java.util.Set;
+                class A {
+                    //@ requires (\\forall String s; set.contains(s); s.length() > 0);
+                    void m(Set<String> set) {}
+                }
+                """);
+    }
+
     public void testOptimizeImportsWithoutJml() {
         myFixture.configureByText("A.java", "import java.util.Map;\n\nclass A {\n    // Map is only in a normal comment\n}\n");
         new OptimizeImportsProcessor(getProject(), myFixture.getFile()).run();

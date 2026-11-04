@@ -50,6 +50,9 @@ final class Quantifiers {
     private static final TokenSet OTHER_LOGICAL = TokenSet.create(JavaTokenType.OROR, JavaTokenType.OR,
             JavaTokenType.XOR, JavaTokenType.QUEST, JMLTypes.LOGICAL_IMPL, JMLTypes.LOGICAL_EQ, JMLTypes.LOGICAL_IMPL_REV,
             JMLTypes.LOGICAL_NOT_EQ);
+    // the operators that end the first operand of a range, which OpenJML looks at for a call of contains
+    private static final TokenSet FIRST_OPERAND_ENDS = TokenSet.create(JavaTokenType.ANDAND, JavaTokenType.AND,
+            JavaTokenType.OROR, JavaTokenType.OR);
     private static final TokenSet OPEN = TokenSet.create(JavaTokenType.LPARENTH, JavaTokenType.LBRACKET, JavaTokenType.LBRACE);
     private static final TokenSet CLOSE = TokenSet.create(JavaTokenType.RPARENTH, JavaTokenType.RBRACKET, JavaTokenType.RBRACE);
 
@@ -78,18 +81,82 @@ final class Quantifiers {
         if (variable != null && range.isEmpty() && checkBoundsInExpression(quantifier, keyword, kind, variable, body, holder)) {
             return;
         }
-        // without a range, OpenJML takes the bounds from the expression, if that is a conjunction
-        if (variable != null && integral && bounds(range.isEmpty() ? body : range, variable) == BOTH) return;
+        // without a range, OpenJML takes the range from the expression, if that is a conjunction
+        List<PsiElement> restriction = range.isEmpty() && !hasTopLevel(body, OTHER_LOGICAL) ? body : range;
+        boolean bool = typeName != null && typeName.getText().equals("boolean");
+        if (variable != null && (bool || startsWithContains(restriction, variable)
+                || (integral && bounds(restriction, variable) == BOTH))) {
+            return;
+        }
 
         // OpenJML cannot compute it when the program runs
         AnnotationBuilder builder = holder.newAnnotation(HighlightSeverity.WEAK_WARNING, ErrorMessages.QUANTIFIER_NOT_EXECUTABLE)
                 .tooltip(ErrorMessages.QUANTIFIER_NOT_EXECUTABLE_TOOLTIP).range(keyword);
-        if (variable != null && integral) {
-            JMLCommentFix fix = range.isEmpty() ? moveBoundsFix(quantifier, kind, variable, body) : null;
-            if (fix == null) fix = addBoundsFix(quantifier, variable, range, body);
+        if (variable != null) {
+            JMLCommentFix fix = containsFirstFix(quantifier, variable, restriction);
+            if (fix == null && range.isEmpty()) fix = moveBoundsFix(quantifier, kind, variable, body);
+            if (fix == null && integral) fix = addBoundsFix(quantifier, variable, range, body);
             if (fix != null) builder = builder.withFix(fix);
         }
         builder.create();
+    }
+
+    /**
+     * @return whether the expression restricts the values of the variable: a bound, as in 0 &lt;= i, or a call of
+     * contains, as in list.contains(s)
+     */
+    private static boolean restricts(List<PsiElement> tokens, String variable) {
+        return bounds(tokens, variable) != 0 || startsWithContains(stripParentheses(tokens), variable);
+    }
+
+    /**
+     * @param tokens   a range, or an expression that is a conjunction
+     * @param variable the variable of a quantified expression
+     * @return whether it starts with a call of contains with the variable, as in list.contains(s) &amp;&amp; s != null,
+     * so that OpenJML's runtime checks compute the quantified expression over the elements of the collection; this
+     * call must come first, and not be in parentheses
+     */
+    private static boolean startsWithContains(List<PsiElement> tokens, String variable) {
+        List<PsiElement> first = split(tokens, FIRST_OPERAND_ENDS).get(0);
+        return isContains(first, variable);
+    }
+
+    /**
+     * @return whether the tokens are a call of contains with only the variable, on some collection, as in
+     * map.keySet().contains(k)
+     */
+    private static boolean isContains(List<PsiElement> tokens, String variable) {
+        int n = tokens.size();
+        return n >= 6 && type(tokens.get(n - 1)) == JavaTokenType.RPARENTH && isVariable(tokens.get(n - 2), variable)
+                && type(tokens.get(n - 3)) == JavaTokenType.LPARENTH && type(tokens.get(n - 4)) == JavaTokenType.IDENTIFIER
+                && tokens.get(n - 4).getText().equals("contains") && type(tokens.get(n - 5)) == JavaTokenType.DOT;
+    }
+
+    /**
+     * @return a quick fix that puts a call of contains with the variable first in a range (or an expression that is
+     * used as one), without parentheses, as in "list.contains(s) &amp;&amp; s != null" for
+     * "s != null &amp;&amp; list.contains(s)", or null if it has no such call
+     */
+    private static @Nullable JMLCommentFix containsFirstFix(JMLQuantifiedExpr quantifier, String variable,
+                                                            List<PsiElement> restriction) {
+        if (restriction.isEmpty() || hasTopLevel(restriction, OTHER_LOGICAL)) return null;
+        List<List<PsiElement>> conjuncts = split(restriction, CONJUNCTIONS);
+        List<PsiElement> contains = null;
+        List<String> others = new ArrayList<>();
+        for (List<PsiElement> conjunct : conjuncts) {
+            if (contains == null && isContains(stripParentheses(conjunct), variable)) {
+                contains = stripParentheses(conjunct);
+            } else {
+                others.add(text(conjunct));
+            }
+        }
+        if (contains == null) return null;
+        String call = text(contains);
+        others.add(0, call);
+        TextRange replaced = new TextRange(restriction.get(0).getTextRange().getStartOffset(),
+                restriction.get(restriction.size() - 1).getTextRange().getEndOffset());
+        return JMLCommentFix.create(quantifier, replaced, String.join(" && ", others), "Put " + call + " first",
+                "Put contains first in the range");
     }
 
     /**
@@ -103,11 +170,11 @@ final class Quantifiers {
         String message = null;
         if (kind == JMLTypes.FORALL && !hasTopLevel(body, OTHER_LOGICAL)) {
             List<List<PsiElement>> conjuncts = split(body, CONJUNCTIONS);
-            long bounded = conjuncts.stream().filter(conjunct -> bounds(conjunct, variable) != 0).count();
+            long bounded = conjuncts.stream().filter(conjunct -> restricts(conjunct, variable)).count();
             if (bounded > 0 && bounded < conjuncts.size()) message = ErrorMessages.forallWithBoundsInExpression(variable);
         } else if (kind == JMLTypes.EXISTS) {
             List<List<PsiElement>> parts = split(body, TokenSet.create(JMLTypes.LOGICAL_IMPL));
-            if (parts.size() == 2 && !hasTopLevel(parts.get(0), OTHER_LOGICAL) && bounds(parts.get(0), variable) != 0) {
+            if (parts.size() == 2 && !hasTopLevel(parts.get(0), OTHER_LOGICAL) && restricts(parts.get(0), variable)) {
                 message = ErrorMessages.existsWithBoundsInExpression(variable);
             }
         }
@@ -129,14 +196,19 @@ final class Quantifiers {
         String expression = null;
         List<List<PsiElement>> implication = split(body, TokenSet.create(JMLTypes.LOGICAL_IMPL));
         if (implication.size() == 2 && !hasTopLevel(implication.get(0), OTHER_LOGICAL)
-                && bounds(implication.get(0), variable) != 0) {
+                && restricts(implication.get(0), variable)) {
             range = text(implication.get(0));
             expression = text(implication.get(1));
         } else if (!hasTopLevel(body, OTHER_LOGICAL)) {
             List<String> bounds = new ArrayList<>();
             List<String> others = new ArrayList<>();
             for (List<PsiElement> conjunct : split(body, CONJUNCTIONS)) {
-                (bounds(conjunct, variable) != 0 ? bounds : others).add(text(conjunct));
+                if (isContains(stripParentheses(conjunct), variable)) {
+                    // OpenJML only iterates over the collection if contains comes first
+                    bounds.add(0, text(stripParentheses(conjunct)));
+                } else {
+                    (restricts(conjunct, variable) ? bounds : others).add(text(conjunct));
+                }
             }
             if (bounds.isEmpty() || others.isEmpty()) return null;
             range = String.join(" && ", bounds);

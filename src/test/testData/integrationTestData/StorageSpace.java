@@ -123,7 +123,7 @@ public class StorageSpace {
         ensures (\forall int i; 0 <= i && i < \result.size(); \result.get(i) != null);
         ensures (\forall int i; 0 <= i && i < \result.size(); \old(boxes.contains(\result.get(i))));
         ensures (\forall int i; 0 <= i && i < \result.size(); !boxes.contains(\result.get(i)));
-        ensures (<warning descr="This \forall is false: its expression must hold for every i, also outside the bounds. Put the bounds in the range, or use ==> after them">\forall</warning> int i; i <= i && i < \result.size());
+        ensures (<warning descr="This \forall is false: its expression must hold for every i, also outside the range that && restricts it to. Put that restriction in the range, or use ==> after it">\forall</warning> int i; i <= i && i < \result.size());
         (* comments inside a Java expr *)
         ensures (\forall int i; 0 <= i && i < \result.size(); <error descr="Not a valid expression">(* comment *) !boxes.contains(\result.get(i))</error>);
     */
