@@ -8,6 +8,7 @@ import com.intellij.psi.PsiMethod;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiUtil;
+import nl.utwente.jmlplugin.JMLMultiHostInjector;
 import nl.utwente.jmlplugin.psi.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -138,6 +139,8 @@ final class SpecCases {
     private static @Nullable JMLMethodJml methodJml(@NotNull PsiComment comment) {
         String text = comment.getText();
         if (!text.startsWith("//@") && !text.startsWith("/*@")) return null;
+        // the JML of a comment that continues the one before it is found from that comment
+        if (JMLMultiHostInjector.group(comment).get(0) != comment) return null;
         PsiFile file = comment.getContainingFile();
         PsiElement jml = InjectedLanguageManager.getInstance(comment.getProject())
                 .findInjectedElementAt(file, comment.getTextRange().getStartOffset() + 2);

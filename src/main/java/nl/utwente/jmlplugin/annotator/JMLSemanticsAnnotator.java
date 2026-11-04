@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin.annotator;
 
+import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.lang.injection.InjectedLanguageManager;
@@ -8,6 +9,7 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
+import nl.utwente.jmlplugin.JMLMultiHostInjector;
 import nl.utwente.jmlplugin.psi.*;
 import nl.utwente.jmlplugin.psi.impl.JMLBackslashFunctionExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLGhostDeclarator;
@@ -46,7 +48,20 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         if (!checkSpecAllowedHere(element, jmlRoot, holder)) return false;
         // specification is allowed at its position in the Java file, so check for errors now
         // return true on warnings
-        if (element instanceof JMLMethodJml && checkModifierBeforeSpecClauses((JMLMethodJml) element)) {
+        // a clause without a semicolon at the end of the JML; its other checks still happen
+        PsiElement missingSemicolon = element.getTextLength() > 0 ? element.getLastChild() : null;
+        if (missingSemicolon != null && missingSemicolon != element
+                && missingSemicolon.getNode().getElementType() == JMLTypes.MISSING_SEMICOLON
+                && !checkMissingSemicolon(missingSemicolon, holder)) {
+            return false;
+        }
+        if (element.getNode().getElementType() == JMLTypes.SEMICOLON && element.getParent() instanceof JMLModifiers) {
+            // as in OpenJML, modifiers followed by a semicolon, as in "//@ pure;", are not those of the declaration
+            AnnotationBuilder builder = holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ORPHANED_MODIFIERS);
+            JMLCommentFix fix = JMLCommentFix.create(element, element.getTextRange(), "", "Remove ';'", "Remove semicolon");
+            if (fix != null) builder = builder.withFix(fix);
+            builder.create();
+        } else if (element instanceof JMLMethodJml && checkModifierBeforeSpecClauses((JMLMethodJml) element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NO_MODIFIER_BEFORE_SPEC).create();
         } else if (isLoopSpec(element) && checkLoopSpecAboveLoop(element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.LOOP_SPEC_NOT_ABOVE_LOOP).create();
@@ -334,6 +349,66 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         }
         if (message == null) return true;
         holder.newAnnotation(HighlightSeverity.ERROR, message).create();
+        return false;
+    }
+
+    /**
+     * Reports a semicolon that is missing at the end of the JML: as in OpenJML, a warning that it is inserted, or an
+     * error if another JML comment follows, which continues the specification
+     *
+     * @param element the empty element where the semicolon is missing
+     * @param holder  the Annotation holder
+     * @return false if it is an error
+     */
+    private static boolean checkMissingSemicolon(PsiElement element, AnnotationHolder holder) {
+        PsiElement clause = element.getParent();
+        // the last token of the clause, after which the semicolon is inserted
+        PsiElement last = prevLeaf(element);
+        while (last != null && (last instanceof PsiWhiteSpace || last instanceof PsiComment || last.getTextLength() == 0
+                || JMLTypeAnnotatorUtil.isAtSign(last))) {
+            last = prevLeaf(last);
+        }
+        if (clause == null || last == null) return true;
+        String name = statementName(clause);
+        boolean followed = isFollowedByJml(element);
+        AnnotationBuilder builder = holder.newAnnotation(followed ? HighlightSeverity.ERROR : HighlightSeverity.WARNING,
+                followed ? ErrorMessages.missingSemicolonBeforeClause(name) : ErrorMessages.insertingMissingSemicolon(name))
+                .range(last);
+        JMLCommentFix fix = JMLCommentFix.create(last, TextRange.from(last.getTextRange().getEndOffset(), 0), ";",
+                "Insert ';'", "Insert semicolon");
+        if (fix != null) builder = builder.withFix(fix);
+        builder.create();
+        return !followed;
+    }
+
+    /**
+     * @return the name that OpenJML gives a clause in its messages, such as "loop_invariant" for maintaining
+     */
+    private static String statementName(PsiElement clause) {
+        if (clause instanceof JMLRequiresClause) return "requires";
+        if (clause instanceof JMLEnsuresClause) return "ensures";
+        if (clause instanceof JMLDivergesClause) return "diverges";
+        if (clause instanceof JMLClassInvariant invariant) return invariantKeyword(invariant);
+        if (clause instanceof JMLLoopInvariant) return "loop_invariant";
+        if (clause instanceof JMLLoopVariant) return "loop_decreases";
+        if (clause instanceof JMLAssertStatement) return "assert";
+        if (clause instanceof JMLAssumeStatement) return "assume";
+        if (clause instanceof JMLCheckStatement) return "check";
+        return clause.getFirstChild() == null ? "" : clause.getFirstChild().getText();
+    }
+
+    /**
+     * @return whether a JML comment follows the JML of the element, with only whitespace and other comments in between,
+     * so that the specification continues in it
+     */
+    private static boolean isFollowedByJml(PsiElement element) {
+        PsiComment comment = getCommentContext(element);
+        if (comment == null) return false;
+        List<PsiComment> group = JMLMultiHostInjector.group(comment);
+        for (PsiElement next = group.get(group.size() - 1).getNextSibling(); next != null; next = next.getNextSibling()) {
+            if (next instanceof PsiComment nextComment && JMLMultiHostInjector.isJmlComment(nextComment.getText())) return true;
+            if (!(next instanceof PsiWhiteSpace) && !(next instanceof PsiComment)) return false;
+        }
         return false;
     }
 

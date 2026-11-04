@@ -3,14 +3,17 @@ package nl.utwente.jmlplugin.annotator;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.lang.java.JavaLanguage;
 import com.intellij.psi.*;
+import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import com.intellij.psi.util.PsiTreeUtil;
+import nl.utwente.jmlplugin.JMLMultiHostInjector;
 import nl.utwente.jmlplugin.psi.JMLClassInvariant;
 import nl.utwente.jmlplugin.psi.JMLModifiers;
 import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import nl.utwente.jmlplugin.psi.JMLTypes;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,7 +64,46 @@ public class JMLAnnotatorUtil {
      */
     public static PsiElement getJavaContext(PsiElement element) {
         PsiComment commentContext = getCommentContext(element);
-        return commentContext != null ? getOwnerIfModifierList(commentContext.getParent()) : null;
+        if (commentContext == null) return null;
+        PsiMember member = memberBelowDocComment(commentContext);
+        return member != null ? member : getOwnerIfModifierList(commentContext.getParent());
+    }
+
+    /**
+     * @param comment a comment
+     * @return the method or field right below the comment with its documentation comment in between, as in JML above
+     * the Javadoc of a method, which OpenJML takes as the specification of the method; null if there is none, or if the
+     * comment belongs to the class, as an invariant
+     */
+    public static @Nullable PsiMember memberBelowDocComment(@NotNull PsiComment comment) {
+        if (!(comment.getParent() instanceof PsiClass)) return null;
+        for (PsiElement next = comment.getNextSibling(); next != null; next = next.getNextSibling()) {
+            if (next instanceof PsiWhiteSpace) {
+                if (!isAtMostOneNewline(next.getText())) return null;
+            } else if (!(next instanceof PsiComment)) {
+                boolean documented = (next instanceof PsiMethod || next instanceof PsiField)
+                        && next.getFirstChild() instanceof PsiDocComment;
+                return documented && !isClassLevelComment(comment) ? (PsiMember) next : null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param member a method or field
+     * @return the comments right above its documentation comment, which OpenJML also takes as its JML
+     */
+    public static @NotNull List<PsiComment> commentsAboveDocComment(@NotNull PsiElement member) {
+        List<PsiComment> comments = new ArrayList<>();
+        if (!(member.getFirstChild() instanceof PsiDocComment)) return comments;
+        for (PsiElement previous = member.getPrevSibling(); previous != null; previous = previous.getPrevSibling()) {
+            if (previous instanceof PsiComment comment) {
+                comments.add(comment);
+            } else if (!(previous instanceof PsiWhiteSpace) || !isAtMostOneNewline(previous.getText())) {
+                break;
+            }
+        }
+        return comments;
     }
 
     /**
@@ -140,8 +182,8 @@ public class JMLAnnotatorUtil {
     }
 
     /**
-     * Finds the loop that a loop specification, such as a loop invariant, belongs to: the loop statement right below
-     * its comment, with only comments and at most one line break in between
+     * Finds the loop that a loop specification, such as a loop invariant, belongs to: the loop statement below its
+     * comment, with only comments and whitespace in between, also blank lines, as in OpenJML
      *
      * @param element an element in a JML comment in a method body
      * @return the loop below the comment, or null if there is none
@@ -149,8 +191,10 @@ public class JMLAnnotatorUtil {
     public static PsiLoopStatement loopBelow(PsiElement element) {
         PsiComment commentContext = getCommentContext(element);
         if (commentContext == null) return null;
-        PsiElement next = commentContext.getNextSibling();
-        while (next instanceof PsiComment || (next instanceof PsiWhiteSpace && isAtMostOneNewline(next.getText()))) {
+        // the last comment of the JML, which can continue in the //@ comments on the next lines
+        List<PsiComment> group = JMLMultiHostInjector.group(commentContext);
+        PsiElement next = group.get(group.size() - 1).getNextSibling();
+        while (next instanceof PsiComment || next instanceof PsiWhiteSpace) {
             next = next.getNextSibling();
         }
         return next instanceof PsiLoopStatement loop ? loop : null;
@@ -186,6 +230,11 @@ public class JMLAnnotatorUtil {
                 } else if (parent instanceof PsiParameter) {
                     currentElement = parent;
                     parent = null;
+                } else if ((parent instanceof PsiMethod || parent instanceof PsiField)
+                        && parent.getFirstChild() instanceof PsiDocComment) {
+                    // the comments above the documentation of a method or field, which OpenJML also takes as its JML
+                    currentElement = parent;
+                    parent = parent.getParent();
                 }
                 // was not inside local variable or parameter
                 if (currentElement == null) {
@@ -294,6 +343,7 @@ public class JMLAnnotatorUtil {
             javaElement = getJavaContext(element);
         }
         ArrayList<PsiComment> comments = new ArrayList<>(PsiTreeUtil.getChildrenOfTypeAsList(javaElement, PsiComment.class));
+        if (javaElement != null) comments.addAll(commentsAboveDocComment(javaElement));
         // comments in between Java modifiers, such as in "public /*@ pure @*/ static int f()"
         if (javaElement instanceof PsiModifierListOwner) {
             comments.addAll(PsiTreeUtil.getChildrenOfTypeAsList(((PsiModifierListOwner) javaElement).getModifierList(), PsiComment.class));

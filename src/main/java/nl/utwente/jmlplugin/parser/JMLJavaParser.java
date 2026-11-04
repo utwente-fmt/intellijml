@@ -84,6 +84,24 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
     }
 
     /**
+     * A semicolon that is missing at the end of the JML text, after the last clause, as in "//@ ensures \result > 0"
+     * above a method, which OpenJML inserts with a warning. The place is marked with an empty element, which the
+     * annotators report.
+     *
+     * @param builder the PSI tree builder
+     * @param level   the level in the tree
+     * @return whether only at-signs follow, as at the end of a block comment
+     */
+    public static boolean missingFinalSemicolon(PsiBuilder builder, int level) {
+        for (int i = 0; builder.lookAhead(i) != null; i++) {
+            if (builder.lookAhead(i) != JMLTypes.AT_SIGN) return false;
+        }
+        if (builder.getTokenType() != null && builder.getTokenType() != JMLTypes.AT_SIGN) return false;
+        builder.mark().done(JMLTypes.MISSING_SEMICOLON);
+        return true;
+    }
+
+    /**
      * Skips the at-signs at the start of continuation lines, such as in lists that are spread over several lines.
      * Unlike AT_SIGN* in the grammar, this does not add "at-sign" to the expected tokens in error messages.
      *

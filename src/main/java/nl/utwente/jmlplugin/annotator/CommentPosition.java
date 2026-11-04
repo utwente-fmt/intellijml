@@ -88,6 +88,10 @@ public enum CommentPosition {
             if (skipWhitespacesAndCommentsBackward(jmlComment) == null) {
                 return ABOVE_CLASS;
             }
+            // above the documentation comment of a method or field, which OpenJML takes as its JML
+            PsiMember member = JMLAnnotatorUtil.memberBelowDocComment(jmlComment);
+            if (member instanceof PsiMethod) return ABOVE_METHOD;
+            if (member instanceof PsiField) return FIELD;
             return INSIDE_CLASS;
         }
         if (javaContext instanceof PsiCodeBlock) {

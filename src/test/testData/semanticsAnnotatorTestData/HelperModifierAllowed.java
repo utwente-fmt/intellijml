@@ -9,8 +9,8 @@ public class HelperModifierAllowed {
         return a / b;
     }
 
-    //@pure;
-    //@helper;
+    //@pure
+    //@helper
     public int div2(int a, int b) {
         return a / b;
     }
@@ -22,17 +22,17 @@ public class HelperModifierAllowed {
         return a / b;
     }
 
-    //@helper;
+    //@helper
     private static int div4(int a, int b) {
         return a / b;
     }
 
-    //@<error descr="A helper method must be private or pure or final: div5">helper</error>;
+    //@<error descr="A helper method must be private or pure or final: div5">helper</error>
     public int div5(int a, int b) {
         return a / b;
     }
 
-    //@<error descr="A helper method must be private or pure or final: div6">helper</error>;
+    //@<error descr="A helper method must be private or pure or final: div6">helper</error>
     int div6(int a, int b) {
         return a / b;
     }

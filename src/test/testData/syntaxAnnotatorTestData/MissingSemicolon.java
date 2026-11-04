@@ -3,14 +3,14 @@ package syntaxAnnotatorTestData;
 public class MissingSemicolon {
 
     /*@
-        requires b != <error descr="Semicolon expected after this token">0</error>
+        requires b != <warning descr="Inserting missing semicolon at the end of a requires statement">0</warning>
      */
     public int div(int a, int b) {
         return a / b;
     }
 
     /*@
-        requires <error descr="Semicolon expected after this token">\not_specified</error>
+        requires <warning descr="Inserting missing semicolon at the end of a requires statement">\not_specified</warning>
      */
     public int div2(int a, int b) {
         return a / b;

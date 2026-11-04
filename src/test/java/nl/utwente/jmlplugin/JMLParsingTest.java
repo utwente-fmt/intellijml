@@ -240,4 +240,8 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testMissingFinalSemicolon() {
+        doTest(true, true);
+    }
+
 }

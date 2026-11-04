@@ -87,11 +87,23 @@ class JMLTypeAnnotatorUtil {
      */
     protected static boolean isLineStartAtSign(PsiElement element) {
         if (!isAtSign(element)) return false;
+        if (isAtEnd(element)) return true;
         for (PsiElement prev = PsiTreeUtil.prevLeaf(element); prev != null; prev = PsiTreeUtil.prevLeaf(prev)) {
             if (prev instanceof PsiWhiteSpace) return prev.getText().contains("\n");
             if (!isAtSign(prev)) return false;
         }
         return false;
+    }
+
+    /**
+     * @return whether only whitespace and at-signs follow the element, as the @ before the end of a block comment in
+     * "/*@ requires x > 0 @*&#47;", which is part of an expression when the semicolon is missing
+     */
+    private static boolean isAtEnd(PsiElement element) {
+        for (PsiElement next = PsiTreeUtil.nextLeaf(element); next != null; next = PsiTreeUtil.nextLeaf(next)) {
+            if (!(next instanceof PsiWhiteSpace) && !isAtSign(next) && next.getTextLength() > 0) return false;
+        }
+        return true;
     }
 
     /**

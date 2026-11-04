@@ -20,7 +20,7 @@ public class AssignableParameters {
     public <T> void clear(T[] items) {
     }
 
-    /*@ assignable <warning descr="A method may always assign its parameters, so they do not need to be listed here">n</warning>,
+    /*@ assignable <error descr="An assignable clause may not contain method formal parameters: n">n</error>,
         <error descr="You can only use '[*]' on arrays">n[*]</error>,
         <error descr="You can only use '.*' on classes and interfaces">n.*</error>,
         <error descr="Reference cannot be resolved">p.missing</error>;

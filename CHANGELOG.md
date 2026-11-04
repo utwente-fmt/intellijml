@@ -86,12 +86,23 @@
   - A `\forall` whose bounds are joined to the expression with `&&`, as in `(\forall int i; 0 <= i && i < n && a[i] > 0)`
     or `(\forall String s; list.contains(s) && s != null)`, which is false, and an `\exists` with `==>` after the
     bounds, which is true. A quick fix moves the bounds to the range.
+- Frames with array elements and ranges of them, as in `//@ assignable a[i], a[j];` or `//@ loop_writes a[0 .. k];`,
+  which gave "Only '*' in between the square brackets is supported"
+- OpenJML's error "Orphaned modifiers found before an empty declaration" for modifiers followed by a semicolon, as in
+  `//@ pure;`, which OpenJML does not apply to the method, with a quick fix that removes the semicolon
 - A statement between the specification of a loop and the loop, as in `//@ maintaining i >= 0;` followed by
   `//@ assert i < n;` right above the loop, gives OpenJML's error, as only loop specifications may be there
 - Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in
   `// @` or `/* @`, which makes the comment an ordinary comment instead of JML
 
 ### Changed
+- As in OpenJML, a semicolon that is missing at the end of the JML, after an expression clause such as
+  `//@ ensures \result > 0` above a method, gives the warning "Inserting missing semicolon at the end of a ensures
+  statement" instead of an error, and the rest of the JML is still checked; it is still an error when another JML
+  comment follows, and after other clauses, such as `assignable`
+- As in OpenJML, a `requires` clause may come after other clauses, a loop specification may be followed by blank lines
+  before its loop, and a parameter in an `assignable` clause is an error again ("An assignable clause may not contain
+  method formal parameters")
 - As in OpenJML, an invariant (or `initially` or `constraint`) may be right above a field or method, an invariant in
   an interface is an instance invariant unless it is `static`, and a `helper` method may also be `final` ("A helper
   method must be private or pure or final")
@@ -117,6 +128,10 @@
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- A clause that continues in the `//@` comments on the next lines, as in
+  `//@ ensures \result <==> 0 <= pile` followed by `//@         && pile < piles.size();`, gave syntax errors. As in
+  OpenJML, the comments are one JML text when a parenthesis is still open, or when a line without a semicolon at its end
+  ends with an operator or the next one starts with one.
 - A comment inside JML, such as `//@ assert x > 0; // why` or `//@ pure // no side effects`, gave a syntax error.
   As in OpenJML, `//` starts a comment to the end of the line, also in a `/*@ ... @*/` comment.
 - Chained comparisons such as `0 <= i < a.length`, which mean `0 <= i && i < a.length`, gave "This operator cannot

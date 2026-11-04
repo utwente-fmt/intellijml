@@ -65,7 +65,10 @@ public final class ErrorMessages {
     public static final String NO_ARRAY = "This is not an array";
     public static final String NO_CLASS_INSTANCE = "This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?";
     public static final String ASSIGNABLE_VAR_IS_FINAL = "This variable is final, so cannot be assigned";
-    public static final String ASSIGNABLE_PARAMETER = "A method may always assign its parameters, so they do not need to be listed here";
+    // OpenJML's message for a parameter in an assignable clause
+    public static String assignableParameter(String name) {
+        return "An assignable clause may not contain method formal parameters: " + name;
+    }
 
     // java expression visitor error messages
     public static final String NO_ARRAY_SO_NO_ACCESS = "Array access is not allowed as this is not an array";
@@ -194,6 +197,17 @@ public final class ErrorMessages {
         return "This \\exists is true: its expression holds for every " + variable
                 + " outside the range before ==>. Put that restriction in the range, or use && instead of ==>";
     }
+
+    // OpenJML's messages for a semicolon that is missing at the end of the JML, and for modifiers followed by one
+    public static String insertingMissingSemicolon(String clause) {
+        return "Inserting missing semicolon at the end of a " + clause + " statement";
+    }
+
+    public static String missingSemicolonBeforeClause(String clause) {
+        return "Incorrectly formed or terminated " + clause + " statement near here -- perhaps a missing semicolon";
+    }
+
+    public static final String ORPHANED_MODIFIERS = "Orphaned modifiers found before an empty declaration";
 
     // OpenJML's messages for old clauses
     public static final String OLD_WITHOUT_INITIALIZER = "A old method clause variable must have an initializer";

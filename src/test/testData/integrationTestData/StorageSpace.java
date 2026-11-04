@@ -54,7 +54,7 @@ public class StorageSpace {
     // returns the average weight of the boxes, or 0 if there are no boxes
     //@ ensures <error descr="This must be of type boolean, but is float">\result == boxes.size() == 0 ? 0 : getTotalWeight() / <warning descr="JML expressions should be pure and this method might not be pure">getNrOfBoxes()</warning></error>; (* need parentheses around conditional expression *)
     // some syntactical errors
-    //@ ensures \result == (boxes.size() == 0 ? 0 : getTotalWeight() / getNrOfBoxes()<error descr="Semicolon expected after this token">)</error>
+    //@ ensures \result == (boxes.size() == 0 ? 0 : getTotalWeight() / <warning descr="JML expressions should be pure and this method might not be pure">getNrOfBoxes()</warning><error descr="Incorrectly formed or terminated ensures statement near here -- perhaps a missing semicolon">)</error>
     //@ <error descr="Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'esuress'">esuress</error> \result >= 0;
     //@ ensures <error descr="Unknown keyword \rsul, or a JML keyword that this plugin does not support">\rsul</error> >= 0;
     //@ requires \not_specified;
@@ -78,11 +78,11 @@ public class StorageSpace {
       @ ensures (\forall int i; 0 <= i && i < boxes.size();
             boxes.get(i).getVolume() >= minimumVolume ==> \result.contains(boxes.get(i)));
       @ ensures \result.size() <= boxes.size();
-      @ <error descr="Requires clauses must be placed before all other clauses in a specification as it is a pre-condition">requires</error> minimumVolume > 0;
+      @ requires minimumVolume > 0;
     */
     //@ (* accessing variable declared inside method is not allowed *)
     //@ ensures <error descr="Reference cannot be resolved">goodBoxes</error>.size() >= 0;
-    //@ pure;
+    //@ pure
     public List<Box> getAllBoxesWithMinVolume(float minimumVolume) {
         List<Box> goodBoxes = new ArrayList<>();
 
@@ -173,7 +173,7 @@ public class StorageSpace {
 
     // add a box to the storage space
     //@ requires box != null;
-    //@ ensures \old(boxes.size()) + 1 == boxes.size(<error descr="Semicolon expected after this token">)</error>
+    //@ ensures \old(boxes.size()) + 1 == boxes.size(<warning descr="Inserting missing semicolon at the end of a ensures statement">)</warning>
     public void addBox(Box box) /*@ ensures nrOfFullBoxes == \old(nrOfFullBoxes) + (box.getItem() != null ? 1 : 0);*/ {
         boxes.add(box);
         nrOfFullBoxes += box.getItem() != null ? 1 : 0;

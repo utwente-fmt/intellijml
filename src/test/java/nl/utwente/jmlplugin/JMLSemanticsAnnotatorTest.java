@@ -35,6 +35,16 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
      * The weak warnings are on the quantified expressions for which OpenJML 21.0.29 gives the same warning when it
      * compiles with runtime checks
      */
+    public void testSpecificationPlacement() {
+        myFixture.configureByFile("SpecificationPlacement.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testMissingFinalSemicolon() {
+        myFixture.configureByFile("MissingFinalSemicolon.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testQuantifierChecks() {
         myFixture.configureByFile("QuantifierChecks.java");
         myFixture.checkHighlighting(true, false, true, false);

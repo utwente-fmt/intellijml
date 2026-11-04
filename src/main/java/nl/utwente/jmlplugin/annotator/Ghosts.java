@@ -10,6 +10,7 @@ import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiUtil;
 import com.intellij.util.IncorrectOperationException;
+import nl.utwente.jmlplugin.JMLMultiHostInjector;
 import nl.utwente.jmlplugin.psi.JMLGhostDeclaration;
 import nl.utwente.jmlplugin.psi.JMLModifiers;
 import nl.utwente.jmlplugin.psi.JMLTokenSet;
@@ -188,9 +189,11 @@ public final class Ghosts {
 
     /**
      * @param comment a Java comment
-     * @return the JML files injected in it, one if it is a JML comment
+     * @return the JML files injected in it, one if it is a JML comment; none if its JML continues that of the //@
+     * comment before it, so that each JML text is found once, in the comment where it starts
      */
     static @NotNull List<PsiElement> injectedFiles(@NotNull PsiComment comment) {
+        if (JMLMultiHostInjector.group(comment).get(0) != comment) return List.of();
         List<Pair<PsiElement, TextRange>> files = InjectedLanguageManager.getInstance(comment.getProject()).getInjectedPsiFiles(comment);
         if (files == null) return List.of();
         List<PsiElement> result = new ArrayList<>();

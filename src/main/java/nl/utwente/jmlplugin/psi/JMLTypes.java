@@ -32,6 +32,8 @@ public interface JMLTypes extends JMLGrammarTypes {
     IElementType BIGINT_MATH_EXPR = new JMLElementType("\\bigint_math() expression");
     IElementType INNER_JAVA_EXPR = new JMLElementType("expression");
     IElementType GHOST_DECLARATOR = new JMLElementType("ghost variable");
+    // an empty element where the semicolon at the end of the JML is missing
+    IElementType MISSING_SEMICOLON = new JMLElementType("missing semicolon");
 
     IElementType JAVA_EXPR_TOKEN = new JMLTokenType("JAVA_EXPR_TOKEN");
     IElementType RESULT = new JMLTokenType("\\result");
@@ -107,6 +109,8 @@ public interface JMLTypes extends JMLGrammarTypes {
                 return new JMLGhostDeclarator(node);
             } else if (type == INNER_JAVA_EXPR) {
                 return new JMLInnerJavaExpr(node);
+            } else if (type == MISSING_SEMICOLON) {
+                return new com.intellij.extapi.psi.ASTWrapperPsiElement(node);
             }
             return JMLGrammarTypes.Factory.createElement(node);
         }

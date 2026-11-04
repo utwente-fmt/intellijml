@@ -521,8 +521,8 @@ public class JMLTypeAnnotator {
         // get the class the JML comment is in
         PsiElement javaContext = getJavaContext(element);
         PsiClass classContext = getParentOfType(javaContext, PsiClass.class);
-        // replace [*] or .* so we only have the name of the reference
-        String referenceName = element.getText().replaceAll("\\[\\*]|\\.\\*", "");
+        // replace [*], an index such as [i] or [0 .. n-1], or .* so we only have the name of the reference
+        String referenceName = element.getText().replaceAll("\\[[^\\]]*]|\\.\\*", "");
 
         PsiJavaCodeReferenceElement classReference = null;
         PsiExpression fieldReference = null;
@@ -579,8 +579,8 @@ public class JMLTypeAnnotator {
             return;
         }
         // divide checking based of whether it ends with [*], .* or nothing
-        // [*] is only allowed on arrays
-        if (element.getText().contains("[*]")) {
+        // [*] and an index are only allowed on arrays
+        if (element.getText().contains("[")) {
             if (!(fieldValid && fieldResolved.getElement() instanceof PsiVariable
                     && ((PsiVariable) fieldResolved.getElement()).getType().getArrayDimensions() > 0)) {
                 // reference points to a field or parameter, but it is not an array
@@ -600,9 +600,9 @@ public class JMLTypeAnnotator {
                 holder.newAnnotation(HighlightSeverity.ERROR, assignable ? ErrorMessages.UNASSIGNABLE
                         : ErrorMessages.INCORRECT_REFERENCE).create();
             }
-            // a method may always assign its own parameters, so they do not need to be listed
-            else if (assignable && fieldResolved.getElement() instanceof PsiParameter) {
-                holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.ASSIGNABLE_PARAMETER).create();
+            // as in OpenJML, a parameter cannot be listed: a method may always assign its own parameters
+            else if (assignable && fieldResolved.getElement() instanceof PsiParameter parameter) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.assignableParameter(parameter.getName())).create();
             }
             // reference points to a field, check that it is not final
             else if (assignable && fieldResolved.getElement() instanceof PsiField && ((PsiField) fieldResolved.getElement()).hasModifierProperty(PsiModifier.FINAL)) {
@@ -659,7 +659,7 @@ public class JMLTypeAnnotator {
     private static void checkGhostAssignable(PsiElement element, Ghosts.Ghost ghost, @Nullable PsiMethod method,
                                              String clause, AnnotationHolder holder) {
         PsiType type = ghost.type(element);
-        if (element.getText().contains("[*]")) {
+        if (element.getText().contains("[")) {
             if (type != null && type.getArrayDimensions() == 0) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_ARRAY_ONLY).create();
             }
@@ -689,7 +689,7 @@ public class JMLTypeAnnotator {
         if (loop == null) return;
         // resolve from the body of the loop, so that the variables declared before the loop and in a for loop are visible
         PsiElement context = loop.getBody() != null ? loop.getBody() : loop;
-        String referenceName = element.getText().replaceAll("\\[\\*]|\\.\\*", "");
+        String referenceName = element.getText().replaceAll("\\[[^\\]]*]|\\.\\*", "");
         PsiElementFactory factory = JavaPsiFacade.getElementFactory(element.getProject());
         PsiElement resolved = null;
         try {
@@ -711,7 +711,7 @@ public class JMLTypeAnnotator {
             } else {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REFERENCE_UNRESOLVED).create();
             }
-        } else if (element.getText().endsWith("[*]")) {
+        } else if (element.getText().endsWith("]")) {
             if (variable.getType().getArrayDimensions() == 0) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_ARRAY_ONLY).create();
             }

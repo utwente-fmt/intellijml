@@ -11,7 +11,7 @@ public class RequiresAfterEnsures {
 
     /*@
         ensures \result == a / b;
-        <error descr="Requires clauses must be placed before all other clauses in a specification as it is a pre-condition">requires</error> b!=0;
+        requires b!=0;
     */
     public int div2(int a, int b) {
         return a / b;

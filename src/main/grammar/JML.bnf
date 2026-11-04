@@ -111,24 +111,28 @@ private spec_case ::= heavyweight_spec_case | lightweight_spec_case
 private heavyweight_spec_case ::= AT_SIGN* behavior_header lightweight_spec_case?
 private lightweight_spec_case ::= (requires_clause | AT_SIGN* old_clause)+ spec_body? | spec_body
 behavior_header ::= (public | protected | private)? (NORMAL_BEHAVIOR | EXCEPTIONAL_BEHAVIOR | BEHAVIOR)
+// as in OpenJML, a requires clause can also come after other clauses, though it usually comes first
 spec_body ::= (AT_SIGN* (ensures_clause | signals_clause | signals_only_clause | assignable_clause | diverges_clause
-    | reads_clause | old_clause))+
+    | reads_clause | old_clause | requires_clause))+
 
 // clauses allowed in method specifications
-requires_clause ::= AT_SIGN* (requires|pre) pred_or_not SEMICOLON+ {pin="pred_or_not"}
-ensures_clause ::= (ensures|post) pred_or_not SEMICOLON+ {pin="pred_or_not"}
+requires_clause ::= AT_SIGN* (requires|pre) pred_or_not clause_end {pin="pred_or_not"}
+ensures_clause ::= (ensures|post) pred_or_not clause_end {pin="pred_or_not"}
 signals_clause ::= signals L_PAREN reference_type IDENT? R_PAREN pred_or_not? SEMICOLON+ {pin="pred_or_not"}
 // lists may continue on a new line that starts with @-signs, before or after a comma
 signals_only_clause ::= SIGNALS_ONLY <<skipAtSigns>> (NOTHING | reference_type (<<skipAtSigns>> COMMA <<skipAtSigns>> reference_type)*) SEMICOLON+
 assignable_clause ::= (assignable|modifiable|modifies|assigns) <<skipAtSigns>> store_ref_list SEMICOLON+
 // whether the method may not terminate, such as "diverges true;"
-diverges_clause ::= diverges pred_or_not SEMICOLON+ {pin="pred_or_not"}
+diverges_clause ::= diverges pred_or_not clause_end {pin="pred_or_not"}
 // the locations that the method may read, such as "reads \nothing;", also spelled accessible
 reads_clause ::= (reads | accessible) <<skipAtSigns>> store_ref_list SEMICOLON+
 // a variable for the clauses after it in its specification case, with the value of its initializer before the method,
 // such as "old int n = size;"
 old_clause ::= OLD_KEYWORD modifiers? <<parseGhostDeclarator>> SEMICOLON+ {pin=1}
 private pred_or_not ::= NOT_SPECIFIED | java_expr
+// the end of a clause with an expression; as in OpenJML, the semicolon may be missing at the end of the JML, which
+// the annotators then report as a warning (or an error, when a JML comment follows)
+private clause_end ::= SEMICOLON+ | <<missingFinalSemicolon>>
 
 // class invariants, ghost and model fields, represents clauses and in clauses; a ghost declaration followed by a
 // statement, such as "ghost int x; set x = 1;", is an in-method specification
@@ -139,7 +143,7 @@ private in_method_keyword ::= set | assert | assume | maintaining | LOOPINVARIAN
     | check | show | reachable | unreachable | halt | split
 // an invariant, or an initially clause, which holds after each constructor, or a history constraint, which relates the
 // states before and after each method
-class_invariant ::= modifiers? (invariant | initially | constraint) java_expr SEMICOLON+ {pin="java_expr"}
+class_invariant ::= modifiers? (invariant | initially | constraint) java_expr clause_end {pin="java_expr"}
 
 // modifiers for methods and fields
 modifiers ::= ((SPEC_PUBLIC | SPEC_PROTECTED | pure | instance | helper | nullable | NON_NULL | NULLABLE_BY_DEFAULT
@@ -152,19 +156,19 @@ private java_modifier ::= public | private | protected | static
 in_method_spec ::= (AT_SIGN* (loop_invariant | loop_variant | loop_assignable_clause | assert_statement | assume_statement
     | set_statement | ghost_declaration | check_statement | show_statement | reachable_statement | unreachable_statement
     | halt_statement | split_statement))+
-loop_invariant ::= (maintaining | LOOPINVARIANT) java_expr SEMICOLON+ {pin="java_expr"}
-loop_variant ::= (decreases | decreasing | LOOP_DECREASES) java_expr SEMICOLON+ {pin="java_expr"}
+loop_invariant ::= (maintaining | LOOPINVARIANT) java_expr clause_end {pin="java_expr"}
+loop_variant ::= (decreases | decreasing | LOOP_DECREASES) java_expr clause_end {pin="java_expr"}
 loop_assignable_clause ::= (LOOP_WRITES | LOOP_MODIFIES | LOOP_ASSIGNS | LOOP_ASSIGNABLE) <<skipAtSigns>> store_ref_list SEMICOLON+
 // separate because in runtime checking they have different behaviours
-assert_statement ::= assert java_expr SEMICOLON+ {pin="java_expr"}
-assume_statement ::= assume java_expr SEMICOLON+ {pin="java_expr"}
+assert_statement ::= assert java_expr clause_end {pin="java_expr"}
+assume_statement ::= assume java_expr clause_end {pin="java_expr"}
 // an assignment to a ghost variable, such as "set count = count + 1;"
 set_statement ::= set java_expr SEMICOLON+ {pin="java_expr"}
 // statements for OpenJML's static checking, with OpenJML's syntax: check is an assert that is not assumed afterwards,
 // show lists expressions whose values OpenJML shows in a counterexample, reachable and unreachable check whether a
 // statement can be reached, halt stops the checking of the rest of the path, and split splits the proof of the if,
 // switch or loop after it; the ones without an expression need no semicolon at the end of the comment
-check_statement ::= check java_expr SEMICOLON+ {pin="java_expr"}
+check_statement ::= check java_expr clause_end {pin="java_expr"}
 show_statement ::= show java_expr? SEMICOLON+ {pin=1}
 reachable_statement ::= reachable SEMICOLON*
 unreachable_statement ::= unreachable SEMICOLON*
@@ -187,7 +191,11 @@ store_ref_keyword ::= NOTHING | EVERYTHING | NOT_SPECIFIED
 store_ref ::= store_ref_name store_ref_name_suffix*
 // the lexer gives an identifier for keywords that only start a clause, such as decreases, so they can be names
 private store_ref_name ::= this | super | IDENT
-private store_ref_name_suffix ::= (DOT this) | (DOT IDENT) | (DOT STAR) | (L_SQ_BRAC STAR R_SQ_BRAC)
+// an array element can also be named with an index or a range of them, as in a[i] or a[0 .. n-1], as in OpenJML
+private store_ref_name_suffix ::= (DOT this) | (DOT IDENT) | (DOT STAR)
+    | (L_SQ_BRAC (STAR | array_index (DOT DOT array_index)?) R_SQ_BRAC)
+private array_index ::= index_part+
+private index_part ::= IDENT | REST | STAR | this | L_PAREN index_part* R_PAREN | DOT (IDENT | this)
 
 
 // java reference to an exception class
