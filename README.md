@@ -98,6 +98,11 @@ fails if any test is skipped, because that happens when a test run is interrupte
 
 `JMLRacOpenJmlTest` and `JMLEscOpenJmlTest` run programs with JML checks and verify methods with a real
 OpenJML, so they only run when you give an installation: `./gradlew test -PopenJml=<folder of the OpenJML installation>`.
+With an installation, `JMLExamplesOpenJmlTest` also checks the examples that come with OpenJML (its `tutorial`
+and `demos` folders) with the plugin and with OpenJML's type checking, and compares the lines on which they
+find errors in the JML. The known differences, mostly JML that the plugin does not support yet, are in
+`src/test/testData/openJmlExamples/differences.txt`. When they change, the test fails once and updates that
+file, so `git diff` shows what changed.
 
 More background on the tests is in chapter 8 of the
 [maintainer's guide](docs/Maintainers_Guide.pdf); the instruction there to clone the intellij-community
