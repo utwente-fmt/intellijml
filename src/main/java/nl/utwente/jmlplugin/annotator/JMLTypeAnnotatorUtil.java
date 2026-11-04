@@ -8,7 +8,6 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiTypesUtil;
 import com.intellij.psi.util.TypeConversionUtil;
 import com.intellij.util.IncorrectOperationException;
-import nl.utwente.jmlplugin.psi.JMLLoopInvariant;
 import nl.utwente.jmlplugin.psi.JMLReferenceType;
 import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import nl.utwente.jmlplugin.psi.JMLTypes;
@@ -286,12 +285,12 @@ class JMLTypeAnnotatorUtil {
     }
 
     /**
-     * Adds the initializers of the loop that the loop invariant belongs to to ExtraVariables
+     * Adds the initializers of the loop that the loop specification belongs to to ExtraVariables
      *
-     * @param elem      the loop invariant
+     * @param elem      the loop invariant or decreases clause
      * @param extraVars the original ExtraVariables instance
      */
-    protected static void addLoopInitializers(JMLLoopInvariant elem, ExtraVariables extraVars) {
+    protected static void addLoopInitializers(PsiElement elem, ExtraVariables extraVars) {
         PsiElement javaContext = getCommentContext(elem);
         PsiElement loop = PsiTreeUtil.skipWhitespacesAndCommentsForward(javaContext);
         if (loop instanceof PsiForStatement) {

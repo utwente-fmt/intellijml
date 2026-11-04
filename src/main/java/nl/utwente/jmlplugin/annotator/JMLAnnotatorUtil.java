@@ -79,6 +79,23 @@ public class JMLAnnotatorUtil {
     }
 
     /**
+     * Finds the loop that a loop specification, such as a loop invariant, belongs to: the loop statement right below
+     * its comment, with only comments and at most one line break in between
+     *
+     * @param element an element in a JML comment in a method body
+     * @return the loop below the comment, or null if there is none
+     */
+    public static PsiLoopStatement loopBelow(PsiElement element) {
+        PsiComment commentContext = getCommentContext(element);
+        if (commentContext == null) return null;
+        PsiElement next = commentContext.getNextSibling();
+        while (next instanceof PsiComment || (next instanceof PsiWhiteSpace && isAtMostOneNewline(next.getText()))) {
+            next = next.getNextSibling();
+        }
+        return next instanceof PsiLoopStatement loop ? loop : null;
+    }
+
+    /**
      * Generates a list of all comments that come before the current comment
      *
      * @param myComment     the comment to look backwards from

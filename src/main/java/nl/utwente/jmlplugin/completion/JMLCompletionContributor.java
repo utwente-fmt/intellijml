@@ -157,7 +157,8 @@ public class JMLCompletionContributor extends CompletionContributor {
      */
 
     private static PsiElementPattern.Capture<PsiElement> javaJMLStoreRefNoSemicolon() {
-        return psiElement(JMLTypes.IDENT).afterLeaf("assignable", "modifiable", "modifies");
+        return psiElement(JMLTypes.IDENT).afterLeaf("assignable", "modifiable", "modifies",
+                "loop_writes", "loop_modifies", "loop_assigns", "loop_assignable");
     }
 
     /**

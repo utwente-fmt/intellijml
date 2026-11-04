@@ -72,7 +72,7 @@ public class JMLSyntaxHighlighter extends SyntaxHighlighterBase {
         // fill the map with JML tokens to their corresponding TextAttributesKey
         fillMap(tokensToTextAttributeKeys, JMLTokenSet.visibilityModifiers, VISIBILITY_KEY);
         fillMap(tokensToTextAttributeKeys, VISIBILITY_KEY, JMLTypes.STATIC, JMLTypes.INSTANCE);
-        fillMap(tokensToTextAttributeKeys, JMLTokenSet.allOuterKeywords, KEY);
+        fillMap(tokensToTextAttributeKeys, JMLTokenSet.allClauseKeywords, KEY);
         fillMap(tokensToTextAttributeKeys, JMLTokenSet.backslashKeywords, BACKSLASH_KEY);
         fillMap(tokensToTextAttributeKeys, COMMENT, JMLTypes.INFORMAL_DESCRIPTION);
         fillMap(tokensToTextAttributeKeys, TEXT, JMLTypes.REST);

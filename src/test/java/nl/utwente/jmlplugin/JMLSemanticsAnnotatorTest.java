@@ -87,6 +87,11 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testLoopSpecsNotAboveLoop() {
+        myFixture.configureByFile("LoopSpecsNotAboveLoop.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testRedundantNotSpecified() {
         myFixture.configureByFile("RedundantNotSpecified.java");
         myFixture.checkHighlighting(true, false, true, false);

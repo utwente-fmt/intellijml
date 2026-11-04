@@ -37,6 +37,8 @@ public class JMLTypeAnnotator {
     public static void annotateTypes(@NotNull PsiElement element, @NotNull AnnotationHolder holder) {
         if (element instanceof JMLStoreRef && element.getParent() instanceof JMLAssignableClause) {
             checkAssignableVarScope(element, holder);
+        } else if (element instanceof JMLStoreRef && element.getParent() instanceof JMLLoopAssignableClause) {
+            checkLoopAssignableVarScope(element, holder);
         } else if (element instanceof JMLReferenceType && (element.getParent() instanceof JMLSignalsClause || element.getParent() instanceof JMLSignalsOnlyClause)) {
             checkSignalsType((JMLReferenceType) element, holder);
         } else if (element instanceof JMLJavaExpr) {
@@ -167,6 +169,48 @@ public class JMLTypeAnnotator {
     }
 
     /**
+     * Checks a reference in a loop_writes clause, which may also name the local variables of the method
+     *
+     * @param element the reference to check for
+     * @param holder  the Annotation holder
+     */
+    private static void checkLoopAssignableVarScope(PsiElement element, AnnotationHolder holder) {
+        PsiLoopStatement loop = loopBelow(element);
+        // the semantics annotator gives an error if there is no loop
+        if (loop == null) return;
+        // resolve from the body of the loop, so that the variables declared before the loop and in a for loop are visible
+        PsiElement context = loop.getBody() != null ? loop.getBody() : loop;
+        String referenceName = element.getText().replaceAll("\\[\\*]|\\.\\*", "");
+        PsiElementFactory factory = JavaPsiFacade.getElementFactory(element.getProject());
+        PsiElement resolved = null;
+        try {
+            if (factory.createExpressionFromText(referenceName, context) instanceof PsiReferenceExpression reference) {
+                resolved = reference.resolve();
+            }
+        } catch (IncorrectOperationException e) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.INCORRECT_REFERENCE).create();
+            return;
+        }
+        if (referenceName.equals("this") || referenceName.equals("super")) {
+            if (!element.getText().contains(".*")) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.UNASSIGNABLE).create();
+            }
+        } else if (!(resolved instanceof PsiVariable variable)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REFERENCE_UNRESOLVED).create();
+        } else if (element.getText().endsWith("[*]")) {
+            if (variable.getType().getArrayDimensions() == 0) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_ARRAY_ONLY).create();
+            }
+        } else if (element.getText().endsWith(".*")) {
+            if (!(variable.getType() instanceof PsiClassType)) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_CLASS_ONLY).create();
+            }
+        } else if (variable.hasModifierProperty(PsiModifier.FINAL)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_VAR_IS_FINAL).create();
+        }
+    }
+
+    /**
      * Checks whether a reference to an exception in an signals or signals-only clause can be resolved and whether they are allowed
      *
      * @param element the reference to check for
@@ -258,12 +302,18 @@ public class JMLTypeAnnotator {
                 if (parent.getIdent() != null) {
                     addSignalsVariable(parent.getIdent(), parent.getReferenceType(), extraVars, holder);
                 }
-            } else if (element.getParent() instanceof JMLLoopInvariant) {
+            } else if (element.getParent() instanceof JMLLoopInvariant || element.getParent() instanceof JMLLoopVariant) {
                 // for loop_invariants add the initializer of the loop
-                addLoopInitializers((JMLLoopInvariant) element.getParent(), extraVars);
+                addLoopInitializers(element.getParent(), extraVars);
             }
+            // a decreases clause has an integral type, all other expressions are boolean
+            boolean variant = element.getParent() instanceof JMLLoopVariant;
             // do the actual checking of the java expression
-            InnerJavaExprResult res = annotateInnerJavaExpr((JMLInnerJavaExpr) element.getFirstChild(), holder, extraVars, true, true);
+            InnerJavaExprResult res = annotateInnerJavaExpr((JMLInnerJavaExpr) element.getFirstChild(), holder, extraVars, !variant, true);
+            if (variant && res.isCorrect() && res.getExpr() != null && !isIntegral(res.getExpr().getType())) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.notIntegral(res.getExpr().getType()))
+                        .range(element).create();
+            }
 
         }
     }
@@ -404,6 +454,15 @@ public class JMLTypeAnnotator {
             }
         }
         return result;
+    }
+
+    /**
+     * @return whether the type is an integral type, as OpenJML requires for a decreases clause: char, byte, short, int
+     * or long, or a boxed one
+     */
+    private static boolean isIntegral(@Nullable PsiType type) {
+        PsiType unboxed = PsiPrimitiveType.getOptionallyUnboxedType(type);
+        return unboxed != null && TypeConversionUtil.isIntegralNumberType(unboxed);
     }
 
     /**

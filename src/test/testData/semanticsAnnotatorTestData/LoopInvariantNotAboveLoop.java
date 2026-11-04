@@ -23,7 +23,7 @@ public class LoopInvariantNotAboveLoop {
             count++;
         }
 
-        //@ <error descr="loop_invariant / maintaining needs to be above a loop">loop_invariant x <= 10;</error>
+        //@ <error descr="Loop specifications must immediately precede a loop statement">loop_invariant x <= 10;</error>
 
         int x = 10;
         //@ loop_invariant x <= 10;

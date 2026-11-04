@@ -33,6 +33,8 @@ public class JMLAssignableClauseCompletionProvider extends CompletionProvider<Co
             fillFieldCompletions(enclosingClass, result, parameters);
             enclosingClass = getEnclosingClass(enclosingClass);
         }
+        // a loop_writes clause in a method body can also name the local variables
+        fillMethodLocalVariables(parameters, result);
         addTokens(assignableJavaKeywords, result);
     }
 }

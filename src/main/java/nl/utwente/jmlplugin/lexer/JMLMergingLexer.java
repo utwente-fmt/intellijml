@@ -30,12 +30,14 @@ public class JMLMergingLexer extends MergingLexerAdapter {
 
     // added to the state of tokens in the middle of a clause, such as "(Exception e)" in a signals clause
     private static final int IN_CLAUSE_STATE = 1 << 20;
+    // added to the state of tokens that are not at the start of a clause, where decreases is not a keyword
+    private static final int NOT_CLAUSE_START_STATE = 1 << 21;
 
     @Override
     public void start(@NotNull CharSequence buffer, int startOffset, int endOffset, int initialState) {
         // the merge function only remembers things within a clause, and lexing never starts in the middle of one
         mergeFunction.reset();
-        super.start(buffer, startOffset, endOffset, initialState & ~IN_CLAUSE_STATE);
+        super.start(buffer, startOffset, endOffset, initialState & ~(IN_CLAUSE_STATE | NOT_CLAUSE_START_STATE));
     }
 
     /**
@@ -45,7 +47,9 @@ public class JMLMergingLexer extends MergingLexerAdapter {
     @Override
     public int getState() {
         int state = super.getState();
-        return mergeFunction.inClauseAtTokenStart ? state | IN_CLAUSE_STATE : state;
+        if (mergeFunction.inClauseAtTokenStart) state |= IN_CLAUSE_STATE;
+        if (!mergeFunction.clauseStartAtTokenStart) state |= NOT_CLAUSE_START_STATE;
+        return state;
     }
 
     /**
@@ -57,11 +61,38 @@ public class JMLMergingLexer extends MergingLexerAdapter {
         private boolean javaExprExpected = false;
         // whether merging or javaExprExpected was set at the start of the last token
         private boolean inClauseAtTokenStart = false;
+        // the number of open parentheses in the Java expression that is being merged, as the semicolons of a
+        // quantifier are inside parentheses
+        private int parenDepth = 0;
+        // the last token that is not whitespace or a comment
+        private IElementType previous = null;
+        // whether a contextual keyword would start a clause at the start of the last token
+        private boolean clauseStartAtTokenStart = true;
 
         void reset() {
             merging = false;
             javaExprExpected = false;
             inClauseAtTokenStart = false;
+            parenDepth = 0;
+            previous = null;
+            clauseStartAtTokenStart = true;
+        }
+
+        private void countParenthesis(IElementType type) {
+            if (type == JMLTypes.L_PAREN) {
+                parenDepth++;
+            } else if (type == JMLTypes.R_PAREN) {
+                parenDepth--;
+            }
+        }
+
+        /**
+         * @param type the token after a semicolon (and the whitespace and at-signs after it)
+         * @return whether the token starts the next clause, so that the Java expression ends at the semicolon
+         */
+        private boolean startsClause(IElementType type) {
+            return type == null || JMLTokenSet.allOuterKeywords.contains(type)
+                    || (parenDepth <= 0 && JMLTokenSet.contextualKeywords.contains(type));
         }
 
 
@@ -74,10 +105,31 @@ public class JMLMergingLexer extends MergingLexerAdapter {
          */
         @Override
         public IElementType merge(IElementType type, Lexer originalLexer) {
+            clauseStartAtTokenStart = atClauseStart();
+            IElementType result = mergeToken(type, originalLexer);
+            if (!commentsAndWhitespace.contains(result)) previous = result;
+            return result;
+        }
+
+        /**
+         * @return whether a contextual keyword, such as decreases, starts a clause here: at the start of the
+         * specification, or after a semicolon or an at-sign, but not in a list such as "loop_writes x, decreasing;"
+         */
+        private boolean atClauseStart() {
+            return previous == null || previous == JMLTypes.SEMICOLON || previous == JMLTypes.AT_SIGN;
+        }
+
+        private IElementType mergeToken(IElementType type, Lexer originalLexer) {
             inClauseAtTokenStart = merging || javaExprExpected;
+            // outside a Java expression, a keyword such as decreases that does not start a clause is a name, as in
+            // "loop_writes x, decreasing;"
+            if (!merging && JMLTokenSet.contextualKeywords.contains(type) && !atClauseStart()) {
+                return JMLTypes.IDENT;
+            }
             // merge until you see that the expression ended, assuming greedy matching
             LexerPosition startPos;
 
+            if (merging) countParenthesis(type);
             while (merging) {
                 // EOF and no end-marker found for the expression
                 // (possible that ';' has not been typed by the user yet)
@@ -96,7 +148,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                         originalLexer.advance();
                     }
                     //end of expression so return java expression
-                    if (originalLexer.getTokenType() == null || JMLTokenSet.allOuterKeywords.contains(originalLexer.getTokenType())) {
+                    if (startsClause(originalLexer.getTokenType())) {
                         merging = false;
                         // restore to the position of the semicolon, because we do not want the
                         // semicolon and what comes after it in the resulting java expression token
@@ -108,6 +160,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                     merging = false;
                     return JMLTypes.JAVA_EXPR_TOKEN;
                 } else {
+                    countParenthesis(originalLexer.getTokenType());
                     originalLexer.advance();
                 }
             }
@@ -122,6 +175,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                 // check if there is a Java expression here
                 if (originalLexer.getTokenType() != JMLTypes.SEMICOLON && originalLexer.getTokenType() != JMLTypes.NOT_SPECIFIED) {
                     merging = true;
+                    parenDepth = 0;
                 }
                 javaExprExpected = false;
                 originalLexer.restore(startPos);
@@ -140,6 +194,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                 // check there is a java expression now and not \not_specified
                 if (originalLexer.getTokenType() != JMLTypes.NOT_SPECIFIED && originalLexer.getTokenType() != JMLTypes.SEMICOLON) {
                     merging = true;
+                    parenDepth = 0;
                 }
                 // restore to undo our lookahead
                 originalLexer.restore(startPos);

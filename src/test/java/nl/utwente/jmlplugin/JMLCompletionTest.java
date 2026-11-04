@@ -222,6 +222,19 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
         assertContainsElements(strings, "\\everything");
     }
 
+    public void testLoopWrites() {
+        List<String> strings = completeIn("LoopWrites.java");
+
+        // a loop can also write the local variables
+        assertContainsElements(strings, "number", "total", "\\nothing");
+    }
+
+    public void testCodeBlockKeywords() {
+        List<String> strings = completeIn("CodeBlockKeywords.java");
+
+        assertSameElements(strings, "assert", "assume", "maintaining", "loop_invariant", "decreases", "loop_writes");
+    }
+
     public void testAssignableSemicolon() {
         List<String> strings = completeIn("AssignableSemicolon.java");
 

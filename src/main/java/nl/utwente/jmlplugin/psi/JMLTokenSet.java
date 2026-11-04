@@ -43,16 +43,27 @@ public class JMLTokenSet {
     // the start of a heavyweight specification case, after an optional visibility modifier
     public static final TokenSet behaviors = TokenSet.create(NORMAL_BEHAVIOR, EXCEPTIONAL_BEHAVIOR, BEHAVIOR);
 
+    // the clauses that specify a loop, above it; all spellings that OpenJML accepts
+    public static final TokenSet loopVariantKeywords = TokenSet.create(DECREASES, DECREASING, LOOP_DECREASES);
+
+    public static final TokenSet loopAssignableKeywords = TokenSet.create(LOOP_WRITES, LOOP_MODIFIES, LOOP_ASSIGNS, LOOP_ASSIGNABLE);
+
+    // keywords that start a clause, but are also allowed as the name of a variable in a Java expression, as in
+    // OpenJML: they only end a Java expression after a semicolon, outside parentheses
+    public static final TokenSet contextualKeywords = TokenSet.create(DECREASES, DECREASING);
+
     public static final TokenSet javaKeywords = TokenSet.create(THIS, SUPER);
 
     public static final TokenSet generalJMLKeywordsInJava = TokenSet.create(NOT_SPECIFIED, OLD, TYPE_OF, TYPE_CAPS, ELEM_TYPE, TYPE, NON_NULL_ELEMENTS);
 
     // used for lexers / parsers
-    public static final TokenSet keywordsBeforeJavaExpr = TokenSet.create(
+    public static final TokenSet keywordsBeforeJavaExpr = TokenSet.orSet(loopVariantKeywords, TokenSet.create(
             REQUIRES, PRE, ENSURES, POST, MAINTAINING, LOOPINVARIANT, ASSUME, ASSERT, INVARIANT
-    );
+    ));
 
-    public static final TokenSet codeBlockKeywords = TokenSet.create(ASSERT, ASSUME, MAINTAINING, LOOPINVARIANT);
+    // the keywords that completion offers in a method body; the other spellings are left out
+    public static final TokenSet codeBlockKeywords = TokenSet.create(ASSERT, ASSUME, MAINTAINING, LOOPINVARIANT,
+            DECREASES, LOOP_WRITES);
 
     public static final TokenSet commentsAndWhitespace = TokenSet.create(INFORMAL_DESCRIPTION, TokenType.WHITE_SPACE);
 
@@ -69,8 +80,13 @@ public class JMLTokenSet {
     public static final TokenSet backslashKeywordsInJavaExpr = TokenSet.orSet(quantifiers,
             TokenSet.create(RESULT, OLD, TYPE_OF, ELEM_TYPE, TYPE, TYPE_CAPS, NON_NULL_ELEMENTS));
 
+    // the keywords that end a Java expression, also without a semicolon before them; see contextualKeywords
     public static final TokenSet allOuterKeywords = TokenSet.orSet(methodSpecCaseKeywords, allModifiers, behaviors,
-            TokenSet.create(INVARIANT, MAINTAINING, LOOPINVARIANT, ASSUME, ASSERT, ALSO));
+            loopAssignableKeywords,
+            TokenSet.create(INVARIANT, MAINTAINING, LOOPINVARIANT, LOOP_DECREASES, ASSUME, ASSERT, ALSO));
+
+    // all keywords that start a clause or are a modifier
+    public static final TokenSet allClauseKeywords = TokenSet.orSet(allOuterKeywords, contextualKeywords);
 
     // used to check for keywords that have rules in the form of \tokentype(java_expr),
     // does not contain \type() because that one does not take an expression

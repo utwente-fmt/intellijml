@@ -36,8 +36,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         // return true on warnings
         if (element instanceof JMLMethodJml && checkModifierBeforeSpecClauses((JMLMethodJml) element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NO_MODIFIER_BEFORE_SPEC).create();
-        } else if (element instanceof JMLLoopInvariant && checkLoopInvariantAboveLoop((JMLLoopInvariant) element)) {
-            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.LOOP_INVARIANT_NOT_ABOVE_LOOP).create();
+        } else if (isLoopSpec(element) && checkLoopSpecAboveLoop(element)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.LOOP_SPEC_NOT_ABOVE_LOOP).create();
         } else if (element instanceof JMLSignalsOnlyClause && checkMultipleSignalsOnly((JMLSignalsOnlyClause) element)) {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.MULTIPLE_SIGNALS_ONLY).create();
             return true;
@@ -274,22 +274,21 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
     }
 
     /**
-     * Checks whether a loop-invariant is placed above a loop (it should be above a loop)
-     *
-     * @param element the loop-invariant to check for
-     * @return true if the loop-invariant is not above a loop
+     * @return whether the element is a clause that specifies a loop: loop_invariant, decreases or loop_writes
      */
-    private static boolean checkLoopInvariantAboveLoop(JMLLoopInvariant element) {
-        PsiComment commentContext = getCommentContext(element);
-        // skip all comments and whitespaces that have 1 newline max, otherwise it is not right above it
-        PsiElement nextJavaStatement = commentContext.getNextSibling();
-        while (nextJavaStatement instanceof PsiComment || (nextJavaStatement instanceof PsiWhiteSpace
-                && isAtMostOneNewline(nextJavaStatement.getText()))) {
-            nextJavaStatement = nextJavaStatement.getNextSibling();
-        }
-        // check that it is not above a loop
-        return !(nextJavaStatement instanceof PsiWhileStatement || nextJavaStatement instanceof PsiDoWhileStatement
-                || nextJavaStatement instanceof PsiForStatement || nextJavaStatement instanceof PsiForeachStatement);
+    private static boolean isLoopSpec(PsiElement element) {
+        return element instanceof JMLLoopInvariant || element instanceof JMLLoopVariant
+                || element instanceof JMLLoopAssignableClause;
+    }
+
+    /**
+     * Checks whether a loop specification, such as a loop invariant, is placed above a loop (it should be above a loop)
+     *
+     * @param element the loop specification to check for
+     * @return true if the loop specification is not above a loop
+     */
+    private static boolean checkLoopSpecAboveLoop(PsiElement element) {
+        return loopBelow(element) == null;
     }
 
 
@@ -341,6 +340,7 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      * @return true if it is not allowed
      */
     private static boolean checkOldExprAllowed(JMLOldExpr element) {
-        return getParentOfType(element, JMLEnsuresClause.class, JMLSignalsClause.class, JMLAssumeStatement.class, JMLAssertStatement.class, JMLLoopInvariant.class) == null;
+        return getParentOfType(element, JMLEnsuresClause.class, JMLSignalsClause.class, JMLAssumeStatement.class,
+                JMLAssertStatement.class, JMLLoopInvariant.class, JMLLoopVariant.class) == null;
     }
 }

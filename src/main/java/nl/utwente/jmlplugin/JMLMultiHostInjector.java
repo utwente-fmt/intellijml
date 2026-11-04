@@ -70,7 +70,7 @@ public class JMLMultiHostInjector implements MultiHostInjector {
     private static final Pattern WORD_AFTER_AT_SIGN = Pattern.compile("\\s*@(\\w*)");
 
     // the keywords that a JML comment can start with
-    private static final Set<String> KEYWORDS = Arrays.stream(JMLTokenSet.allOuterKeywords.getTypes())
+    private static final Set<String> KEYWORDS = Arrays.stream(JMLTokenSet.allClauseKeywords.getTypes())
             .map(IElementType::toString).collect(Collectors.toSet());
 
     /**

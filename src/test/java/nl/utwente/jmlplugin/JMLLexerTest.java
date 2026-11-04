@@ -55,6 +55,31 @@ public class JMLLexerTest extends BasePlatformTestCase {
         checkCorrectRestart("@ requires x > 0\n@ ensures \\result > 0");
     }
 
+    public void testRestartInLoopSpecifications() {
+        checkCorrectRestart("@ loop_invariant 0 <= i; decreases n - i; loop_writes i, decreasing, a[*];\n"
+                + "@ decreasing (\\sum int j; 0 <= j; j);");
+    }
+
+    /**
+     * @return the tokens of the text, with the text of each token, one per line
+     */
+    private static String tokens(String text) {
+        return LexerTestCase.printTokens(text, 0, new JMLInJavaExprMergingLexer());
+    }
+
+    public void testDecreasingIsAnIdentifierInExpressions() {
+        // as in OpenJML, decreases and decreasing are only keywords at the start of a clause
+        String tokens = tokens("@ ensures decreasing == (decreases; decreasing);\n@ decreasing n;");
+        assertTrue(tokens, tokens.contains("IDENTIFIER ('decreasing')"));
+        assertTrue(tokens, tokens.contains("IDENTIFIER ('decreases')"));
+        assertTrue(tokens, tokens.contains("decreasing ('decreasing')"));
+        // in a list, it is a name, so the rest of the list is not a Java expression (which has Java identifiers)
+        tokens = tokens("@ loop_writes x, decreasing, this.decreases;");
+        assertFalse(tokens, tokens.contains("IDENTIFIER"));
+        assertTrue(tokens, tokens.contains("identifier ('decreasing')"));
+        assertTrue(tokens, tokens.contains("identifier ('decreases')"));
+    }
+
     public void testLexingTwice() {
         // a specification that ends in the middle of a clause must not affect the next one
         Lexer lexer = new JMLInJavaExprMergingLexer();

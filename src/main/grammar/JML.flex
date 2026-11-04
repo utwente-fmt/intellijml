@@ -42,6 +42,13 @@ REST=[^@;().,:*\[\]\s]
   "spec_public"               { return SPEC_PUBLIC; }
   "spec_protected"            { return SPEC_PROTECTED; }
   "loop_invariant"            { return LOOPINVARIANT; }
+  "decreases"                 { return DECREASES; }
+  "decreasing"                { return DECREASING; }
+  "loop_decreases"            { return LOOP_DECREASES; }
+  "loop_writes"               { return LOOP_WRITES; }
+  "loop_modifies"             { return LOOP_MODIFIES; }
+  "loop_assigns"              { return LOOP_ASSIGNS; }
+  "loop_assignable"           { return LOOP_ASSIGNABLE; }
   "normal_behavior"           { return NORMAL_BEHAVIOR; }
   "normal_behaviour"          { return NORMAL_BEHAVIOR; }
   "exceptional_behavior"      { return EXCEPTIONAL_BEHAVIOR; }

@@ -29,6 +29,11 @@
     SPEC_PUBLIC = 'spec_public'
     SPEC_PROTECTED = 'spec_protected'
     LOOPINVARIANT = 'loop_invariant'
+    LOOP_DECREASES = 'loop_decreases'
+    LOOP_WRITES = 'loop_writes'
+    LOOP_MODIFIES = 'loop_modifies'
+    LOOP_ASSIGNS = 'loop_assigns'
+    LOOP_ASSIGNABLE = 'loop_assignable'
     // the lexer also gives these for the British spellings, such as normal_behaviour
     NORMAL_BEHAVIOR = 'normal_behavior'
     EXCEPTIONAL_BEHAVIOR = 'exceptional_behavior'
@@ -61,6 +66,8 @@
   name("store_ref_keyword")="\\nothing, \\everything, \\not_specified"
   name("in_method_spec")="in-method specification"
   name("behavior_header")="behavior"
+  name("loop_variant")="decreases clause"
+  name("loop_assignable_clause")="loop_writes clause"
 }
 
 // root jml element
@@ -97,8 +104,10 @@ modifiers ::= ((SPEC_PUBLIC | SPEC_PROTECTED | pure | instance | helper | nullab
 private java_modifier ::= public | private | protected | static
 
 // specification inside a method
-in_method_spec ::= (AT_SIGN* (loop_invariant | assert_statement | assume_statement))+
+in_method_spec ::= (AT_SIGN* (loop_invariant | loop_variant | loop_assignable_clause | assert_statement | assume_statement))+
 loop_invariant ::= (maintaining | LOOPINVARIANT) java_expr SEMICOLON+ {pin="java_expr"}
+loop_variant ::= (decreases | decreasing | LOOP_DECREASES) java_expr SEMICOLON+ {pin="java_expr"}
+loop_assignable_clause ::= (LOOP_WRITES | LOOP_MODIFIES | LOOP_ASSIGNS | LOOP_ASSIGNABLE) <<skipAtSigns>> store_ref_list SEMICOLON+
 // separate because in runtime checking they have different behaviours
 assert_statement ::= assert java_expr SEMICOLON+ {pin="java_expr"}
 assume_statement ::= assume java_expr SEMICOLON+ {pin="java_expr"}
@@ -108,6 +117,7 @@ assume_statement ::= assume java_expr SEMICOLON+ {pin="java_expr"}
 private store_ref_list ::= store_ref_keyword | store_ref (<<skipAtSigns>> COMMA <<skipAtSigns>> store_ref)*
 store_ref_keyword ::= NOTHING | EVERYTHING | NOT_SPECIFIED
 store_ref ::= store_ref_name store_ref_name_suffix*
+// the lexer gives an identifier for keywords that only start a clause, such as decreases, so they can be names
 private store_ref_name ::= this | super | IDENT
 private store_ref_name_suffix ::= (DOT this) | (DOT IDENT) | (DOT STAR) | (L_SQ_BRAC STAR R_SQ_BRAC)
 

@@ -1,0 +1,7 @@
+@ loop_invariant 0 <= i; decreases n - i; loop_writes i, a[*], this.decreasing, decreases;
+@ decreasing (\sum int j; 0 <= j && j < decreasing; j);
+@ loop_decreases decreasing + 1;
+@ loop_modifies \nothing; loop_assigns x.*;
+@ loop_assignable
+@   i,
+@   j;

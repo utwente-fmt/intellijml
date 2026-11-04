@@ -20,6 +20,10 @@
   without a modifier) instead of that of the method, and a specification case that is more visible than its
   method gets a warning. In `//@` comments, a behavior applies to the clauses on the lines after it, and `also`
   can be on a line of its own. Completion suggests them.
+- Loop variants and loop frames above a loop: `decreases` (also `decreasing` and `loop_decreases`), which must
+  have an integral type, and `loop_writes` (also `loop_modifies`, `loop_assigns` and `loop_assignable`), which may
+  name the local variables of the method. As in OpenJML, `decreases` and `decreasing` can still be the names of
+  variables, and a loop specification that is not right above a loop gets OpenJML's message.
 - Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in
   `// @` or `/* @`, which makes the comment an ordinary comment instead of JML
 

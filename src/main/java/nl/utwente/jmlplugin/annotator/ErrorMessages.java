@@ -33,7 +33,8 @@ public final class ErrorMessages {
     public static final String DUPLICATE_MODIFIER = "This modifier has already been used in this specification";
     public static final String MULTIPLE_VISIBILITY_MODIFIERS = "You cannot have multiple visibility modifiers (public, protected or private)";
     public static final String MULTIPLE_SPEC_VISIBILITY_MODIFIERS = "You cannot have multiple specification visibility modifiers (spec_public or spec_protected)";
-    public static final String LOOP_INVARIANT_NOT_ABOVE_LOOP = "loop_invariant / maintaining needs to be above a loop";
+    // OpenJML's message for a loop_invariant, decreases or loop_writes clause that is not above a loop
+    public static final String LOOP_SPEC_NOT_ABOVE_LOOP = "Loop specifications must immediately precede a loop statement";
     public static final String HELPER_NOT_ALLOWED = "The helper modifier is only allowed when the method is private or pure";
     public static final String NOT_SPECIFIED_REDUNDANT = "This clause containing \\not_specified is redundant because you already specified it";
     public static final String STATIC_AND_INSTANCE = "You cannot use both instance and static, choose one";
@@ -106,6 +107,10 @@ public final class ErrorMessages {
     }
 
     // the same message as OpenJML gives
+    public static String notIntegral(@Nullable PsiType type) {
+        return "Expected an integral type in loop_decreases, not " + (type == null ? "unknown" : type.getCanonicalText());
+    }
+
     public static String identifierNotVisible(String identifierVisibility, String clause, String specVisibility) {
         return "An identifier with " + identifierVisibility + " visibility may not be used in a " + clause
                 + " clause with " + specVisibility + " visibility";

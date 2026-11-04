@@ -43,6 +43,11 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testLoopVariants() {
+        myFixture.configureByFile("LoopVariants.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testMultiLineExpressions() {
         myFixture.configureByFile("MultiLineExpressions.java");
         myFixture.checkHighlighting(true, false, true, false);

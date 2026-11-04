@@ -78,6 +78,11 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testLoopSpecs() {
+        // decreases and loop_writes in all spellings, also with decreasing and decreases as names
+        doTest(true, true);
+    }
+
     public void testCorrectMaintaining() {
         doTest(true, true);
     }
