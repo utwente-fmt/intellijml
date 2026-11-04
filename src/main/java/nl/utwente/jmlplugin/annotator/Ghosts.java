@@ -85,7 +85,8 @@ public final class Ghosts {
         String text = declarator == null ? null : declarator.getTypeText();
         if (text == null) return null;
         try {
-            return JavaPsiFacade.getElementFactory(context.getProject()).createTypeFromText(text, context);
+            return JavaPsiFacade.getElementFactory(context.getProject()).createTypeFromText(
+                    JMLTypeAnnotatorUtil.javaTypeText(text), context);
         } catch (IncorrectOperationException e) {
             return null;
         }

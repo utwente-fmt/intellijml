@@ -16,10 +16,14 @@ public class JMLTokenSet {
             REQUIRES, PRE, ENSURES, POST, SIGNALS, SIGNALS_ONLY, ASSIGNABLE, MODIFIABLE, MODIFIES
     );
 
-    public static final TokenSet allModifiers = TokenSet.create(
+    // the arithmetic modes of OpenJML for the code and the specifications of a class or method
+    public static final TokenSet mathModifiers = TokenSet.create(CODE_JAVA_MATH, SPEC_JAVA_MATH, CODE_SAFE_MATH,
+            SPEC_SAFE_MATH, CODE_BIGINT_MATH, SPEC_BIGINT_MATH);
+
+    public static final TokenSet allModifiers = TokenSet.orSet(mathModifiers, TokenSet.create(
             SPEC_PUBLIC, SPEC_PROTECTED, PURE, INSTANCE, HELPER, NULLABLE, NON_NULL, NULLABLE_BY_DEFAULT,
-            NON_NULL_BY_DEFAULT, PUBLIC, PRIVATE, PROTECTED, STATIC
-    );
+            NON_NULL_BY_DEFAULT, SPEC_PURE, PUBLIC, PRIVATE, PROTECTED, STATIC
+    ));
 
     // the modifiers for whether a field, parameter, variable or method result may be null
     public static final TokenSet nullityModifiers = TokenSet.create(NULLABLE, NON_NULL);
@@ -32,7 +36,8 @@ public class JMLTokenSet {
     public static final TokenSet specVisibilityModifiers = TokenSet.create(SPEC_PUBLIC, SPEC_PROTECTED);
 
     // used for annotators
-    public static final TokenSet classModifiers = TokenSet.orSet(specVisibilityModifiers, nullityDefaults, TokenSet.create(PURE));
+    public static final TokenSet classModifiers = TokenSet.orSet(specVisibilityModifiers, nullityDefaults, mathModifiers,
+            TokenSet.create(PURE));
 
     public static final TokenSet invariantModifiers = TokenSet.orSet(visibilityModifiers, TokenSet.create(INSTANCE, STATIC));
 
@@ -40,7 +45,7 @@ public class JMLTokenSet {
             specVisibilityModifiers, nullityModifiers, TokenSet.create(INSTANCE));
 
     public static final TokenSet methodDeclModifiers = TokenSet.orSet(
-            specVisibilityModifiers, nullityModifiers, TokenSet.create(PURE, HELPER));
+            specVisibilityModifiers, nullityModifiers, mathModifiers, TokenSet.create(PURE, SPEC_PURE, HELPER));
 
     public static final TokenSet also = TokenSet.create(ALSO);
 
@@ -55,7 +60,10 @@ public class JMLTokenSet {
     // keywords that start a clause, but are also allowed as the name of a variable in a Java expression, as in
     // OpenJML: they only end a Java expression after a semicolon, outside parentheses
     public static final TokenSet contextualKeywords = TokenSet.create(DECREASES, DECREASING, GHOST, SET, CHECK, SHOW,
-            REACHABLE, UNREACHABLE, HALT, SPLIT);
+            REACHABLE, UNREACHABLE, HALT, SPLIT, ASSIGNS, DIVERGES, INITIALLY, CONSTRAINT);
+
+    // the contextual keywords that can also follow a modifier, as in "public ghost int x;" or "public initially x == 0;"
+    public static final TokenSet keywordsAfterModifiers = TokenSet.create(GHOST, INITIALLY, CONSTRAINT);
 
     public static final TokenSet javaKeywords = TokenSet.create(THIS, SUPER);
 
@@ -67,7 +75,8 @@ public class JMLTokenSet {
 
     // used for lexers / parsers
     public static final TokenSet keywordsBeforeJavaExpr = TokenSet.orSet(loopVariantKeywords, TokenSet.create(
-            REQUIRES, PRE, ENSURES, POST, MAINTAINING, LOOPINVARIANT, ASSUME, ASSERT, INVARIANT, SET, CHECK, SHOW, SPLIT
+            REQUIRES, PRE, ENSURES, POST, MAINTAINING, LOOPINVARIANT, ASSUME, ASSERT, INVARIANT, SET, CHECK, SHOW, SPLIT,
+            DIVERGES, INITIALLY, CONSTRAINT
     ));
 
     // the keywords that completion offers in a method body; the other spellings are left out
@@ -82,7 +91,7 @@ public class JMLTokenSet {
 
     public static final TokenSet skipAfterJavaExpr = TokenSet.orSet(TokenSet.create(AT_SIGN), commentsAndWhitespace);
 
-    public static final TokenSet quantifiers = TokenSet.create(FORALL, EXISTS, NUM_OF, MAX, MIN, SUM, PRODUCT);
+    public static final TokenSet quantifiers = TokenSet.create(FORALL, EXISTS, NUM_OF, MAX, MIN, SUM, PRODUCT, CHOOSE);
 
     public static final TokenSet result = TokenSet.create(RESULT);
 
@@ -92,7 +101,7 @@ public class JMLTokenSet {
 
     public static final TokenSet backslashKeywordsInJavaExpr = TokenSet.orSet(quantifiers,
             TokenSet.create(RESULT, OLD, TYPE_OF, ELEM_TYPE, TYPE, TYPE_CAPS, NON_NULL_ELEMENTS, FRESH, INVARIANT_FOR,
-                    NOT_MODIFIED));
+                    NOT_MODIFIED, JAVA_MATH, SAFE_MATH, BIGINT_MATH, COUNT, LBL, LBLPOS, LBLNEG, BIGINT, REAL));
 
     // the keywords that end a Java expression, also without a semicolon before them; see contextualKeywords
     public static final TokenSet allOuterKeywords = TokenSet.orSet(methodSpecCaseKeywords, allModifiers, behaviors,
@@ -106,7 +115,15 @@ public class JMLTokenSet {
     // does not contain \type() because that one does not take an expression
     public static final TokenSet parenthesesAroundJavaTokenSet =
             TokenSet.create(JMLTypes.OLD, JMLTypes.TYPE_OF, JMLTypes.ELEM_TYPE,
-                    JMLTypes.NON_NULL_ELEMENTS, JMLTypes.FRESH, JMLTypes.INVARIANT_FOR, JMLTypes.NOT_MODIFIED);
+                    JMLTypes.NON_NULL_ELEMENTS, JMLTypes.FRESH, JMLTypes.INVARIANT_FOR, JMLTypes.NOT_MODIFIED,
+                    JMLTypes.JAVA_MATH, JMLTypes.SAFE_MATH, JMLTypes.BIGINT_MATH);
+
+    // the JML functions that give their argument in an arithmetic mode, such as \java_math(x + 1)
+    public static final TokenSet mathFunctions = TokenSet.create(JMLTypes.JAVA_MATH_EXPR, JMLTypes.SAFE_MATH_EXPR,
+            JMLTypes.BIGINT_MATH_EXPR);
+
+    // the labels of expressions, such as \lbl in (\lbl POSITIVE x > 0)
+    public static final TokenSet labels = TokenSet.create(JMLTypes.LBL, JMLTypes.LBLPOS, JMLTypes.LBLNEG);
 
     public static final TokenSet javaPrimitives = TokenSet.create(
             JavaTokenType.INT_KEYWORD, JavaTokenType.BOOLEAN_KEYWORD, JavaTokenType.CHAR_KEYWORD,

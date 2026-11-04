@@ -47,7 +47,8 @@ interface InvariantStaticAndInstanceInterface {
     //@ instance invariant inferredStaticBool;
     //@ instance invariant explicitStaticBool;
 
-    //@ invariant <error descr="A static invariant can only see static fields">instanceMethod()</error>;
+    // as in OpenJML, an invariant in an interface is an instance invariant, unless it is static
+    //@ invariant instanceMethod();
     //@ invariant staticMethod();
     //@ static invariant <error descr="A static invariant can only see static fields">instanceMethod()</error>;
     //@ static invariant staticMethod();

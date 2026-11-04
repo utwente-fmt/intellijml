@@ -2,6 +2,7 @@ package nl.utwente.jmlplugin.annotator;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiExpression;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiType;
 import nl.utwente.jmlplugin.psi.*;
 import org.jetbrains.annotations.NotNull;
@@ -41,7 +42,7 @@ public final class ErrorMessages {
     // OpenJML's message for a loop_invariant, decreases or loop_writes clause that is not above a loop
     public static final String LOOP_SPEC_NOT_ABOVE_LOOP = "Loop specifications must immediately precede a loop statement";
     public static final String SPLIT_OUT_OF_PLACE = "Ignoring out of place split statement";
-    public static final String HELPER_NOT_ALLOWED = "The helper modifier is only allowed when the method is private or pure";
+    public static final String COUNT_OUTSIDE_LOOP = "A \\count token is used outside the scope of a foreach loop";
     public static final String NOT_SPECIFIED_REDUNDANT = "This clause containing \\not_specified is redundant because you already specified it";
     public static final String STATIC_AND_INSTANCE = "You cannot use both instance and static, choose one";
     public static final String BACKSLASH_RESULT_NOT_ALLOWED = "You can only use \\result in an ensures clause";
@@ -118,6 +119,15 @@ public final class ErrorMessages {
     // \not_modified in a clause that does not allow them, such as "a requires clause" (and "a invariant clause")
     public static String notReferenceType(String keyword) {
         return "The argument of " + keyword + " must be of reference type";
+    }
+
+    public static String helperNotAllowed(PsiElement method) {
+        String name = method instanceof PsiMethod psiMethod ? psiMethod.getName() : "";
+        return "A helper method must be private or pure or final: " + name;
+    }
+
+    public static String notIntegralArgument(String keyword) {
+        return "the argument of " + keyword + " must be cast to a Java integral type";
     }
 
     public static String notLoopSpecification(String keyword) {

@@ -118,7 +118,7 @@ public final class EscMethods {
 
     private static boolean isJml(@NotNull PsiComment comment) {
         String text = comment.getText();
-        // a ghost field right above the method is not its specification
-        return (text.startsWith("//@") || text.startsWith("/*@")) && !JMLAnnotatorUtil.isGhostComment(comment);
+        // a ghost field or an invariant right above the method is not its specification
+        return (text.startsWith("//@") || text.startsWith("/*@")) && !JMLAnnotatorUtil.isClassLevelComment(comment);
     }
 }

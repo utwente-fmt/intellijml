@@ -15,6 +15,7 @@ import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLQVarDecl;
 import nl.utwente.jmlplugin.psi.impl.JMLQVarDeclIdentifier;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 
@@ -234,7 +235,7 @@ class JMLTypeAnnotatorUtil {
     protected static ExtraVariables getExtraVarsWithQuantifierVariables(JMLQVarDecl varDecl, ExtraVariables extraVars, AnnotationHolder holder) {
         ExtraVariables myExtraVars = new ExtraVariables(extraVars);
         if (varDecl == null || varDecl.getTypeName() == null) return myExtraVars;
-        String typeStr = varDecl.getTypeName().getText();
+        String typeStr = javaTypeText(varDecl.getTypeName().getText());
         try {
             // try to get the type of the new variables
             PsiType type = JavaPsiFacade.getInstance(varDecl.getProject()).getElementFactory().createTypeFromText(typeStr, getJavaContext(varDecl));
@@ -249,6 +250,25 @@ class JMLTypeAnnotatorUtil {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.INVALID_EXPR).create();
         }
         return myExtraVars;
+    }
+
+    /**
+     * @param typeText the text of a type in JML, such as "\bigint" or "\real[]"
+     * @return the Java type that it is checked as: long for the mathematical integers \bigint, and double for the
+     * mathematical reals \real
+     */
+    static String javaTypeText(String typeText) {
+        return typeText.replace("\\bigint", "long").replace("\\real", "double");
+    }
+
+    /**
+     * @param varDecl   the variable declaration of a quantified expression
+     * @param variables the variables, with the variables of the quantified expression
+     * @return the type of the (first) variable of the quantified expression, or null if it has none
+     */
+    static @Nullable PsiType quantifiedVariableType(JMLQVarDecl varDecl, ExtraVariables variables) {
+        if (varDecl == null || varDecl.getIdentifiers().isEmpty()) return null;
+        return variables.findVarAndGetType(varDecl.getIdentifiers().get(0).getText());
     }
 
     /**

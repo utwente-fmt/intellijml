@@ -5,6 +5,7 @@ import com.intellij.lang.ASTNode;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.util.PsiTreeUtil;
+import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,6 +43,10 @@ public class JMLQuantifiedExpr extends ASTWrapperPsiElement {
     public IElementType getKeyword() {
         PsiElement firstChild = this.getFirstChild();
         if (firstChild == null) return null;
+        // a quantified expression without parentheses, as a whole expression, starts with the keyword
+        if (JMLTokenSet.quantifiers.contains(firstChild.getNode().getElementType())) {
+            return firstChild.getNode().getElementType();
+        }
         PsiElement nextSibling = PsiTreeUtil.skipWhitespacesAndCommentsForward(firstChild);
         if (nextSibling == null) return null;
         return nextSibling.getNode().getElementType();

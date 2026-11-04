@@ -36,6 +36,7 @@ public class JMLElementType extends IElementType {
             entry("REFERENCE_TYPE", "reference to an exception class"),
             entry("REQUIRES_CLAUSE", "requires clause"),
             entry("SET_STATEMENT", "set statement"),
+            entry("DIVERGES_CLAUSE", "diverges clause"),
             entry("CHECK_STATEMENT", "check statement"),
             entry("SHOW_STATEMENT", "show statement"),
             entry("REACHABLE_STATEMENT", "reachable statement"),

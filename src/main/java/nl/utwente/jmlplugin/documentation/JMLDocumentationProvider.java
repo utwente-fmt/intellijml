@@ -48,7 +48,7 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
             EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
             for (PsiElement elem: children) {
                 // a ghost field right above the method is not part of its specification
-                if (elem instanceof PsiComment comment && !JMLAnnotatorUtil.isGhostComment(comment) &&
+                if (elem instanceof PsiComment comment && !JMLAnnotatorUtil.isClassLevelComment(comment) &&
                         (elem.getText().startsWith("/*@") || elem.getText().startsWith("//@"))) {
 
                     PsiComment jmlComment = (PsiComment) elem;

@@ -10,6 +10,7 @@ import nl.utwente.jmlplugin.JMLLanguage;
 import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import nl.utwente.jmlplugin.psi.JMLTokenType;
 import nl.utwente.jmlplugin.psi.JMLTypes;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -42,6 +43,9 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         tokenTypeToRule.put(JMLTypes.FRESH, JMLTypes.FRESH_EXPR);
         tokenTypeToRule.put(JMLTypes.INVARIANT_FOR, JMLTypes.INVARIANT_FOR_EXPR);
         tokenTypeToRule.put(JMLTypes.NOT_MODIFIED, JMLTypes.NOT_MODIFIED_EXPR);
+        tokenTypeToRule.put(JMLTypes.JAVA_MATH, JMLTypes.JAVA_MATH_EXPR);
+        tokenTypeToRule.put(JMLTypes.SAFE_MATH, JMLTypes.SAFE_MATH_EXPR);
+        tokenTypeToRule.put(JMLTypes.BIGINT_MATH, JMLTypes.BIGINT_MATH_EXPR);
     }
 
     /**
@@ -141,11 +145,18 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
                 type = builder.getTokenType();
                 continue;
             } else if (JMLTokenSet.quantifiers.contains(builder.lookAhead(1))) {
-                correct = parseQuantifiedExpr(builder, level);
+                correct = parseQuantifiedExpr(builder, level, true);
                 // continue otherwise the parenthesis will be counted below
                 type = builder.getTokenType();
                 continue;
             } else if (JMLTokenSet.quantifiers.contains(builder.getTokenType())) {
+                if (parent == null && current_position_(builder) == pos && startsVariableDeclaration(builder.lookAhead(1))) {
+                    // as in OpenJML, a whole expression can be a quantified expression without parentheses, as in
+                    // "assert orall int i; 0 <= i < n; a[i] > 0;"
+                    correct = parseQuantifiedExpr(builder, level, false);
+                    type = builder.getTokenType();
+                    continue;
+                }
                 // it does not start with a parenthesis, so pretend to parse a token with the name
                 // LPAREN_BEFORE_QUANTIFIER, so we can catch the error message containing it in the syntaxAnnotator
                 nextTokenIs(builder, noLParenBeforeQuantifier);
@@ -182,6 +193,24 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         }
         if (correct && contentRequired) correct = checkNotEmpty(builder, pos);
         return correct;
+    }
+
+    /**
+     * @return whether the builder is at the end of a Java expression in JML, such as at the semicolon of the clause
+     */
+    private static boolean isEndOfExpression(PsiBuilder builder) {
+        IElementType type = builder.getTokenType();
+        return builder.eof() || type == null || type == JMLTypes.SEMICOLON || (type.getLanguage() != JavaLanguage.INSTANCE
+                && !JMLTokenSet.backslashKeywordsInJavaExpr.contains(type) && !JMLTokenSet.logicalOperators.contains(type));
+    }
+
+    /**
+     * @param type the token after the keyword of a quantified expression
+     * @return whether it can start the declaration of the variables, such as "int" in "\forall int i; ..."
+     */
+    private static boolean startsVariableDeclaration(@Nullable IElementType type) {
+        return type == JavaTokenType.IDENTIFIER || JMLTokenSet.javaPrimitives.contains(type) || type == JMLTypes.BIGINT
+                || type == JMLTypes.REAL || type == JMLTypes.TYPE_CAPS || type == JMLTypes.NULLABLE || type == JMLTypes.NON_NULL;
     }
 
     /**
@@ -243,12 +272,16 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
      * @param level   the level in the tree
      * @return true if it could be parsed
      */
-    private static boolean parseQuantifiedExpr(PsiBuilder builder, int level) {
+    private static boolean parseQuantifiedExpr(PsiBuilder builder, int level, boolean parenthesized) {
         PsiBuilder.Marker marker = enter_section_(builder, level, _NONE_, JMLTypes.QUANTIFIED_EXPR, JMLTypes.QUANTIFIED_EXPR.toString());
         boolean correct = false;
-        // if it does not start with a parenthesis, then pretend to parse a token with the name
-        // LPAREN_BEFORE_QUANTIFIER, so we can catch the error message containing it in the syntaxAnnotator
-        if (builder.getTokenType() != JavaTokenType.LPARENTH) {
+        if (!parenthesized) {
+            // a whole expression without parentheses, from the keyword to the end
+            builder.advanceLexer();
+            correct = true;
+        } else if (builder.getTokenType() != JavaTokenType.LPARENTH) {
+            // if it does not start with a parenthesis, then pretend to parse a token with the name
+            // LPAREN_BEFORE_QUANTIFIER, so we can catch the error message containing it in the syntaxAnnotator
             // advance past the keyword
             builder.advanceLexer();
             nextTokenIs(builder, noLParenBeforeQuantifier);
@@ -270,13 +303,13 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
             }
         }
         // could be the predicate or spec expression
-        correct = correct && parseQPredicateOrSpecExpr(builder, level + 1);
+        correct = correct && parseQPredicateOrSpecExpr(builder, level + 1, parenthesized);
         // if there is another semicolon then we have a predicate and a spec_expression
         if (correct && (builder.getTokenType() == JMLTypes.SEMICOLON || builder.getTokenType() == JavaTokenType.SEMICOLON)) {
             builder.advanceLexer();
-            correct = parseQSpecExpr(builder, level + 1);
+            correct = parseQSpecExpr(builder, level + 1, parenthesized);
         }
-        correct = correct && consumeToken(builder, JavaTokenType.RPARENTH);
+        correct = correct && (!parenthesized || consumeToken(builder, JavaTokenType.RPARENTH));
         exit_section_(builder, level, marker, correct, false, null);
         return correct;
     }
@@ -335,6 +368,8 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         if (!correct) correct = consumeToken(builder, JavaTokenType.SHORT_KEYWORD);
         if (!correct) correct = consumeToken(builder, JavaTokenType.LONG_KEYWORD);
         if (!correct) correct = consumeToken(builder, JMLTypes.TYPE_CAPS);
+        if (!correct) correct = consumeToken(builder, JMLTypes.BIGINT);
+        if (!correct) correct = consumeToken(builder, JMLTypes.REAL);
         if (isClassType) correct = parseClassTypeRest(builder, level);
         correct = correct && optionalDims(builder);
         return correct;
@@ -423,7 +458,7 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
      * @param level   the level in the tree
      * @return true if it could be parsed
      */
-    private static boolean parseQPredicateOrSpecExpr(PsiBuilder builder, int level) {
+    private static boolean parseQPredicateOrSpecExpr(PsiBuilder builder, int level, boolean parenthesized) {
         PsiBuilder.Marker marker = enter_section_(builder, level, _NONE_, "range condition or expression");
         boolean correct;
         int pos = current_position_(builder);
@@ -431,8 +466,9 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         PsiBuilder.Marker innerJavaMarker = enter_section_(builder, level + 1, _NONE_, JMLTypes.INNER_JAVA_EXPR, JMLTypes.INNER_JAVA_EXPR.toString());
         correct = parseJavaExprRecursively(builder, level + 2, JMLTypes.Q_PREDICATE, false);
         exit_section_(builder, level + 1, innerJavaMarker, null, correct, correct, null);
-        // found spec_expression
-        if (nextTokenIs(builder, JavaTokenType.RPARENTH)) {
+        // found spec_expression, which ends at the right parenthesis, or at the end of the whole expression for a
+        // quantified expression without parentheses
+        if (!parenthesized && isEndOfExpression(builder) || parenthesized && nextTokenIs(builder, JavaTokenType.RPARENTH)) {
             // throw an error when nothing was parsed, we do it here instead of telling the java recursive parser,
             // because you can have an empty predicate
             if (current_position_(builder) <= pos) {
@@ -460,15 +496,15 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
      * @param level   the level in the tree
      * @return true if it could be parsed
      */
-    private static boolean parseQSpecExpr(PsiBuilder builder, int level) {
+    private static boolean parseQSpecExpr(PsiBuilder builder, int level, boolean parenthesized) {
         PsiBuilder.Marker marker = enter_section_(builder, level, _NONE_, JMLTypes.Q_SPEC_EXPR, "expression");
         boolean correct;
         // parse a java expression
         PsiBuilder.Marker innerJavaMarker = enter_section_(builder, level + 1, _NONE_, JMLTypes.INNER_JAVA_EXPR, JMLTypes.INNER_JAVA_EXPR.toString());
         correct = parseJavaExprRecursively(builder, level + 2, JMLTypes.Q_SPEC_EXPR, true);
         exit_section_(builder, level + 1, innerJavaMarker, JMLTypes.Q_SPEC_EXPR, correct, false, null);
-        // next token should be ) to end the spec expression
-        correct = correct && nextTokenIs(builder, JavaTokenType.RPARENTH);
+        // next token should be ) to end the spec expression, or the end of the whole expression without parentheses
+        correct = correct && (parenthesized ? nextTokenIs(builder, JavaTokenType.RPARENTH) : isEndOfExpression(builder));
         exit_section_(builder, level, marker, correct, false, null);
         return correct;
     }

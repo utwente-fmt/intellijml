@@ -59,7 +59,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
      */
     private static class JMLMergeFunction implements MergeFunction {
         // the words after the backslash of the quantifiers, which are lexed as identifiers here
-        private static final Set<String> QUANTIFIER_WORDS = Set.of("forall", "exists", "max", "min", "sum", "product", "num_of");
+        private static final Set<String> QUANTIFIER_WORDS = Set.of("forall", "exists", "max", "min", "sum", "product", "num_of", "choose");
 
         private boolean merging = false;
         private boolean javaExprExpected = false;
@@ -133,11 +133,11 @@ public class JMLMergingLexer extends MergingLexerAdapter {
         /**
          * @param type a contextual keyword
          * @return whether the keyword, such as decreases, starts a clause here: at the start of the specification, or
-         * after a semicolon or an at-sign, but not in a list such as "loop_writes x, decreasing;"; ghost can also
-         * follow a modifier, as in "public ghost int x;"
+         * after a semicolon or an at-sign, but not in a list such as "loop_writes x, decreasing;"; ghost, initially and
+         * constraint can also follow a modifier, as in "public ghost int x;"
          */
         private boolean atClauseStart(IElementType type) {
-            return clauseStartAtTokenStart || (type == JMLTypes.GHOST && JMLTokenSet.allModifiers.contains(previous));
+            return clauseStartAtTokenStart || (JMLTokenSet.keywordsAfterModifiers.contains(type) && JMLTokenSet.allModifiers.contains(previous));
         }
 
         private IElementType mergeToken(IElementType type, Lexer originalLexer) {

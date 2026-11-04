@@ -6,7 +6,8 @@ package semanticsAnnotatorTestData;
 //@ pure;
 public class SpecKindNotAllowedHere {
 
-    //<error descr="Class invariants are not allowed above a field, add a newline after the comment">@ invariant x > 5;</error>
+    // invariants are allowed above a field and a method, as in OpenJML, with the same rules for visibility
+    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">x</error> > 5;
     //<error descr="Method specifications are not allowed above a field">@ requires x != 0;</error>
     //<error descr="In-method specifications are not allowed above a field">@ assert x > 10;</error>
     //@ spec_public;
@@ -18,7 +19,7 @@ public class SpecKindNotAllowedHere {
     //<error descr="In-method specifications are not allowed in a class body">@ assert x > 10;</error>
     //<error descr="Modifiers are not allowed in a class body">@ pure;</error>
 
-    //<error descr="Class invariants are not allowed above a method">@ invariant x > 5;</error>
+    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">x</error> > 5;
     //@ requires x!=0;
     //<error descr="In-method specifications are not allowed above a method">@ assert x > 10;</error>
     //@ pure;

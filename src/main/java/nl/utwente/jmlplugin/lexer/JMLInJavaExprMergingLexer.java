@@ -62,6 +62,16 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
             textToToken.put("fresh", JMLTypes.FRESH);
             textToToken.put("invariant_for", JMLTypes.INVARIANT_FOR);
             textToToken.put("not_modified", JMLTypes.NOT_MODIFIED);
+            textToToken.put("java_math", JMLTypes.JAVA_MATH);
+            textToToken.put("safe_math", JMLTypes.SAFE_MATH);
+            textToToken.put("bigint_math", JMLTypes.BIGINT_MATH);
+            textToToken.put("count", JMLTypes.COUNT);
+            textToToken.put("lbl", JMLTypes.LBL);
+            textToToken.put("lblpos", JMLTypes.LBLPOS);
+            textToToken.put("lblneg", JMLTypes.LBLNEG);
+            textToToken.put("choose", JMLTypes.CHOOSE);
+            textToToken.put("bigint", JMLTypes.BIGINT);
+            textToToken.put("real", JMLTypes.REAL);
         }
 
         // the nullity modifiers that the variable of a quantifier can have, as in "(\forall non_null Object o; ...)"

@@ -46,12 +46,27 @@
   `split`. They are checked as OpenJML does, with its messages: `check` and `split` need a `boolean`, and a `split`
   that is not right before an `if`, `switch` or loop gets a warning. As in OpenJML, their keywords can still be names.
   Completion offers them in method bodies.
+- More of the JML that OpenJML accepts, checked as OpenJML does, with its messages:
+  - `initially` clauses and history `constraint`s, which are checked as invariants, and in which `\old` is allowed
+  - `diverges` clauses, `assigns` (another spelling of `assignable`) and `signals_only \nothing`
+  - the modifiers `spec_pure`, which makes a method usable in specifications as `pure` does, and OpenJML's arithmetic
+    modes `code_java_math`, `spec_java_math`, `code_safe_math`, `spec_safe_math`, `code_bigint_math` and
+    `spec_bigint_math`
+  - `\count`, the number of iterations of a loop that are done, in the specification and the body of a loop
+  - `\java_math(...)`, `\safe_math(...)` and `\bigint_math(...)`, labels such as `(\lbl POSITIVE x > 0)` (also `\lblpos`
+    and `\lblneg`), and `(\choose int i; ...; ...)`
+  - the types `\bigint` and `\real`, which the plugin checks as `long` and `double`
+  - a quantified expression without parentheses as a whole clause, such as `//@ assert \forall int i; 0 <= i < n; a[i] > 0;`
+  - `non_null` and `nullable` in a cast, such as `(/*@ non_null @*/ String[]) array`
 - A statement between the specification of a loop and the loop, as in `//@ maintaining i >= 0;` followed by
   `//@ assert i < n;` right above the loop, gives OpenJML's error, as only loop specifications may be there
 - Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in
   `// @` or `/* @`, which makes the comment an ordinary comment instead of JML
 
 ### Changed
+- As in OpenJML, an invariant (or `initially` or `constraint`) may be right above a field or method, an invariant in
+  an interface is an instance invariant unless it is `static`, and a `helper` method may also be `final` ("A helper
+  method must be private or pure or final")
 - The plugin can be installed, updated and removed without restarting IntelliJ IDEA
 - The unfinished run time checking of earlier versions, which hooked into every build without inserting any checks,
   is removed in favour of Run with JML Checks

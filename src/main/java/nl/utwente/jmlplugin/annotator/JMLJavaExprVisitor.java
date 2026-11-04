@@ -474,7 +474,7 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
     private void checkPurenessOfMethod(PsiCallExpression expr, JavaResolveResult result) {
         // check that the user put JML pure above method
         //noinspection ConstantConditions
-        if (!doLinkedCommentsContain(result.getElement(), "pure", false)) {
+        if (!doLinkedCommentsContain(result.getElement(), "pure|spec_pure", false)) {
             // if use did not use @pure, so look for IntelliJ contracts (also inferred ones)
             PsiAnnotation[] annotations = AnnotationUtil.getAllAnnotations((PsiMethod) result.getElement(), true, null, true);
             boolean pureFound = false;

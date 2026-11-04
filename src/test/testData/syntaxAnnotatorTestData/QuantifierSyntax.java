@@ -3,7 +3,8 @@ package syntaxAnnotatorTestData;
 public class QuantifierSyntax {
     //@ ensures (\forall int i; i > 0 && i < 10; i+5 >= 5);
     //@ ensures <error descr="A quantified expression should be inside parentheses, including the keyword">\forall</error> (int i; i > 0 && i < 10; i+5 >= 5);
-    //@ ensures <error descr="A quantified expression should be inside parentheses, including the keyword">\forall</error> int i; i > 0 && i < 10; i+5 >= 5
+    // as in OpenJML, a whole expression can be a quantified expression without parentheses
+    //@ ensures \forall int i; i > 0 && i < 10; i+5 >= <error descr="Semicolon expected after this token">5</error>
     //@ ensures <error descr="A quantified expression should be inside parentheses, including the keyword">\forall</error>
     //@ ensures (<error descr="Variable declaration expected after this token">\forall</error>
     //@ ensures (\forall <error descr="Identifier or left bracket expected after this token">int</error>

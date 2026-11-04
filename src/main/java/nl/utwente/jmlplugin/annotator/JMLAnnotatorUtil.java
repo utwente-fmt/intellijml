@@ -6,8 +6,10 @@ import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import com.intellij.psi.util.PsiTreeUtil;
+import nl.utwente.jmlplugin.psi.JMLClassInvariant;
 import nl.utwente.jmlplugin.psi.JMLModifiers;
 import nl.utwente.jmlplugin.psi.JMLTokenSet;
+import nl.utwente.jmlplugin.psi.JMLTypes;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -36,7 +38,6 @@ public class JMLAnnotatorUtil {
     }
 
     // the keyword of a ghost declaration
-    private static final Pattern GHOST = Pattern.compile("(?<!\\w)ghost(?!\\w)");
 
     // whitespace with at most one line break
     private static final Pattern AT_MOST_ONE_NEWLINE = Pattern.compile("[ \t ]*(\n|\r\n)?[ \t ]*");
@@ -86,11 +87,28 @@ public class JMLAnnotatorUtil {
 
     /**
      * @param comment a JML comment
-     * @return whether it declares a ghost variable, such as a ghost field right above a method, which is not part of
-     * the method's specification
+     * @return whether it belongs to the class rather than to the field or method below it: a ghost declaration, an
+     * invariant, an initially clause or a constraint, which OpenJML also allows right above a field or method
      */
-    public static boolean isGhostComment(@NotNull PsiComment comment) {
-        return GHOST.matcher(jmlText(comment)).find();
+    public static boolean isClassLevelComment(@NotNull PsiComment comment) {
+        return CLASS_LEVEL.matcher(jmlText(comment)).find();
+    }
+
+    // the keywords of a ghost declaration, invariant, initially clause or constraint
+    private static final Pattern CLASS_LEVEL = Pattern.compile("(?<![\\w\\\\])(?:ghost|invariant|initially|constraint)(?!\\w)");
+
+    /**
+     * @param invariant an invariant, initially clause or constraint
+     * @return its keyword: "invariant", "initially" or "constraint"
+     */
+    public static @NotNull String invariantKeyword(@NotNull JMLClassInvariant invariant) {
+        for (PsiElement child = invariant.getFirstChild(); child != null; child = child.getNextSibling()) {
+            IElementType type = child.getNode().getElementType();
+            if (type == JMLTypes.INITIALLY || type == JMLTypes.CONSTRAINT || type == JMLTypes.INVARIANT) {
+                return child.getText();
+            }
+        }
+        return "invariant";
     }
 
     // a comment inside JML, which ends at the end of the line, or a string or character literal, which may contain //
@@ -307,8 +325,9 @@ public class JMLAnnotatorUtil {
         int count = 0;
         for (PsiComment comment : comments) {
             String commentText = jmlText(comment);
-            // check that it is a JML comment; the modifiers in a ghost declaration belong to the ghost variable
-            if ((commentText.startsWith("/*@") || commentText.startsWith("//@")) && !GHOST.matcher(commentText).find()) {
+            // check that it is a JML comment; the modifiers in a ghost declaration or an invariant are not those of the
+            // field or method below it
+            if ((commentText.startsWith("/*@") || commentText.startsWith("//@")) && !CLASS_LEVEL.matcher(commentText).find()) {
                 Matcher matcher = pattern.matcher(commentText);
                 while (matcher.find()) {
                     count++;

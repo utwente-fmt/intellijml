@@ -27,13 +27,23 @@ public class HelperModifierAllowed {
         return a / b;
     }
 
-    //@<error descr="The helper modifier is only allowed when the method is private or pure">helper</error>;
+    //@<error descr="A helper method must be private or pure or final: div5">helper</error>;
     public int div5(int a, int b) {
         return a / b;
     }
 
-    //@<error descr="The helper modifier is only allowed when the method is private or pure">helper</error>;
+    //@<error descr="A helper method must be private or pure or final: div6">helper</error>;
     int div6(int a, int b) {
+        return a / b;
+    }
+
+    //@ helper
+    public final int div7(int a, int b) {
+        return a / b;
+    }
+
+    //@ spec_pure helper
+    public int div8(int a, int b) {
         return a / b;
     }
 }

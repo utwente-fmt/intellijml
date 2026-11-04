@@ -69,8 +69,17 @@ class SpecVisibility {
      * @return the problem, or null if the field or method may be used
      */
     static @Nullable Problem checkInInvariant(@NotNull PsiMember member, int specLevel) {
+        return checkInInvariant(member, specLevel, "invariant");
+    }
+
+    /**
+     * Checks a field or method that is used in an invariant, initially clause or constraint, which have the same rules
+     *
+     * @param clause the keyword of the clause, for the message
+     */
+    static @Nullable Problem checkInInvariant(@NotNull PsiMember member, int specLevel, @NotNull String clause) {
         boolean exact = member instanceof PsiField && !member.hasModifierProperty(PsiModifier.FINAL);
-        return check(member, "invariant", specLevel, exact);
+        return check(member, clause, specLevel, exact);
     }
 
     private static @Nullable Problem check(@NotNull PsiMember member, @NotNull String clause, int specLevel, boolean exact) {

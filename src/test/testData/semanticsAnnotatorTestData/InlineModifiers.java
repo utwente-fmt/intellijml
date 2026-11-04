@@ -17,7 +17,7 @@ public class InlineModifiers {
         return total;
     }
 
-    public /*@ <error descr="The helper modifier is only allowed when the method is private or pure">helper</error> @*/ int notPure() {
+    public /*@ <error descr="A helper method must be private or pure or final: notPure">helper</error> @*/ int notPure() {
         return count;
     }
 

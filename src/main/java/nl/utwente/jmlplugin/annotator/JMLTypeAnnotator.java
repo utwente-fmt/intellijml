@@ -589,6 +589,7 @@ public class JMLTypeAnnotator {
         if (element == null) return result;
         PsiElement currentChild = element.getFirstChild();
         boolean skipping = skipThrough != null;
+        boolean skipLabel = false;
         while (currentChild != null && currentChild != stopAt) {
             if (skipping) {
                 result.addText("", currentChild);
@@ -597,8 +598,25 @@ public class JMLTypeAnnotator {
                 continue;
             }
             IElementType elemType = currentChild.getNode().getElementType();
+            if (skipLabel && currentChild instanceof PsiIdentifier) {
+                // the name of a label, such as POSITIVE in (\lbl POSITIVE x > 0)
+                result.addText("", currentChild);
+                skipLabel = false;
+                currentChild = currentChild.getNextSibling();
+                continue;
+            }
             if (elemType == JMLTypes.RESULT) {
                 checkBackslashResult(element, holder, result, currentChild);
+            } else if (elemType == JMLTypes.COUNT) {
+                // the number of iterations of the loop, an int
+                result.add("0", PsiTypes.intType(), currentChild);
+            } else if (JMLTokenSet.labels.contains(elemType)) {
+                // a label only names the expression after it
+                result.addText("", currentChild);
+                skipLabel = true;
+            } else if (elemType == JMLTypes.BIGINT || elemType == JMLTypes.REAL) {
+                // the mathematical integers and reals are checked as long and double, as in a cast to \bigint
+                result.addText(elemType == JMLTypes.BIGINT ? "long" : "double", currentChild);
             } else if (JMLTokenSet.logicalOperators.contains(elemType)) {
                 // replace JML operators such as ==> and <==> with &&
                 // this is a valid replacement as the JML operators want booleans on both sides of
@@ -828,6 +846,19 @@ public class JMLTypeAnnotator {
             result.add("false", PsiTypes.booleanType(), false, current);
             return;
         }
+        if (JMLTokenSet.mathFunctions.contains(current.getNode().getElementType())) {
+            // \java_math(x + 1) has the value and type of its argument, which must be integral, as in OpenJML
+            InnerJavaExprResult argument = annotateInnerJavaExpr(javaChild, holder, extraVars, false, true);
+            if (argument.isCorrect() && !isIntegral(argument.getType())) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.notIntegralArgument(current.getFirstChild().getText()))
+                        .range(javaChild).create();
+                argument.setCorrect(false);
+            }
+            result.addText("(", current.getFirstChild(), beforeExpr);
+            result.add(argument, javaChild);
+            result.addText(")", afterExpr, current.getLastChild());
+            return;
+        }
         if (current.getNode().getElementType() == JMLTypes.NOT_MODIFIED_EXPR) {
             InnerJavaExprResult arguments = annotateInnerJavaExpr(javaChild, holder, extraVars, false, false, false);
             result.addText("(new java.lang.Object[]{", current.getFirstChild(), beforeExpr);
@@ -937,6 +968,11 @@ public class JMLTypeAnnotator {
         } else if (keyword == JMLTypes.NUM_OF) {
             specResult = annotateInnerJavaExpr((JMLInnerJavaExpr) expr.getFirstChild(), holder, fields, true, true);
             currentResult.setType(PsiTypes.longType());
+        } else if (keyword == JMLTypes.CHOOSE) {
+            // a value of the variable for which the expression holds
+            specResult = annotateInnerJavaExpr((JMLInnerJavaExpr) expr.getFirstChild(), holder, fields, true, true);
+            PsiType variableType = quantifiedVariableType(varDecls, fields);
+            currentResult.setType(variableType != null ? variableType : PsiTypes.intType());
         } else {
             // is \min, \max, \sum or \product
             specResult = annotateInnerJavaExpr((JMLInnerJavaExpr) expr.getFirstChild(), holder, fields, false, true);
@@ -977,8 +1013,8 @@ public class JMLTypeAnnotator {
         PsiElement visibilityModifier = findFirstModifierInInvariant(invariant.getModifiers(),
                 TokenSet.create(JMLTypes.PRIVATE, JMLTypes.PUBLIC, JMLTypes.PROTECTED));
         if (visibilityModifier != null) return accessLevel(visibilityModifier.getText());
-        return getJavaContext(invariant) instanceof PsiClass psiClass && psiClass.isInterface()
-                ? PsiUtil.ACCESS_LEVEL_PUBLIC : PsiUtil.ACCESS_LEVEL_PACKAGE_LOCAL;
+        PsiClass psiClass = CommentPosition.invariantClass(invariant);
+        return psiClass != null && psiClass.isInterface() ? PsiUtil.ACCESS_LEVEL_PUBLIC : PsiUtil.ACCESS_LEVEL_PACKAGE_LOCAL;
     }
 
     /**
@@ -1000,7 +1036,8 @@ public class JMLTypeAnnotator {
         if (invariant != null && CommentPosition.isInvariantOnCorrectPosition(invariant)) {
             int invariantLevel = invariantAccessLevel(invariant);
             if (level != invariantLevel) {
-                message = ErrorMessages.identifierNotVisible(SpecVisibility.name(level), "invariant", SpecVisibility.name(invariantLevel));
+                message = ErrorMessages.identifierNotVisible(SpecVisibility.name(level), invariantKeyword(invariant),
+                        SpecVisibility.name(invariantLevel));
             }
         } else if (clause != null && getJavaContext(identifier) instanceof PsiMethod method) {
             int specLevel = SpecCases.accessLevel(identifier, method);
@@ -1021,11 +1058,10 @@ public class JMLTypeAnnotator {
         // class invariant is not in the class body, so do not do checking (semantics annotator already gave an error message on this)
         if (!CommentPosition.isInvariantOnCorrectPosition(classInvariant)) return;
         // get the class that the invariant is in
-        PsiClass ourClass = (PsiClass) getJavaContext(classInvariant);
+        PsiClass ourClass = CommentPosition.invariantClass(classInvariant);
         // set booleans on whether the class is an interface, an on whether the invariant is explicitly static or instance
         boolean isInterface = ourClass != null && ourClass.isInterface();
         boolean isStatic = findFirstModifierInInvariant(classInvariant.getModifiers(), TokenSet.create(JMLTypes.STATIC)) != null;
-        boolean isInstance = findFirstModifierInInvariant(classInvariant.getModifiers(), TokenSet.create(JMLTypes.INSTANCE)) != null;
         // get the visibility of the invariant
         PsiElement visibilityModifier = findFirstModifierInInvariant(classInvariant.getModifiers(), TokenSet.create(JMLTypes.PRIVATE, JMLTypes.PUBLIC, JMLTypes.PROTECTED));
         String visibility;
@@ -1040,14 +1076,16 @@ public class JMLTypeAnnotator {
             PsiElement referredElement = ref.getValue().getElement();
             if (referredElement instanceof PsiField || referredElement instanceof PsiMethod) {
                 PsiMember member = (PsiMember) referredElement;
-                SpecVisibility.Problem problem = SpecVisibility.checkInInvariant(member, accessLevel(visibility));
+                SpecVisibility.Problem problem = SpecVisibility.checkInInvariant(member, accessLevel(visibility),
+                        invariantKeyword(classInvariant));
                 if (problem != null) {
                     visitor.annotateError(ref.getKey(), problem.message(), problem.fix());
                 }
                 // also check static versus instance, as static invariants cannot mention instance variables of
-                // our class; invariants are static by default in interfaces and instance in a class
+                // our class; as in OpenJML, invariants are instance invariants unless they are static, also in an
+                // interface
                 else if (ourClass != null && ourClass.equals(member.getContainingClass())
-                        && (isStatic || (isInterface && !isInstance)) && !member.hasModifierProperty(PsiModifier.STATIC)) {
+                        && isStatic && !member.hasModifierProperty(PsiModifier.STATIC)) {
                     visitor.annotateError(ref.getKey(), ErrorMessages.INVARIANT_SHOULD_BE_STATIC);
                 }
             }
@@ -1085,6 +1123,7 @@ public class JMLTypeAnnotator {
         if (getParentOfType(element, JMLRequiresClause.class) != null) return "requires";
         if (getParentOfType(element, JMLEnsuresClause.class) != null) return "ensures";
         if (getParentOfType(element, JMLSignalsClause.class) != null) return "signals";
+        if (getParentOfType(element, JMLDivergesClause.class) != null) return "diverges";
         return null;
     }
 

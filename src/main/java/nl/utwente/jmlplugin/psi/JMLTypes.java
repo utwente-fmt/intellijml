@@ -27,6 +27,9 @@ public interface JMLTypes extends JMLGrammarTypes {
     IElementType FRESH_EXPR = new JMLElementType("\\fresh() expression");
     IElementType INVARIANT_FOR_EXPR = new JMLElementType("\\invariant_for() expression");
     IElementType NOT_MODIFIED_EXPR = new JMLElementType("\\not_modified() expression");
+    IElementType JAVA_MATH_EXPR = new JMLElementType("\\java_math() expression");
+    IElementType SAFE_MATH_EXPR = new JMLElementType("\\safe_math() expression");
+    IElementType BIGINT_MATH_EXPR = new JMLElementType("\\bigint_math() expression");
     IElementType INNER_JAVA_EXPR = new JMLElementType("expression");
     IElementType GHOST_DECLARATOR = new JMLElementType("ghost variable");
 
@@ -48,6 +51,21 @@ public interface JMLTypes extends JMLGrammarTypes {
     IElementType FRESH = new JMLElementType("\\fresh");
     IElementType INVARIANT_FOR = new JMLElementType("\\invariant_for");
     IElementType NOT_MODIFIED = new JMLElementType("\\not_modified");
+    // the arithmetic mode of an expression
+    IElementType JAVA_MATH = new JMLElementType("\\java_math");
+    IElementType SAFE_MATH = new JMLElementType("\\safe_math");
+    IElementType BIGINT_MATH = new JMLElementType("\\bigint_math");
+    // the number of iterations of a loop that are done
+    IElementType COUNT = new JMLTokenType("\\count");
+    // a labeled expression, such as (\lbl POSITIVE x > 0), whose value OpenJML reports
+    IElementType LBL = new JMLTokenType("\\lbl");
+    IElementType LBLPOS = new JMLTokenType("\\lblpos");
+    IElementType LBLNEG = new JMLTokenType("\\lblneg");
+    // a value of the variable for which the expression holds, such as (\choose int i; 0 < i; i < 2)
+    IElementType CHOOSE = new JMLTokenType("\\choose");
+    // the mathematical integers and reals
+    IElementType BIGINT = new JMLTokenType("\\bigint");
+    IElementType REAL = new JMLTokenType("\\real");
     IElementType LOGICAL_IMPL = new JMLElementType("==>");
     IElementType LOGICAL_EQ = new JMLElementType("<==>");
     IElementType LOGICAL_IMPL_REV = new JMLElementType("<==");
@@ -78,7 +96,8 @@ public interface JMLTypes extends JMLGrammarTypes {
                 return new JMLTypeExpr(node);
             } else if (type == NON_NULL_ELEMENTS_EXPR) {
                 return new JMLNonNullElementsExpr(node);
-            } else if (type == FRESH_EXPR || type == INVARIANT_FOR_EXPR || type == NOT_MODIFIED_EXPR) {
+            } else if (type == FRESH_EXPR || type == INVARIANT_FOR_EXPR || type == NOT_MODIFIED_EXPR
+                    || type == JAVA_MATH_EXPR || type == SAFE_MATH_EXPR || type == BIGINT_MATH_EXPR) {
                 return new JMLBackslashFunctionExpr(node);
             } else if (type == GHOST_DECLARATOR) {
                 return new JMLGhostDeclarator(node);

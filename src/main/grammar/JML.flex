@@ -58,6 +58,17 @@ REST=[^@;().,:*\[\]\s]
   "unreachable"               { return UNREACHABLE; }
   "halt"                      { return HALT; }
   "split"                     { return SPLIT; }
+  "assigns"                   { return ASSIGNS; }
+  "diverges"                  { return DIVERGES; }
+  "initially"                 { return INITIALLY; }
+  "constraint"                { return CONSTRAINT; }
+  "spec_pure"                 { return SPEC_PURE; }
+  "code_java_math"            { return CODE_JAVA_MATH; }
+  "spec_java_math"            { return SPEC_JAVA_MATH; }
+  "code_safe_math"            { return CODE_SAFE_MATH; }
+  "spec_safe_math"            { return SPEC_SAFE_MATH; }
+  "code_bigint_math"          { return CODE_BIGINT_MATH; }
+  "spec_bigint_math"          { return SPEC_BIGINT_MATH; }
   "decreases"                 { return DECREASES; }
   "decreasing"                { return DECREASING; }
   "loop_decreases"            { return LOOP_DECREASES; }

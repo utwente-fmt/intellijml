@@ -10,7 +10,7 @@ public class Box {
     private final float volume;
     // is the weight of the box itself plus the weight of the item in it, should not be zero or negative
 
-    //<error descr="Class invariants are not allowed above a field, add a newline after the comment">@ public invariant weight > 0;</error>
+    //@ public invariant weight > 0;
     /*@ spec_public */private float weight;
 
     //@ <error descr="Modifier 'pure' is not allowed before a class_invariant">pure</error> public invariant weight > 0;
