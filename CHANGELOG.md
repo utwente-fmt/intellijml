@@ -32,7 +32,8 @@
   clauses and invariants (`\not_modified` also not in loop invariants)
 - Ghost variables: `ghost` fields in a class body (also right above a field or method), such as
   `//@ public ghost int count = 0;`, and `ghost` local variables in a method body, which JML expressions can use, and
-  `set` statements that assign them, such as `//@ set count = count + 1;`. They are checked as OpenJML does, with its
+  `set` statements that assign them, such as `//@ set count = count + 1;`, and which `assignable` and `loop_writes`
+  clauses may name. They are checked as OpenJML does, with its
   messages: the type must exist, the initializer and the assigned value must fit the type, no other variable may have
   the same name, `set` can only assign a ghost variable, a ghost field must be visible enough for the specification
   that uses it, and the modifiers must fit a ghost field or a local variable. `ghost` and `set` can still be names.

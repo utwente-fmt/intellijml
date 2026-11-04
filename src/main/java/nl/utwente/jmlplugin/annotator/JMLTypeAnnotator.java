@@ -231,6 +231,11 @@ public class JMLTypeAnnotator {
 
         // check that either a field or a class could be resolved
         if (!fieldValid && !classValid && !referenceName.equals("this") && !referenceName.equals("super")) {
+            Ghosts.Ghost ghost = ghostReference(element, referenceName);
+            if (ghost != null) {
+                checkGhostAssignable(element, ghost, javaContext instanceof PsiMethod method ? method : null, holder);
+                return;
+            }
             // reference does not point to a field or a class
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REFERENCE_UNRESOLVED).create();
             return;
@@ -296,6 +301,42 @@ public class JMLTypeAnnotator {
     }
 
     /**
+     * @param referenceName a reference in an assignable or loop_writes clause, without [*] or .*
+     * @return the ghost variable that it names, or null
+     */
+    private static @Nullable Ghosts.Ghost ghostReference(PsiElement element, String referenceName) {
+        if (!referenceName.matches("[A-Za-z_$][\\w$]*")) return null;
+        return Ghosts.visible(element).get(referenceName);
+    }
+
+    /**
+     * Checks a ghost variable in an assignable or loop_writes clause as a field: [*] needs an array, .* an object,
+     * and a ghost field must be visible enough for the method specification
+     *
+     * @param method the method whose specification has the assignable clause, or null for a loop_writes clause
+     */
+    private static void checkGhostAssignable(PsiElement element, Ghosts.Ghost ghost, @Nullable PsiMethod method,
+                                             AnnotationHolder holder) {
+        PsiType type = ghost.type(element);
+        if (element.getText().contains("[*]")) {
+            if (type != null && type.getArrayDimensions() == 0) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_ARRAY_ONLY).create();
+            }
+        } else if (element.getText().contains(".*")) {
+            if (type != null && !(type instanceof PsiClassType)) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_CLASS_ONLY).create();
+            }
+        }
+        if (method != null && ghost.field()) {
+            int specLevel = SpecCases.accessLevel(element, method);
+            if (ghost.accessLevel() < specLevel) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.identifierNotVisible(
+                        SpecVisibility.name(ghost.accessLevel()), "assignable", SpecVisibility.name(specLevel))).create();
+            }
+        }
+    }
+
+    /**
      * Checks a reference in a loop_writes clause, which may also name the local variables of the method
      *
      * @param element the reference to check for
@@ -323,7 +364,12 @@ public class JMLTypeAnnotator {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.UNASSIGNABLE).create();
             }
         } else if (!(resolved instanceof PsiVariable variable)) {
-            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REFERENCE_UNRESOLVED).create();
+            Ghosts.Ghost ghost = ghostReference(element, referenceName);
+            if (ghost != null) {
+                checkGhostAssignable(element, ghost, null, holder);
+            } else {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REFERENCE_UNRESOLVED).create();
+            }
         } else if (element.getText().endsWith("[*]")) {
             if (variable.getType().getArrayDimensions() == 0) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_ARRAY_ONLY).create();

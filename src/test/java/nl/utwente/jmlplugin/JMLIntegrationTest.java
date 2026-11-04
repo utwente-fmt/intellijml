@@ -36,6 +36,11 @@ public class JMLIntegrationTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testGhostCounter() {
+        myFixture.configureByFile("GhostCounter.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testStorageSpace() {
         myFixture.copyDirectoryToProject(".", "integrationTestData");
         myFixture.allowTreeAccessForFile(myFixture.findFileInTempDir("integrationTestData/Box.java"));
