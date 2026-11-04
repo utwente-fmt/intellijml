@@ -40,7 +40,17 @@
   messages: the type must exist, the initializer and the assigned value must fit the type, no other variable may have
   the same name, `set` can only assign a ghost variable, a ghost field must be visible enough for the specification
   that uses it, and the modifiers must fit a ghost field or a local variable. `ghost` and `set` can still be names.
-  Completion offers the ghost variables in expressions.
+  Completion offers the ghost variables in expressions. The ghost fields of other objects can be used too, as in
+  `o.count`.
+- Model fields, such as `//@ public model int size;`, whose value a `represents` clause gives, such as
+  `//@ private represents size = count;` (or a condition on it, with `\such_that`); `in` clauses, which put a field in
+  the data group of a model field, such as `private int count; //@ in size;`; the type `\datagroup`; and `reads` (also
+  `accessible`) clauses in method specifications. They are checked as OpenJML does, with its messages: a `represents`
+  clause must give a value that fits the model field, be static if the model field is, use only fields and methods
+  that are visible enough, fields that are in the data group of the model field, and helper methods; an `in` clause
+  must follow the declaration of a field and name model fields that are visible enough. As in OpenJML, `//@` inside a
+  JML comment continues it, as in `//@ public model int side; //@ in size;`, and `model`, `represents`, `in` and
+  `reads` can still be names. Completion offers the new keywords.
 - The statements of OpenJML's static checking: `check` (an `assert` that is not assumed afterwards), `show` (expressions
   whose values Verify with OpenJML shows when it cannot verify the method), `reachable`, `unreachable`, `halt` and
   `split`. They are checked as OpenJML does, with its messages: `check` and `split` need a `boolean`, and a `split`

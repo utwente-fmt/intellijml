@@ -72,6 +72,8 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
             textToToken.put("choose", JMLTypes.CHOOSE);
             textToToken.put("bigint", JMLTypes.BIGINT);
             textToToken.put("real", JMLTypes.REAL);
+            textToToken.put("datagroup", JMLTypes.DATAGROUP);
+            textToToken.put("such_that", JMLTypes.SUCH_THAT);
         }
 
         // the nullity modifiers that the variable of a quantifier can have, as in "(\forall non_null Object o; ...)"

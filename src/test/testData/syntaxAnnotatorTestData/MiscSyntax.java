@@ -4,7 +4,7 @@ public class MiscSyntax {
     int num;
 
     // no valid JML at all
-    /*@ <error descr="Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'k'">k</error> */
+    /*@ <error descr="Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'k'">k</error> */
     public int div(int a, int b) throws ArithmeticException {
         return a / b;
     }

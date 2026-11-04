@@ -370,6 +370,7 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         if (!correct) correct = consumeToken(builder, JMLTypes.TYPE_CAPS);
         if (!correct) correct = consumeToken(builder, JMLTypes.BIGINT);
         if (!correct) correct = consumeToken(builder, JMLTypes.REAL);
+        if (!correct) correct = consumeToken(builder, JMLTypes.DATAGROUP);
         if (isClassType) correct = parseClassTypeRest(builder, level);
         correct = correct && optionalDims(builder);
         return correct;

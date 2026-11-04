@@ -66,7 +66,7 @@
     WHITE_SPACE = 'regexp:\s+'
 
     INFORMAL_DESCRIPTION = "regexp:\(\s*\*([^*]|\*+[^*)])+\*\s*\)"
-    LINE_COMMENT = "regexp://[^\r\n]*"
+    LINE_COMMENT = "regexp://([^@\r\n][^\r\n]*)?"
     REST = "regexp:[^@;().,:*\[\]\s]"
 
   ]
@@ -79,7 +79,10 @@
   name("in_method_spec")="in-method specification"
   name("behavior_header")="behavior"
   name("loop_variant")="decreases clause"
-  name("ghost_declaration")="ghost declaration"
+  name("ghost_declaration")="ghost or model declaration"
+  name("represents_clause")="represents clause"
+  name("in_clause")="in clause"
+  name("reads_clause")="reads clause"
   name("set_statement")="set statement"
   name("diverges_clause")="diverges clause"
   name("check_statement")="check statement"
@@ -105,7 +108,8 @@ private spec_case ::= heavyweight_spec_case | lightweight_spec_case
 private heavyweight_spec_case ::= AT_SIGN* behavior_header lightweight_spec_case?
 private lightweight_spec_case ::= requires_clause+ spec_body? | spec_body
 behavior_header ::= (public | protected | private)? (NORMAL_BEHAVIOR | EXCEPTIONAL_BEHAVIOR | BEHAVIOR)
-spec_body ::= (AT_SIGN* (ensures_clause | signals_clause | signals_only_clause | assignable_clause | diverges_clause))+
+spec_body ::= (AT_SIGN* (ensures_clause | signals_clause | signals_only_clause | assignable_clause | diverges_clause
+    | reads_clause))+
 
 // clauses allowed in method specifications
 requires_clause ::= AT_SIGN* (requires|pre) pred_or_not SEMICOLON+ {pin="pred_or_not"}
@@ -116,11 +120,14 @@ signals_only_clause ::= SIGNALS_ONLY <<skipAtSigns>> (NOTHING | reference_type (
 assignable_clause ::= (assignable|modifiable|modifies|assigns) <<skipAtSigns>> store_ref_list SEMICOLON+
 // whether the method may not terminate, such as "diverges true;"
 diverges_clause ::= diverges pred_or_not SEMICOLON+ {pin="pred_or_not"}
+// the locations that the method may read, such as "reads \nothing;", also spelled accessible
+reads_clause ::= (reads | accessible) <<skipAtSigns>> store_ref_list SEMICOLON+
 private pred_or_not ::= NOT_SPECIFIED | java_expr
 
-// class invariants and ghost fields; a ghost declaration followed by a statement, such as "ghost int x; set x = 1;", is
-// an in-method specification
-private class_invariants ::= ((class_invariant | ghost_declaration) AT_SIGN*)+ !in_method_keyword
+// class invariants, ghost and model fields, represents clauses and in clauses; a ghost declaration followed by a
+// statement, such as "ghost int x; set x = 1;", is an in-method specification
+private class_invariants ::= ((class_invariant | ghost_declaration | represents_clause | in_clause) AT_SIGN*)+
+    !in_method_keyword
 private in_method_keyword ::= set | assert | assume | maintaining | LOOPINVARIANT | decreases | decreasing
     | LOOP_DECREASES | LOOP_WRITES | LOOP_MODIFIES | LOOP_ASSIGNS | LOOP_ASSIGNABLE
     | check | show | reachable | unreachable | halt | split
@@ -158,8 +165,14 @@ unreachable_statement ::= unreachable SEMICOLON*
 halt_statement ::= halt SEMICOLON*
 split_statement ::= split java_expr? SEMICOLON*
 
-// a ghost field or local variable, such as "public ghost int count = 0;", with a type, a name and an optional initializer
-ghost_declaration ::= modifiers? ghost modifiers? <<parseGhostDeclarator>> SEMICOLON+ {pin=2}
+// a ghost field or local variable, such as "public ghost int count = 0;", with a type, a name and an optional initializer;
+// or a model field, such as "public model int size;", whose value a represents clause gives
+ghost_declaration ::= modifiers? (ghost | model) modifiers? <<parseGhostDeclarator>> SEMICOLON+ {pin=2}
+// the value of a model field, such as "private represents size = count;", in which "<-" can replace "=", or a condition
+// on it, as in "represents size \such_that size >= 0;"
+represents_clause ::= modifiers? represents java_expr SEMICOLON+ {pin=2}
+// the model fields whose data groups contain the field before it, such as "private int count; //@ in size;"
+in_clause ::= in <<skipAtSigns>> store_ref (<<skipAtSigns>> COMMA <<skipAtSigns>> store_ref)* SEMICOLON+ {pin=1}
 
 
 // store refs

@@ -45,6 +45,12 @@ public class JMLTypeAnnotator {
     public static void annotateTypes(@NotNull PsiElement element, @NotNull AnnotationHolder holder) {
         if (element instanceof JMLStoreRef && element.getParent() instanceof JMLAssignableClause) {
             checkAssignableVarScope(element, holder);
+        } else if (element instanceof JMLStoreRef && element.getParent() instanceof JMLReadsClause) {
+            checkStoreRefVarScope(element, holder, false);
+        } else if (element instanceof JMLRepresentsClause represents) {
+            checkRepresentsClause(represents, holder);
+        } else if (element instanceof JMLInClause inClause) {
+            checkInClause(inClause, holder);
         } else if (element instanceof JMLStoreRef && element.getParent() instanceof JMLLoopAssignableClause) {
             checkLoopAssignableVarScope(element, holder);
         } else if (element instanceof JMLReferenceType && (element.getParent() instanceof JMLSignalsClause || element.getParent() instanceof JMLSignalsOnlyClause)) {
@@ -56,7 +62,7 @@ public class JMLTypeAnnotator {
         } else if (element instanceof JMLShowStatement show) {
             checkShowStatement(show, holder);
         } else if (element instanceof JMLJavaExpr && !(element.getParent() instanceof JMLSetStatement)
-                && !(element.getParent() instanceof JMLShowStatement)) {
+                && !(element.getParent() instanceof JMLShowStatement) && !(element.getParent() instanceof JMLRepresentsClause)) {
             annotateJavaExpr((JMLJavaExpr) element, holder);
         }
     }
@@ -74,7 +80,9 @@ public class JMLTypeAnnotator {
         String name = declarator == null ? null : declarator.getName();
         if (name == null || comment == null) return;
         PsiType type = Ghosts.type(declaration, comment);
-        if (type == null || (type.getDeepComponentType() instanceof PsiClassType classType && classType.resolve() == null)) {
+        // \datagroup has no Java type
+        if (!Ghosts.isDatagroup(declaration) && (type == null
+                || (type.getDeepComponentType() instanceof PsiClassType classType && classType.resolve() == null))) {
             PsiElement typeName = declarator.getTypeName();
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.CLASS_REFERENCE_NOT_FOUND)
                     .range(typeName != null ? typeName : declarator).create();
@@ -103,8 +111,21 @@ public class JMLTypeAnnotator {
         if (duplicateIn != null) {
             holder.newAnnotation(HighlightSeverity.ERROR, duplicateIn).range(declarator.getNameIdentifier()).create();
         }
-        // the initializer must fit the type
         JMLInnerJavaExpr initializer = declarator.getInitializer();
+        // OpenJML's lint warnings for model fields: a represents clause gives their value, and in an interface, a model
+        // field is static unless it is declared instance
+        if (Ghosts.isModel(declaration) && Ghosts.isField(declaration)) {
+            PsiClass owner = Ghosts.owner(declaration);
+            if (owner != null && owner.isInterface() && !Ghosts.hasModifier(declaration, JMLTypes.STATIC)
+                    && !Ghosts.hasModifier(declaration, JMLTypes.INSTANCE)) {
+                holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.modelInInterfaceNotStaticOrInstance(name))
+                        .range(declarator.getNameIdentifier()).create();
+            }
+            if (initializer != null) {
+                holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.MODEL_FIELD_INITIALIZER).range(initializer).create();
+            }
+        }
+        // the initializer must fit the type
         if (initializer != null && type != null) {
             ExtraVariables extraVars = new ExtraVariables();
             Ghosts.addVisible(declaration, extraVars);
@@ -210,12 +231,223 @@ public class JMLTypeAnnotator {
     }
 
     /**
+     * The model field that a represents clause gives the value of, and the visibility of the clause
+     *
+     * @param target the name of the model field, or null if there is none
+     * @param model  the model field, or null if the name is not that of a model field
+     * @param level  the visibility of the clause, as in PsiUtil.getAccessLevel: package without a modifier, or public
+     *               in an interface
+     */
+    private record Represents(@Nullable PsiElement target, @Nullable Ghosts.Ghost model, int level) {
+    }
+
+    /**
+     * @param represents a represents clause
+     * @return the model field that it is about, and its visibility
+     */
+    private static Represents represents(JMLRepresentsClause represents) {
+        PsiComment comment = getCommentContext(represents);
+        PsiClass psiClass = comment == null ? null : getParentOfType(comment, PsiClass.class);
+        JMLJavaExpr javaExpr = represents.getJavaExpr();
+        JMLInnerJavaExpr inner = javaExpr == null ? null : getChildOfType(javaExpr, JMLInnerJavaExpr.class);
+        PsiElement first = inner == null ? null : inner.getFirstChild();
+        if (first instanceof PsiWhiteSpace || first instanceof PsiComment) first = PsiTreeUtil.skipWhitespacesAndCommentsForward(first);
+        PsiElement target = first instanceof PsiIdentifier ? first : null;
+        Ghosts.Ghost model = target == null || psiClass == null ? null : Ghosts.fields(psiClass).get(target.getText());
+        PsiElement visibility = findFirstModifierInInvariant(represents.getModifiers(), JMLTokenSet.visibilityModifiers);
+        int level = visibility != null ? accessLevel(visibility.getText())
+                : psiClass != null && psiClass.isInterface() ? PsiUtil.ACCESS_LEVEL_PUBLIC : PsiUtil.ACCESS_LEVEL_PACKAGE_LOCAL;
+        return new Represents(target, model != null && model.model() ? model : null, level);
+    }
+
+    /**
+     * Checks a represents clause, such as "private represents size = count;", with the messages of OpenJML: it must
+     * give the value of a model field, after "=" or "&lt;-", or a condition on it after "\such_that", it must be static
+     * if the model field is, and what it uses must be visible enough and in the data group of the model field
+     *
+     * @param represents the represents clause
+     * @param holder     the Annotation holder
+     */
+    private static void checkRepresentsClause(JMLRepresentsClause represents, AnnotationHolder holder) {
+        JMLJavaExpr javaExpr = represents.getJavaExpr();
+        JMLInnerJavaExpr inner = javaExpr == null ? null : getChildOfType(javaExpr, JMLInnerJavaExpr.class);
+        PsiComment comment = getCommentContext(represents);
+        PsiClass psiClass = comment == null ? null : getParentOfType(comment, PsiClass.class);
+        if (inner == null || psiClass == null) return;
+        Represents info = represents(represents);
+        PsiElement target = info.target();
+        // the model field must be named without a qualifier, as in "size" rather than "this.size"
+        PsiElement first = inner.getFirstChild() instanceof PsiWhiteSpace || inner.getFirstChild() instanceof PsiComment
+                ? PsiTreeUtil.skipWhitespacesAndCommentsForward(inner.getFirstChild()) : inner.getFirstChild();
+        PsiElement afterFirst = first == null ? null : PsiTreeUtil.skipWhitespacesAndCommentsForward(first);
+        if (afterFirst != null && afterFirst.getNode().getElementType() == JavaTokenType.DOT) {
+            PsiElement end = first;
+            for (PsiElement child = afterFirst; child != null && (child.getNode().getElementType() == JavaTokenType.DOT
+                    || child instanceof PsiIdentifier || child instanceof PsiWhiteSpace); child = child.getNextSibling()) {
+                if (!(child instanceof PsiWhiteSpace)) end = child;
+            }
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REPRESENTS_FIELD_ACCESS)
+                    .range(new TextRange(first.getTextRange().getStartOffset(), end.getTextRange().getEndOffset())).create();
+            return;
+        }
+        // the operator after the name of the model field
+        PsiElement next = target == null ? null : PsiTreeUtil.skipWhitespacesAndCommentsForward(target);
+        IElementType nextType = next == null ? null : next.getNode().getElementType();
+        PsiElement operator = null;
+        boolean suchThat = nextType == JMLTypes.SUCH_THAT;
+        if (nextType == JavaTokenType.EQ || suchThat) {
+            operator = next;
+        } else if (nextType == JavaTokenType.LT && next.getNextSibling() != null
+                && next.getNextSibling().getNode().getElementType() == JavaTokenType.MINUS) {
+            // "<-", an old spelling of "="
+            operator = next.getNextSibling();
+        }
+        if (operator == null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REPRESENTS_WITHOUT_OPERATOR)
+                    .range(next != null ? next : target != null ? target : inner).create();
+            return;
+        }
+        Ghosts.Ghost model = info.model();
+        if (model == null) {
+            // the name of a Java field or a ghost field, or of nothing
+            Ghosts.Ghost ghost = Ghosts.fields(psiClass).get(target.getText());
+            PsiField field = psiClass.findFieldByName(target.getText(), true);
+            String name = ghost != null ? ghost.qualifiedName()
+                    : field != null && field.getContainingClass() != null ? field.getContainingClass().getName() + "." + field.getName() : null;
+            holder.newAnnotation(HighlightSeverity.ERROR, name != null ? ErrorMessages.representsNotModelField(name)
+                    : ErrorMessages.REFERENCE_UNRESOLVED).range(target).create();
+        } else {
+            // a static model field needs a static represents clause in its own class
+            boolean isStatic = findFirstModifierInInvariant(represents.getModifiers(), TokenSet.create(JMLTypes.STATIC)) != null;
+            if (isStatic != model.isStatic()) {
+                PsiElement keyword = PsiTreeUtil.skipWhitespacesAndCommentsBackward(javaExpr);
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REPRESENTS_STATIC)
+                        .range(keyword != null ? keyword : represents).create();
+            }
+            if (model.isStatic() && !psiClass.equals(Ghosts.owner(model.declaration()))) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.representsOtherClass(model.qualifiedName()))
+                        .range(target).create();
+            }
+            if (model.accessLevel() < info.level()) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.identifierNotVisible(
+                        SpecVisibility.name(model.accessLevel()), "represents", SpecVisibility.name(info.level())))
+                        .range(target).create();
+            }
+        }
+        // the value after the operator must fit the model field, and a condition must be boolean
+        ExtraVariables extraVars = new ExtraVariables();
+        Ghosts.addVisible(represents, extraVars);
+        InnerJavaExprResult value = annotateInnerJavaExpr(inner, holder, extraVars, suchThat, true, true, operator);
+        PsiType valueType = value.getExpr() == null ? null : value.getExpr().getType();
+        if (suchThat || model == null || !value.isCorrect() || valueType == null) return;
+        PsiType modelType = model.type(represents);
+        String problem = Ghosts.isDatagroup(model.declaration()) ? ErrorMessages.incompatibleTypes(valueType, "\\datagroup")
+                : modelType != null && !TypeConversionUtil.isAssignable(modelType, valueType)
+                ? ErrorMessages.incompatibleTypes(valueType, modelType) : null;
+        if (problem != null) {
+            PsiElement start = PsiTreeUtil.skipWhitespacesAndCommentsForward(operator);
+            holder.newAnnotation(HighlightSeverity.ERROR, problem)
+                    .range(new TextRange(start == null ? operator.getTextRange().getEndOffset() : start.getTextRange().getStartOffset(),
+                            inner.getTextRange().getEndOffset())).create();
+        }
+    }
+
+    /**
+     * Checks the fields and methods that a represents clause uses, with OpenJML's messages: they must be visible
+     * enough, as in a method specification; a method must be a helper method; and a field that is named without a
+     * qualifier must be in the data group of the model field
+     *
+     * @param represents the represents clause
+     * @param visitor    the visitor after it did all its visiting (so with resolved references)
+     */
+    private static void checkRepresentsReferences(JMLRepresentsClause represents, JMLJavaExprVisitor visitor) {
+        Represents info = represents(represents);
+        for (Map.Entry<PsiElement, JavaResolveResult> ref : visitor.getResolvedReferences().entrySet()) {
+            PsiElement resolved = ref.getValue().getElement();
+            if (!(resolved instanceof PsiField) && !(resolved instanceof PsiMethod)) continue;
+            SpecVisibility.Problem problem = SpecVisibility.checkInMethodSpec((PsiMember) resolved, "represents", info.level());
+            if (problem != null) {
+                visitor.annotateError(ref.getKey(), problem.message(), problem.fix());
+            } else if (resolved instanceof PsiMethod method && !(method instanceof PsiCompiledElement)
+                    && !doLinkedCommentsContain(method, "helper", false)) {
+                // OpenJML names the method with the qualified name of its class
+                PsiClass owner = method.getContainingClass();
+                String ownerName = owner == null ? null : owner.getQualifiedName() != null ? owner.getQualifiedName() : owner.getName();
+                visitor.annotateError(ref.getKey(), ErrorMessages.representsNotHelper(
+                        (ownerName == null ? "" : ownerName + ".") + signature(method)));
+            } else if (resolved instanceof PsiField field && info.model() != null
+                    && ref.getKey() instanceof PsiReferenceExpression reference && reference.getQualifierExpression() == null
+                    && !DataGroups.isIn(field, info.model())) {
+                visitor.annotateError(ref.getKey(), ErrorMessages.notInDataGroup(info.model().name(), field.getName()));
+            }
+        }
+    }
+
+    /**
+     * Checks an in clause, such as "//@ in size;" after a field, with OpenJML's messages: it must follow the declaration
+     * of a field, and name model fields that are visible enough for the field, and static if the field is static
+     *
+     * @param inClause the in clause
+     * @param holder   the Annotation holder
+     */
+    private static void checkInClause(JMLInClause inClause, AnnotationHolder holder) {
+        PsiElement field = DataGroups.field(inClause);
+        if (field == null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.IN_CLAUSE_NOT_AFTER_FIELD)
+                    .range(inClause.getFirstChild()).create();
+        }
+        PsiComment comment = getCommentContext(inClause);
+        PsiClass psiClass = field != null ? DataGroups.owner(field)
+                : comment == null ? null : getParentOfType(comment, PsiClass.class);
+        if (psiClass == null) return;
+        Map<String, Ghosts.Ghost> fields = Ghosts.fields(psiClass);
+        for (JMLStoreRef reference : inClause.getStoreRefList()) {
+            String name = reference.getText();
+            Ghosts.Ghost group = fields.get(name);
+            String message = null;
+            if (!name.matches("[A-Za-z_$][\\w$]*")) {
+                message = ErrorMessages.INCORRECT_REFERENCE;
+            } else if (group == null && psiClass.findFieldByName(name, true) == null) {
+                message = ErrorMessages.REFERENCE_UNRESOLVED;
+            } else if (group == null || !group.model()) {
+                message = ErrorMessages.DATAGROUP_NOT_MODEL;
+            } else if (field != null) {
+                JMLGhostDeclaration declaration = field instanceof JMLGhostDeclaration ghost ? ghost : null;
+                int fieldLevel = declaration == null ? SpecVisibility.specAccessLevel((PsiField) field)
+                        : new Ghosts.Ghost(String.valueOf(Ghosts.name(declaration)), declaration, true).accessLevel();
+                boolean fieldStatic = declaration == null ? ((PsiField) field).hasModifierProperty(PsiModifier.STATIC)
+                        : Ghosts.isStatic(declaration);
+                if (group.accessLevel() < fieldLevel) {
+                    message = ErrorMessages.identifierNotVisible(SpecVisibility.name(group.accessLevel()), "in",
+                            SpecVisibility.name(fieldLevel));
+                } else if (!fieldStatic && group.isStatic()) {
+                    message = ErrorMessages.NON_STATIC_IN_STATIC_DATAGROUP;
+                }
+            }
+            if (message != null) holder.newAnnotation(HighlightSeverity.ERROR, message).range(reference).create();
+        }
+    }
+
+    /**
      * Checks whether a reference in an assignable clause can be resolved and whether they are allowed
      *
      * @param element the reference to check for
      * @param holder  the Annotation holder
      */
     public static void checkAssignableVarScope(PsiElement element, AnnotationHolder holder) {
+        checkStoreRefVarScope(element, holder, true);
+    }
+
+    /**
+     * Checks whether a reference in an assignable clause, or in a reads clause, can be resolved and whether it is allowed
+     *
+     * @param element    the reference to check for
+     * @param holder     the Annotation holder
+     * @param assignable true for an assignable clause, false for a reads clause, which may also name final fields
+     */
+    private static void checkStoreRefVarScope(PsiElement element, AnnotationHolder holder, boolean assignable) {
+        // OpenJML calls a reads clause an accessible clause in its messages
+        String clause = assignable ? "assignable" : "accessible";
         // get the class the JML comment is in
         PsiElement javaContext = getJavaContext(element);
         PsiClass classContext = getParentOfType(javaContext, PsiClass.class);
@@ -269,7 +501,7 @@ public class JMLTypeAnnotator {
         if (!fieldValid && !classValid && !referenceName.equals("this") && !referenceName.equals("super")) {
             Ghosts.Ghost ghost = ghostReference(element, referenceName);
             if (ghost != null) {
-                checkGhostAssignable(element, ghost, javaContext instanceof PsiMethod method ? method : null, holder);
+                checkGhostAssignable(element, ghost, javaContext instanceof PsiMethod method ? method : null, clause, holder);
                 return;
             }
             // reference does not point to a field or a class
@@ -294,21 +526,22 @@ public class JMLTypeAnnotator {
             }
         } else {
             if (!fieldValid) {
-                // class names are only allowed with .* (you cannot assign a static class reference)
-                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.UNASSIGNABLE).create();
+                // class names are only allowed with .* (you cannot assign or read a static class reference)
+                holder.newAnnotation(HighlightSeverity.ERROR, assignable ? ErrorMessages.UNASSIGNABLE
+                        : ErrorMessages.INCORRECT_REFERENCE).create();
             }
             // a method may always assign its own parameters, so they do not need to be listed
-            else if (fieldResolved.getElement() instanceof PsiParameter) {
+            else if (assignable && fieldResolved.getElement() instanceof PsiParameter) {
                 holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.ASSIGNABLE_PARAMETER).create();
             }
             // reference points to a field, check that it is not final
-            else if (fieldResolved.getElement() instanceof PsiField && ((PsiField) fieldResolved.getElement()).hasModifierProperty(PsiModifier.FINAL)) {
+            else if (assignable && fieldResolved.getElement() instanceof PsiField && ((PsiField) fieldResolved.getElement()).hasModifierProperty(PsiModifier.FINAL)) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ASSIGNABLE_VAR_IS_FINAL).create();
             }
         }
         // the fields in the reference must be visible enough for the method specification
         if (resolvedReference != null && javaContext instanceof PsiMethod method) {
-            checkAssignableVisibility(resolvedReference, element, method, holder);
+            checkAssignableVisibility(resolvedReference, element, method, clause, holder);
         }
     }
 
@@ -319,14 +552,15 @@ public class JMLTypeAnnotator {
      * @param reference the reference, created from the text in the assignable clause
      * @param element   the reference in the assignable clause
      * @param method    the method that the specification belongs to
+     * @param clause    the name of the clause for the message, assignable or accessible
      * @param holder    the Annotation holder
      */
     private static void checkAssignableVisibility(PsiExpression reference, PsiElement element, PsiMethod method,
-                                                  AnnotationHolder holder) {
+                                                  String clause, AnnotationHolder holder) {
         int specLevel = SpecCases.accessLevel(element, method);
         for (PsiExpression part = reference; part instanceof PsiReferenceExpression ref; part = ref.getQualifierExpression()) {
             if (ref.resolve() instanceof PsiField field) {
-                SpecVisibility.Problem problem = SpecVisibility.checkInMethodSpec(field, "assignable", specLevel);
+                SpecVisibility.Problem problem = SpecVisibility.checkInMethodSpec(field, clause, specLevel);
                 if (problem != null) {
                     AnnotationBuilder builder = holder.newAnnotation(HighlightSeverity.ERROR, problem.message());
                     if (problem.fix() != null) builder = builder.withFix(problem.fix());
@@ -350,9 +584,10 @@ public class JMLTypeAnnotator {
      * and a ghost field must be visible enough for the method specification
      *
      * @param method the method whose specification has the assignable clause, or null for a loop_writes clause
+     * @param clause the name of the clause for the message, assignable or accessible
      */
     private static void checkGhostAssignable(PsiElement element, Ghosts.Ghost ghost, @Nullable PsiMethod method,
-                                             AnnotationHolder holder) {
+                                             String clause, AnnotationHolder holder) {
         PsiType type = ghost.type(element);
         if (element.getText().contains("[*]")) {
             if (type != null && type.getArrayDimensions() == 0) {
@@ -367,7 +602,7 @@ public class JMLTypeAnnotator {
             int specLevel = SpecCases.accessLevel(element, method);
             if (ghost.accessLevel() < specLevel) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.identifierNotVisible(
-                        SpecVisibility.name(ghost.accessLevel()), "assignable", SpecVisibility.name(specLevel))).create();
+                        SpecVisibility.name(ghost.accessLevel()), clause, SpecVisibility.name(specLevel))).create();
             }
         }
     }
@@ -402,7 +637,7 @@ public class JMLTypeAnnotator {
         } else if (!(resolved instanceof PsiVariable variable)) {
             Ghosts.Ghost ghost = ghostReference(element, referenceName);
             if (ghost != null) {
-                checkGhostAssignable(element, ghost, null, holder);
+                checkGhostAssignable(element, ghost, null, "loop_writes", holder);
             } else {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.REFERENCE_UNRESOLVED).create();
             }
@@ -673,6 +908,14 @@ public class JMLTypeAnnotator {
                 checkTypeExpr(holder, result, currentChild);
             } else if (currentChild instanceof JMLQuantifiedExpr) {
                 evaluateQuantifiedExpr((JMLQuantifiedExpr) currentChild, extraVars, result, holder);
+            } else if ((currentChild instanceof PsiIdentifier || elemType == JavaTokenType.THIS_KEYWORD || elemType == JMLTypes.THIS)
+                    && qualifiedGhost(currentChild, extraVars) instanceof QualifiedGhost access) {
+                // a ghost or model field of another object, as in "o.size" or "this.size", is replaced by a value of its
+                // type, like a ghost field of this object
+                result.addText("(" + getDefaultValueOfType(access.type()) + ")", currentChild, access.name());
+                checkGhostFieldVisibility(access.name(), access.ghost(), false, holder);
+                currentChild = access.name().getNextSibling();
+                continue;
             } else if (currentChild instanceof PsiIdentifier) {
                 // replaces the reference if it is in extraVars
                 String newText = getReplacementIfNeeded((PsiIdentifier) currentChild, extraVars);
@@ -713,8 +956,11 @@ public class JMLTypeAnnotator {
                     // we do it here, as here we have the resolved variables; the expression is still well-typed,
                     // so other checks still happen
                     JMLClassInvariant invariant = getParentOfType(element, JMLClassInvariant.class);
+                    JMLRepresentsClause represents = getParentOfType(element, JMLRepresentsClause.class);
                     String clause = methodSpecClause(element);
-                    if (result.isCorrect() && invariant != null) {
+                    if (result.isCorrect() && represents != null) {
+                        checkRepresentsReferences(represents, visitor);
+                    } else if (result.isCorrect() && invariant != null) {
                         checkInvariantVisibility(invariant, visitor);
                     } else if (result.isCorrect() && clause != null && getJavaContext(element) instanceof PsiMethod method) {
                         checkMethodSpecVisibility(element, method, clause, visitor);
@@ -1029,11 +1275,34 @@ public class JMLTypeAnnotator {
     private static void checkGhostFieldVisibility(PsiIdentifier identifier, ExtraVariables extraVars, AnnotationHolder holder) {
         Ghosts.Ghost ghost = extraVars.findGhost(identifier.getText());
         if (ghost == null || !ghost.field()) return;
+        checkGhostFieldVisibility(identifier, ghost, true, holder);
+    }
+
+    /**
+     * See {@link #checkGhostFieldVisibility(PsiIdentifier, ExtraVariables, AnnotationHolder)}; in a represents clause,
+     * a ghost or model field without a qualifier must also be in the data group of the model field, as in OpenJML
+     *
+     * @param identifier  the name of the field
+     * @param ghost       the ghost or model field
+     * @param unqualified whether the name has no qualifier, as in "size" rather than "o.size"
+     */
+    private static void checkGhostFieldVisibility(PsiElement identifier, Ghosts.Ghost ghost, boolean unqualified,
+                                                  AnnotationHolder holder) {
         int level = ghost.accessLevel();
         JMLClassInvariant invariant = getParentOfType(identifier, JMLClassInvariant.class);
+        JMLRepresentsClause represents = getParentOfType(identifier, JMLRepresentsClause.class);
         String clause = methodSpecClause(identifier);
         String message = null;
-        if (invariant != null && CommentPosition.isInvariantOnCorrectPosition(invariant)) {
+        if (represents != null) {
+            Represents info = represents(represents);
+            if (level < info.level()) {
+                message = ErrorMessages.identifierNotVisible(SpecVisibility.name(level), "represents",
+                        SpecVisibility.name(info.level()));
+            } else if (unqualified && info.model() != null && !ghost.declaration().equals(info.model().declaration())
+                    && !DataGroups.isIn(ghost.declaration(), info.model())) {
+                message = ErrorMessages.notInDataGroup(info.model().name(), ghost.name());
+            }
+        } else if (invariant != null && CommentPosition.isInvariantOnCorrectPosition(invariant)) {
             int invariantLevel = invariantAccessLevel(invariant);
             if (level != invariantLevel) {
                 message = ErrorMessages.identifierNotVisible(SpecVisibility.name(level), invariantKeyword(invariant),
@@ -1046,6 +1315,64 @@ public class JMLTypeAnnotator {
             }
         }
         if (message != null) holder.newAnnotation(HighlightSeverity.ERROR, message).range(identifier).create();
+    }
+
+    /**
+     * A ghost or model field of another object, or a static one of a class, such as "o.size", "this.size" or
+     * "Polygon.count"
+     *
+     * @param ghost the field
+     * @param type  its type
+     * @param name  the name of the field after the dot
+     */
+    private record QualifiedGhost(Ghosts.Ghost ghost, PsiType type, PsiIdentifier name) {
+    }
+
+    /**
+     * @param qualifier an identifier or "this" in a Java expression in JML
+     * @param extraVars the extra variables, with their types
+     * @return the ghost or model field that it is the qualifier of, as in "o.size", if the identifier is a variable or
+     * a class and is not itself after a dot, and the field is not a method call; null otherwise
+     */
+    private static @Nullable QualifiedGhost qualifiedGhost(PsiElement qualifier, ExtraVariables extraVars) {
+        PsiElement before = PsiTreeUtil.skipWhitespacesAndCommentsBackward(qualifier);
+        if (before != null && before.getNode().getElementType() == JavaTokenType.DOT) return null;
+        PsiElement dot = PsiTreeUtil.skipWhitespacesAndCommentsForward(qualifier);
+        if (dot == null || dot.getNode().getElementType() != JavaTokenType.DOT) return null;
+        if (!(PsiTreeUtil.skipWhitespacesAndCommentsForward(dot) instanceof PsiIdentifier name)) return null;
+        PsiElement after = PsiTreeUtil.skipWhitespacesAndCommentsForward(name);
+        if (after != null && after.getNode().getElementType() == JavaTokenType.LPARENTH) return null;
+        PsiComment comment = getCommentContext(qualifier);
+        PsiClass psiClass = comment == null ? null : qualifierClass(qualifier, comment, extraVars);
+        // a Java field with the name is used instead
+        if (psiClass == null || psiClass.findFieldByName(name.getText(), true) != null) return null;
+        Ghosts.Ghost ghost = Ghosts.fields(psiClass).get(name.getText());
+        PsiType type = ghost == null ? null : ghost.type(comment);
+        return type == null ? null : new QualifiedGhost(ghost, type, name);
+    }
+
+    /**
+     * @param qualifier an identifier or "this" in a Java expression in JML
+     * @param comment   the JML comment
+     * @param extraVars the extra variables, with their types
+     * @return the class of the variable, or of this, or the class that the identifier names; null if there is none
+     */
+    private static @Nullable PsiClass qualifierClass(PsiElement qualifier, PsiComment comment, ExtraVariables extraVars) {
+        IElementType type = qualifier.getNode().getElementType();
+        if (type == JavaTokenType.THIS_KEYWORD || type == JMLTypes.THIS) return getParentOfType(comment, PsiClass.class);
+        PsiType variableType = extraVars.findVarAndGetType(qualifier.getText());
+        if (variableType == null) {
+            try {
+                PsiExpression expression = JavaPsiFacade.getElementFactory(comment.getProject())
+                        .createExpressionFromText(qualifier.getText(), comment);
+                PsiElement resolved = expression instanceof PsiReferenceExpression reference ? reference.resolve() : null;
+                if (resolved instanceof PsiClass psiClass) return psiClass;
+                if (resolved instanceof PsiVariable variable) variableType = variable.getType();
+            } catch (IncorrectOperationException e) {
+                return null;
+            }
+        }
+        return PsiTypesUtil.getPsiClass(variableType);
     }
 
     /**

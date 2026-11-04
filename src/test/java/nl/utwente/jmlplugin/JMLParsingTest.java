@@ -228,4 +228,12 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, false);
     }
 
+    public void testModelFields() {
+        doTest(true, true);
+    }
+
+    public void testReadsClause() {
+        doTest(true, true);
+    }
+
 }

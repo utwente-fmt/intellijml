@@ -60,10 +60,14 @@ public class JMLTokenSet {
     // keywords that start a clause, but are also allowed as the name of a variable in a Java expression, as in
     // OpenJML: they only end a Java expression after a semicolon, outside parentheses
     public static final TokenSet contextualKeywords = TokenSet.create(DECREASES, DECREASING, GHOST, SET, CHECK, SHOW,
-            REACHABLE, UNREACHABLE, HALT, SPLIT, ASSIGNS, DIVERGES, INITIALLY, CONSTRAINT);
+            REACHABLE, UNREACHABLE, HALT, SPLIT, ASSIGNS, DIVERGES, INITIALLY, CONSTRAINT, MODEL, REPRESENTS, IN, READS,
+            ACCESSIBLE);
 
     // the contextual keywords that can also follow a modifier, as in "public ghost int x;" or "public initially x == 0;"
-    public static final TokenSet keywordsAfterModifiers = TokenSet.create(GHOST, INITIALLY, CONSTRAINT);
+    public static final TokenSet keywordsAfterModifiers = TokenSet.create(GHOST, INITIALLY, CONSTRAINT, MODEL, REPRESENTS);
+
+    // the keywords of a ghost or model declaration, after which the declaration is a Java expression
+    public static final TokenSet declarationKeywords = TokenSet.create(GHOST, MODEL);
 
     public static final TokenSet javaKeywords = TokenSet.create(THIS, SUPER);
 
@@ -76,7 +80,7 @@ public class JMLTokenSet {
     // used for lexers / parsers
     public static final TokenSet keywordsBeforeJavaExpr = TokenSet.orSet(loopVariantKeywords, TokenSet.create(
             REQUIRES, PRE, ENSURES, POST, MAINTAINING, LOOPINVARIANT, ASSUME, ASSERT, INVARIANT, SET, CHECK, SHOW, SPLIT,
-            DIVERGES, INITIALLY, CONSTRAINT
+            DIVERGES, INITIALLY, CONSTRAINT, REPRESENTS
     ));
 
     // the keywords that completion offers in a method body; the other spellings are left out
@@ -101,7 +105,8 @@ public class JMLTokenSet {
 
     public static final TokenSet backslashKeywordsInJavaExpr = TokenSet.orSet(quantifiers,
             TokenSet.create(RESULT, OLD, TYPE_OF, ELEM_TYPE, TYPE, TYPE_CAPS, NON_NULL_ELEMENTS, FRESH, INVARIANT_FOR,
-                    NOT_MODIFIED, JAVA_MATH, SAFE_MATH, BIGINT_MATH, COUNT, LBL, LBLPOS, LBLNEG, BIGINT, REAL));
+                    NOT_MODIFIED, JAVA_MATH, SAFE_MATH, BIGINT_MATH, COUNT, LBL, LBLPOS, LBLNEG, BIGINT, REAL, DATAGROUP,
+                    SUCH_THAT));
 
     // the keywords that end a Java expression, also without a semicolon before them; see contextualKeywords
     public static final TokenSet allOuterKeywords = TokenSet.orSet(methodSpecCaseKeywords, allModifiers, behaviors,

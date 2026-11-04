@@ -1,96 +1,17 @@
 Bigint.java:9: plugin | Method could not be resolved, maybe the parameters do not correspond?
-LemmaExample.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'old'
+LemmaExample.java:5: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'old'
 LemmaExample.java:6: plugin | Reference cannot be resolved
-LemmaExample.java:10: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'use'
+LemmaExample.java:10: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'use'
 LemmaExample.java:15: plugin | Method specifications are not allowed in a class body
 LemmaExample.java:16: plugin | Method specifications are not allowed in a class body
-LemmaExample.java:17: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-Polygon.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-Polygon.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-Polygon.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-Polygon.java:9: plugin | Reference cannot be resolved
-Polygon.java:11: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'old'
-Polygon.java:12: plugin | Reference cannot be resolved
+LemmaExample.java:17: plugin | Modifier, at-sign, semicolon, or type name expected after this token, got 'void'
+Polygon.java:11: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'old'
 Polygon.java:13: plugin | Reference cannot be resolved
-Polygon.java:16: plugin | Reference cannot be resolved
-Polygon.java:19: plugin | Reference cannot be resolved
-Polygon.java:24: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon.java:26: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'model'
-Polygon.java:27: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-Polygon.java:28: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon.java:30: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon.java:35: plugin | Reference cannot be resolved
-Polygon.java:49: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon.java:50: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'model'
-Polygon.java:51: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-Polygon.java:52: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon.java:53: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'model'
-Polygon.java:54: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-Polygon.java:55: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon.java:56: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'model'
-Polygon.java:57: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-Polygon.java:58: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon.java:60: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon.java:62: plugin | Reference cannot be resolved
-Polygon.java:63: plugin | Reference cannot be resolved
 Polygon.java:65: plugin | Method specifications are not allowed in a class body
-Polygon.java:72: plugin | Reference cannot be resolved
-Polygon.java:73: plugin | Reference cannot be resolved
-Polygon.java:76: plugin | Reference cannot be resolved
-Polygon.java:81: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-Polygon.java:90: plugin | Reference cannot be resolved
-Polygon3.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-Polygon3.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-Polygon3.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-Polygon3.java:7: plugin | Reference cannot be resolved
-Polygon3.java:9: plugin | Reference cannot be resolved
-Polygon3.java:10: plugin | Reference cannot be resolved
-Polygon3.java:13: plugin | Reference cannot be resolved
-Polygon3.java:16: plugin | Reference cannot be resolved
-Polygon3.java:20: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-Polygon3.java:22: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon3.java:23: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon3.java:25: plugin | Reference cannot be resolved
-Polygon3.java:38: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-Polygon3.java:39: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-Polygon3.java:40: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-Polygon3.java:42: plugin | Reference cannot be resolved
-Polygon3.java:47: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon3.java:48: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-Polygon3.java:58: plugin | Reference cannot be resolved
-PolygonMM.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-PolygonMM.java:12: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:18: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'old'
-PolygonMM.java:19: plugin | Reference cannot be resolved
+PolygonMM.java:18: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'old'
 PolygonMM.java:20: plugin | Reference cannot be resolved
-PolygonMM.java:27: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:32: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-PolygonMM.java:35: plugin | Assignable clause, behavior, diverges clause, ensures clause, modifiers, also, at-sign, pre, requires, signals or signals_only expected, got 'reads'
-PolygonMM.java:63: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-PolygonMM.java:64: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-PolygonMM.java:65: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-PolygonMM.java:68: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:71: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:77: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:80: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:86: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:89: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-PolygonMM.java:109: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
-T_NullableList.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-T_NullableList.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
-T_NullableList.java:11: plugin | Reference cannot be resolved
-T_NullableList.java:14: plugin | Reference cannot be resolved
-T_NullableListImpl.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-T_NullableListImpl.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'represents'
-T_NullableListImpl.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-T_NullableListImpl.java:6: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'represents'
-T_Old.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'old'
+T_Old.java:5: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'old'
 T_Old.java:6: plugin | Reference cannot be resolved
 T_Old.java:7: plugin | Reference cannot be resolved
 T_Old.java:15: plugin | Method could not be resolved, maybe the parameters do not correspond?
 T_PureMethod3.java:20: OpenJML | Pure methods may not assign to any fields: count in T_PureMethod3.Counter.count()
-T_Visibility3.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
-T_Visibility3.java:5: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'model'
-T_Visibility3.java:6: plugin | Modifier, at-sign, behavior, constraint, exceptional_behavior, ghost, initially, invariant, normal_behavior or semicolon expected, got 'represents'
-T_Visibility3.java:8: plugin | Reference cannot be resolved

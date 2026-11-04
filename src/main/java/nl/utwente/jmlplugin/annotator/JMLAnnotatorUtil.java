@@ -87,15 +87,18 @@ public class JMLAnnotatorUtil {
 
     /**
      * @param comment a JML comment
-     * @return whether it belongs to the class rather than to the field or method below it: a ghost declaration, an
-     * invariant, an initially clause or a constraint, which OpenJML also allows right above a field or method
+     * @return whether it belongs to the class rather than to the field or method below it: a ghost or model
+     * declaration, an invariant, an initially clause, a constraint, a represents clause or an in clause, which OpenJML
+     * also allows right above a field or method
      */
     public static boolean isClassLevelComment(@NotNull PsiComment comment) {
         return CLASS_LEVEL.matcher(jmlText(comment)).find();
     }
 
-    // the keywords of a ghost declaration, invariant, initially clause or constraint
-    private static final Pattern CLASS_LEVEL = Pattern.compile("(?<![\\w\\\\])(?:ghost|invariant|initially|constraint)(?!\\w)");
+    // the keywords of a ghost or model declaration, invariant, initially clause, constraint, represents clause or in
+    // clause, at the start of a clause, after modifiers; they can also be names elsewhere, as in "requires model != null;"
+    private static final Pattern CLASS_LEVEL = Pattern.compile("(?:^/[/*]|[;@\\r\\n])[\\s@]*(?:" + ALL_MODIFIERS_REGEX
+            + "\\s+)*(?:ghost|model|invariant|initially|constraint|represents|in)(?![\\w$])");
 
     /**
      * @param invariant an invariant, initially clause or constraint
@@ -111,9 +114,10 @@ public class JMLAnnotatorUtil {
         return "invariant";
     }
 
-    // a comment inside JML, which ends at the end of the line, or a string or character literal, which may contain //
+    // a comment inside JML, which ends at the end of the line, or a string or character literal, which may contain //;
+    // as in OpenJML, "//@" continues the JML, as in "//@ public model int side; //@ in size;"
     private static final Pattern LINE_COMMENT_OR_LITERAL =
-            Pattern.compile("//[^\\r\\n]*|\"(?:[^\"\\\\\\r\\n]|\\\\.)*\"|'(?:[^'\\\\\\r\\n]|\\\\.)*'");
+            Pattern.compile("//(?!@)[^\\r\\n]*|\"(?:[^\"\\\\\\r\\n]|\\\\.)*\"|'(?:[^'\\\\\\r\\n]|\\\\.)*'");
 
     /**
      * @param comment a JML comment

@@ -148,11 +148,50 @@ public final class ErrorMessages {
         return "incompatible types: " + from.getPresentableText() + " cannot be converted to " + to.getPresentableText();
     }
 
+    public static String incompatibleTypes(@NotNull PsiType from, @NotNull String to) {
+        return "incompatible types: " + from.getPresentableText() + " cannot be converted to " + to;
+    }
+
     // OpenJML's (and javac's) messages for the modifiers of a ghost declaration
     public static final String BOTH_INSTANCE_AND_STATIC = "A declaration may not be both instance and static";
 
-    public static String jmlModifierNotAllowedInGhost(boolean field) {
-        return "This JML modifier is not allowed for a " + (field ? "ghost field" : "local variable") + " declaration";
+    /**
+     * @param declaration what is declared, such as "ghost field", "model field" or "local variable"
+     */
+    public static String jmlModifierNotAllowedIn(String declaration) {
+        return "This JML modifier is not allowed for a " + declaration + " declaration";
+    }
+
+    public static final String JML_MODIFIER_NOT_ALLOWED_IN_REPRESENTS = "This JML modifier is not allowed for a represents clause";
+
+    // OpenJML's messages for model fields, represents clauses and in clauses
+    public static final String MODEL_FIELD_INITIALIZER = "A non-final model field may not have an initializer";
+    public static final String REPRESENTS_WITHOUT_OPERATOR = "A represents clause must have a = or \\such_that after the identifier";
+    public static final String REPRESENTS_FIELD_ACCESS = "Field accesses are not permitted in a represents clause";
+    public static final String REPRESENTS_STATIC = "A represents clause and its associated model field must both be static or both not be static";
+    public static final String IN_CLAUSE_NOT_AFTER_FIELD = "This in clause must directly follow a field declaration";
+    public static final String DATAGROUP_NOT_MODEL = "Datagroups in \"in\" and \"maps\" clauses must be model variables";
+    public static final String NON_STATIC_IN_STATIC_DATAGROUP = "A non-static variable may not be in a static datagroup";
+
+    public static String modelInInterfaceNotStaticOrInstance(String name) {
+        return "Model fields in an interface should be explicitly declared either static or instance: " + name;
+    }
+
+    public static String representsNotModelField(String name) {
+        return "The target of a represents clause must be a model field: " + name;
+    }
+
+    public static String representsOtherClass(String name) {
+        return "A represents clause must be declared in the same class as the static model field it represents: " + name;
+    }
+
+    public static String representsNotHelper(String method) {
+        return "A method called in a represents clause must be a helper method: " + method;
+    }
+
+    public static String notInDataGroup(String model, String field) {
+        return "Because '" + model + "' reads '" + field + "' in a represents clause, '" + field
+                + "' must be 'in' the model field '" + model + "'";
     }
 
     public static String javaModifierNotAllowedHere(String modifier) {
@@ -192,9 +231,14 @@ public final class ErrorMessages {
             specKindStr = "Method specifications";
         } else if (specKind instanceof JMLInMethodSpec) {
             specKindStr = "In-method specifications";
-        } else if (specKind instanceof JMLGhostDeclaration) {
-            return "Ghost declarations are not allowed " + position.getPositionString()
+        } else if (specKind instanceof JMLGhostDeclaration declaration) {
+            return (Ghosts.isModel(declaration) ? "Model" : "Ghost") + " declarations are not allowed "
+                    + position.getPositionString()
                     + (position == CommentPosition.FIELD ? ", add a newline after the comment" : "");
+        } else if (specKind instanceof JMLRepresentsClause) {
+            specKindStr = "Represents clauses";
+        } else if (specKind instanceof JMLInClause) {
+            specKindStr = "In clauses";
         } else if (specKind instanceof JMLClassInvariant) {
             return "Class invariants are not allowed " + position.getPositionString()
                     + (position == CommentPosition.FIELD ? ", add a newline after the comment" : "");

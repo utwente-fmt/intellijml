@@ -28,8 +28,9 @@ WHITE_SPACE=\s+
 IDENT=[_$a-zA-Z][_$a-zA-Z0-9]*
 WHITE_SPACE=[ \t\n\x0B\f\r]+
 INFORMAL_DESCRIPTION=\([ \t\n\x0B\f\r]*\*([^*]|\*+[^*)])+\*[ \t\n\x0B\f\r]*\)
-// a comment in JML, to the end of the line, such as "//@ assert x > 0; // why"
-LINE_COMMENT="//"[^\r\n]*
+// a comment in JML, to the end of the line, such as "//@ assert x > 0; // why"; as in OpenJML, "//@" continues the
+// JML, as in "//@ public model int side; //@ in size;", so there only "//" is a comment
+LINE_COMMENT="//"([^@\r\n][^\r\n]*)?
 // string and character literals, so that "//" or ";" in them does not end the Java expression
 STRING_LITERAL=\"([^\"\\\r\n]|\\[^\r\n])*\"
 CHAR_LITERAL='([^'\\\r\n]|\\[^\r\n])*'
@@ -51,6 +52,11 @@ REST=[^@;().,:*\[\]\s]
   "non_null_by_default"       { return NON_NULL_BY_DEFAULT; }
   "loop_invariant"            { return LOOPINVARIANT; }
   "ghost"                     { return GHOST; }
+  "model"                     { return MODEL; }
+  "represents"                { return REPRESENTS; }
+  "in"                        { return IN; }
+  "reads"                     { return READS; }
+  "accessible"                { return ACCESSIBLE; }
   "set"                       { return SET; }
   "check"                     { return CHECK; }
   "show"                      { return SHOW; }

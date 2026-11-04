@@ -68,7 +68,7 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public void testStartingJMLKeywords() {
         List<String> strings = completeIn("JMLStartingKeywords.java");
 
-        assertSameElements(strings, ContainerUtil.concat(START_KEYWORDS, METHOD_MODIFIERS, ALSO, BEHAVIORS));
+        assertSameElements(strings, ContainerUtil.concat(START_KEYWORDS, List.of("reads"), METHOD_MODIFIERS, ALSO, BEHAVIORS));
     }
 
     public void testJMLJavaField() {
@@ -440,13 +440,15 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public void testClassInvariant() {
         List<String> strings = completeIn("ClassInvariant.java");
 
-        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost");
+        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost", "model",
+                "represents", "in");
     }
 
     public void testClassInvariantSemicolon() {
         List<String> strings = completeIn("ClassInvariantSemicolon.java");
 
-        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost");
+        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost", "model",
+                "represents", "in");
     }
 
     public void testFieldModifiers() {

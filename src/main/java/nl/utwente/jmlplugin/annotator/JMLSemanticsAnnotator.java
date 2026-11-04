@@ -90,6 +90,13 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())
                 && getParentOfType(element, JMLGhostDeclaration.class) instanceof JMLGhostDeclaration ghost) {
             return checkGhostModifier(element, ghost, holder);
+        } else if (element.getNode().getElementType() == JMLTypes.MODEL
+                && element.getParent() instanceof JMLGhostDeclaration ghost && !Ghosts.isField(ghost)) {
+            // as in OpenJML, a local variable in JML can only be a ghost variable
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.jmlModifierNotAllowedIn("local variable")).create();
+        } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())
+                && getParentOfType(element, JMLRepresentsClause.class) != null) {
+            return checkRepresentsModifier(element, holder);
         } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())) {
             CommentPosition modifierPosition = CommentPosition.getModifierPosition(element);
             if (checkModifierAllowedHere(element.getNode().getElementType(), modifierPosition)) {
@@ -151,11 +158,12 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
     private static boolean checkSpecAllowedHere(PsiElement element, JMLJmlSpecification jmlRoot, AnnotationHolder holder) {
         CommentPosition position = CommentPosition.getCommentPosition(jmlRoot);
         // see whether it is a method spec, class invariant, modifiers or in-method specification
-        PsiElement jmlSpecKind = getChildOfAnyType(jmlRoot, JMLMethodJml.class,
-                JMLClassInvariant.class, JMLModifiers.class, JMLInMethodSpec.class, JMLGhostDeclaration.class);
-        // ghost declarations together with an invariant are in a class body
-        JMLClassInvariant invariant = getChildOfType(jmlRoot, JMLClassInvariant.class);
-        if (jmlSpecKind instanceof JMLGhostDeclaration && invariant != null) jmlSpecKind = invariant;
+        PsiElement jmlSpecKind = getChildOfAnyType(jmlRoot, JMLMethodJml.class, JMLClassInvariant.class,
+                JMLModifiers.class, JMLInMethodSpec.class, JMLGhostDeclaration.class, JMLRepresentsClause.class,
+                JMLInClause.class);
+        // ghost declarations together with an invariant, a represents clause or an in clause are in a class body
+        PsiElement classClause = getChildOfAnyType(jmlRoot, JMLClassInvariant.class, JMLRepresentsClause.class, JMLInClause.class);
+        if (jmlSpecKind instanceof JMLGhostDeclaration && classClause != null) jmlSpecKind = classClause;
         // a ghost declaration declares a ghost field in a class body, and a ghost local variable in a method body
         boolean ghostOrInMethod = jmlSpecKind instanceof JMLGhostDeclaration || jmlSpecKind instanceof JMLInMethodSpec;
         boolean allowed = false;
@@ -168,9 +176,10 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
                             || (ghostOrInMethod && comment != null && comment.getParent() instanceof PsiCodeBlock);
                     break;
                 case FIELD:
-                    // a ghost field or an invariant right above a field, as in OpenJML
+                    // a ghost or model field, an invariant, a represents clause or an in clause right above or
+                    // after a field, as in OpenJML
                     allowed = jmlSpecKind instanceof JMLModifiers || jmlSpecKind instanceof JMLGhostDeclaration
-                            || isClassLevelInvariant(jmlSpecKind);
+                            || isClassLevelInvariant(jmlSpecKind) || isClassClause(jmlSpecKind);
                     break;
                 case ABOVE_CLASS:
                 case PARAMETER:
@@ -178,11 +187,13 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
                     allowed = jmlSpecKind instanceof JMLModifiers;
                     break;
                 case INSIDE_CLASS:
-                    allowed = jmlSpecKind instanceof JMLClassInvariant || jmlSpecKind instanceof JMLGhostDeclaration;
+                    allowed = jmlSpecKind instanceof JMLClassInvariant || jmlSpecKind instanceof JMLGhostDeclaration
+                            || isClassClause(jmlSpecKind);
                     break;
                 case ABOVE_METHOD:
                     allowed = jmlSpecKind instanceof JMLModifiers || jmlSpecKind instanceof JMLMethodJml
-                            || jmlSpecKind instanceof JMLGhostDeclaration || isClassLevelInvariant(jmlSpecKind);
+                            || jmlSpecKind instanceof JMLGhostDeclaration || isClassLevelInvariant(jmlSpecKind)
+                            || isClassClause(jmlSpecKind);
                     break;
                 case BEFORE_METHOD_BODY:
                     allowed = jmlSpecKind instanceof JMLMethodJml;
@@ -212,6 +223,13 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      */
     private static boolean isClassLevelInvariant(PsiElement element) {
         return element instanceof JMLClassInvariant invariant && CommentPosition.invariantClass(invariant) != null;
+    }
+
+    /**
+     * @return whether the element is a represents clause or an in clause, which are only allowed in a class body
+     */
+    private static boolean isClassClause(PsiElement element) {
+        return element instanceof JMLRepresentsClause || element instanceof JMLInClause;
     }
 
     /**
@@ -288,7 +306,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         if (!allowed.contains(type)) {
             boolean javaModifier = JMLTokenSet.visibilityModifiers.contains(type) || type == JMLTypes.STATIC;
             message = javaModifier ? ErrorMessages.javaModifierNotAllowedHere(element.getText())
-                    : ErrorMessages.jmlModifierNotAllowedInGhost(field);
+                    : ErrorMessages.jmlModifierNotAllowedIn(!field ? "local variable"
+                    : Ghosts.isModel(ghost) ? "model field" : "ghost field");
         } else if (JMLTokenSet.visibilityModifiers.contains(type) && otherVisibility != null) {
             message = ErrorMessages.illegalCombinationOfModifiers(otherVisibility.toString(), element.getText());
         } else if ((type == JMLTypes.STATIC && before.contains(JMLTypes.INSTANCE))
@@ -301,6 +320,30 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
                 && Ghosts.type(ghost, comment) instanceof PsiPrimitiveType primitive) {
             message = ErrorMessages.nullityOnPrimitive(primitive);
         } else if (before.contains(type)) {
+            holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.DUPLICATE_MODIFIER).create();
+            return true;
+        }
+        if (message == null) return true;
+        holder.newAnnotation(HighlightSeverity.ERROR, message).create();
+        return false;
+    }
+
+    /**
+     * Checks a modifier of a represents clause: as in OpenJML, it can have a visibility, and static or instance
+     *
+     * @param element a modifier
+     * @param holder  the Annotation holder
+     * @return false if the modifier has an error
+     */
+    private static boolean checkRepresentsModifier(PsiElement element, AnnotationHolder holder) {
+        String message = null;
+        if (!JMLTokenSet.invariantModifiers.contains(element.getNode().getElementType())) {
+            message = ErrorMessages.JML_MODIFIER_NOT_ALLOWED_IN_REPRESENTS;
+        } else if (checkMultipleVisibilityModifiers(element)) {
+            message = ErrorMessages.MULTIPLE_VISIBILITY_MODIFIERS;
+        } else if (checkStaticAndInstance(element)) {
+            message = ErrorMessages.STATIC_AND_INSTANCE;
+        } else if (doPrevInvariantModifiersContain(element, TokenSet.create(element.getNode().getElementType()))) {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.DUPLICATE_MODIFIER).create();
             return true;
         }
@@ -493,10 +536,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      * @return the keyword of a statement, such as "show", or "ghost" for a ghost declaration
      */
     private static PsiElement statementKeyword(PsiElement statement) {
-        if (statement instanceof JMLGhostDeclaration) {
-            for (PsiElement child = statement.getFirstChild(); child != null; child = child.getNextSibling()) {
-                if (child.getNode().getElementType() == JMLTypes.GHOST) return child;
-            }
+        if (statement instanceof JMLGhostDeclaration declaration && Ghosts.keyword(declaration) != null) {
+            return Ghosts.keyword(declaration);
         }
         return statement.getFirstChild();
     }

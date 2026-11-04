@@ -66,6 +66,10 @@ public interface JMLTypes extends JMLGrammarTypes {
     // the mathematical integers and reals
     IElementType BIGINT = new JMLTokenType("\\bigint");
     IElementType REAL = new JMLTokenType("\\real");
+    // the type of a model field that only groups other fields, for assignable and reads clauses
+    IElementType DATAGROUP = new JMLTokenType("\\datagroup");
+    // a condition on the value of a model field, as in "represents size \such_that size >= 0;"
+    IElementType SUCH_THAT = new JMLTokenType("\\such_that");
     IElementType LOGICAL_IMPL = new JMLElementType("==>");
     IElementType LOGICAL_EQ = new JMLElementType("<==>");
     IElementType LOGICAL_IMPL_REV = new JMLElementType("<==");

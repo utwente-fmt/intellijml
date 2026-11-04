@@ -63,7 +63,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
 
         private boolean merging = false;
         private boolean javaExprExpected = false;
-        // after "ghost": the declaration after the modifiers, such as "int x = 0", is merged as a Java expression
+        // after "ghost" or "model": the declaration after the modifiers, such as "int x = 0", is merged as a Java expression
         private boolean declarationExpected = false;
         // whether merging, javaExprExpected or declarationExpected was set at the start of the last token
         private boolean inClauseAtTokenStart = false;
@@ -147,7 +147,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
             if (!merging && JMLTokenSet.contextualKeywords.contains(type) && !atClauseStart(type)) {
                 return JMLTypes.IDENT;
             }
-            if (type == JMLTypes.GHOST) {
+            if (JMLTokenSet.declarationKeywords.contains(type)) {
                 declarationExpected = true;
                 return type;
             }

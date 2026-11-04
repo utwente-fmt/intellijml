@@ -23,9 +23,9 @@ import java.util.*;
 import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.getCommentContext;
 
 /**
- * Finds the ghost variables that JML expressions can use: the ghost fields of a class, its outer classes and its
- * superclasses, declared in JML comments in the class body, and the ghost local variables declared in JML comments
- * before a place in a method body
+ * Finds the ghost variables that JML expressions can use: the ghost and model fields of a class, its outer classes and
+ * its superclasses, declared in JML comments in the class body, and the ghost local variables declared in JML comments
+ * before a place in a method body. A model field is a ghost field whose value a represents clause gives.
  */
 public final class Ghosts {
 
@@ -65,14 +65,85 @@ public final class Ghosts {
                     if (modifier.getNode().getElementType() == JMLTypes.PRIVATE) return PsiUtil.ACCESS_LEVEL_PRIVATE;
                 }
             }
-            PsiComment comment = getCommentContext(declaration);
-            PsiClass owner = comment == null ? null : PsiTreeUtil.getParentOfType(comment, PsiClass.class);
+            PsiClass owner = owner(declaration);
             return owner != null && owner.isInterface() ? PsiUtil.ACCESS_LEVEL_PUBLIC : PsiUtil.ACCESS_LEVEL_PACKAGE_LOCAL;
+        }
+
+        /**
+         * @return whether it is a model field, whose value a represents clause gives, rather than a ghost variable
+         */
+        public boolean model() {
+            return isModel(declaration);
+        }
+
+        /**
+         * @return whether it is a static field: declared static, or, as in OpenJML, in an interface and not declared
+         * instance
+         */
+        boolean isStatic() {
+            return Ghosts.isStatic(declaration);
+        }
+
+        /**
+         * @return the name with the class it is declared in, as OpenJML shows it, such as "Polygon.sides"
+         */
+        String qualifiedName() {
+            PsiClass owner = owner(declaration);
+            return owner == null ? name : owner.getName() + "." + name;
         }
     }
 
     static @Nullable JMLGhostDeclarator declarator(@NotNull JMLGhostDeclaration declaration) {
         return PsiTreeUtil.getChildOfType(declaration, JMLGhostDeclarator.class);
+    }
+
+    /**
+     * @param declaration a ghost or model declaration
+     * @return its keyword, ghost or model
+     */
+    static @Nullable PsiElement keyword(@NotNull JMLGhostDeclaration declaration) {
+        for (PsiElement child = declaration.getFirstChild(); child != null; child = child.getNextSibling()) {
+            if (JMLTokenSet.declarationKeywords.contains(child.getNode().getElementType())) return child;
+        }
+        return null;
+    }
+
+    /**
+     * @param declaration a ghost or model declaration
+     * @return whether it declares a model field
+     */
+    static boolean isModel(@NotNull JMLGhostDeclaration declaration) {
+        PsiElement keyword = keyword(declaration);
+        return keyword != null && keyword.getNode().getElementType() == JMLTypes.MODEL;
+    }
+
+    /**
+     * @param declaration a ghost or model declaration
+     * @return whether its type is \datagroup, a model field that only groups other fields
+     */
+    static boolean isDatagroup(@NotNull JMLGhostDeclaration declaration) {
+        JMLGhostDeclarator declarator = declarator(declaration);
+        return declarator != null && "\\datagroup".equals(declarator.getTypeText());
+    }
+
+    /**
+     * @param declaration a ghost or model field
+     * @return whether it is static: declared static, or in an interface and not declared instance
+     */
+    static boolean isStatic(@NotNull JMLGhostDeclaration declaration) {
+        if (hasModifier(declaration, JMLTypes.STATIC)) return true;
+        if (hasModifier(declaration, JMLTypes.INSTANCE)) return false;
+        PsiClass owner = owner(declaration);
+        return owner != null && owner.isInterface();
+    }
+
+    /**
+     * @param declaration a ghost or model declaration
+     * @return the class whose body or method it is in
+     */
+    static @Nullable PsiClass owner(@NotNull JMLGhostDeclaration declaration) {
+        PsiComment comment = getCommentContext(declaration);
+        return comment == null ? null : PsiTreeUtil.getParentOfType(comment, PsiClass.class);
     }
 
     /**
@@ -98,34 +169,56 @@ public final class Ghosts {
      */
     static @NotNull List<JMLGhostDeclaration> declarationsIn(@NotNull PsiComment comment) {
         String text = comment.getText();
-        if (!text.contains("ghost")) return List.of();
-        List<Pair<PsiElement, TextRange>> files = InjectedLanguageManager.getInstance(comment.getProject()).getInjectedPsiFiles(comment);
-        if (files == null) return List.of();
+        if (!text.contains("ghost") && !text.contains("model")) return List.of();
         List<JMLGhostDeclaration> declarations = new ArrayList<>();
-        for (Pair<PsiElement, TextRange> file : files) {
-            declarations.addAll(PsiTreeUtil.findChildrenOfType(file.getFirst(), JMLGhostDeclaration.class));
+        for (PsiElement file : injectedFiles(comment)) {
+            declarations.addAll(PsiTreeUtil.findChildrenOfType(file, JMLGhostDeclaration.class));
         }
         return declarations;
     }
 
     /**
+     * @param comment a Java comment
+     * @return the JML files injected in it, one if it is a JML comment
+     */
+    static @NotNull List<PsiElement> injectedFiles(@NotNull PsiComment comment) {
+        List<Pair<PsiElement, TextRange>> files = InjectedLanguageManager.getInstance(comment.getProject()).getInjectedPsiFiles(comment);
+        if (files == null) return List.of();
+        List<PsiElement> result = new ArrayList<>();
+        for (Pair<PsiElement, TextRange> file : files) result.add(file.getFirst());
+        return result;
+    }
+
+    /**
      * @param psiClass a class
-     * @return the ghost fields declared in the class body, in the order of their declaration: in JML comments in the
-     * class body, also right above a field or method, where the comment is part of the field or method
+     * @return the comments in the class body, in order: directly in it, and in its fields and methods, such as the
+     * comments right above them
+     */
+    static @NotNull List<PsiComment> bodyComments(@NotNull PsiClass psiClass) {
+        List<PsiComment> comments = new ArrayList<>();
+        PsiElement lBrace = psiClass.getLBrace();
+        for (PsiElement child = lBrace == null ? null : lBrace.getNextSibling(); child != null; child = child.getNextSibling()) {
+            if (child instanceof PsiComment comment) {
+                comments.add(comment);
+            } else if (child instanceof PsiField || child instanceof PsiMethod) {
+                comments.addAll(PsiTreeUtil.getChildrenOfTypeAsList(child, PsiComment.class));
+            }
+        }
+        return comments;
+    }
+
+    /**
+     * @param psiClass a class
+     * @return the ghost and model fields declared in the class body, in the order of their declaration: in JML comments
+     * in the class body, also right above a field or method, where the comment is part of the field or method
      */
     static @NotNull List<Ghost> declaredFields(@NotNull PsiClass psiClass) {
         return CachedValuesManager.getCachedValue(psiClass, () -> {
             List<Ghost> fields = new ArrayList<>();
-            PsiElement lBrace = psiClass.getLBrace();
-            for (PsiElement child = lBrace == null ? null : lBrace.getNextSibling(); child != null; child = child.getNextSibling()) {
-                List<PsiComment> comments = child instanceof PsiComment comment ? List.of(comment)
-                        : child instanceof PsiField || child instanceof PsiMethod
-                        ? PsiTreeUtil.getChildrenOfTypeAsList(child, PsiComment.class) : List.of();
-                for (PsiComment comment : comments) {
-                    for (JMLGhostDeclaration declaration : declarationsIn(comment)) {
-                        String name = name(declaration);
-                        if (name != null) fields.add(new Ghost(name, declaration, true));
-                    }
+            for (PsiComment comment : bodyComments(psiClass)) {
+                for (JMLGhostDeclaration declaration : declarationsIn(comment)) {
+                    String name = name(declaration);
+                    if (name != null) fields.add(new Ghost(name, declaration, true));
                 }
             }
             return CachedValueProvider.Result.create(fields, PsiModificationTracker.MODIFICATION_COUNT);

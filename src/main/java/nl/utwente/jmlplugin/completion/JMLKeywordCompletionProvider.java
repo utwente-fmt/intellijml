@@ -136,6 +136,7 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
 
     private static void fillMethodSpecCompletions(@NotNull CompletionResultSet results) {
         addTokens(methodSpecCaseKeywords, results);
+        results.addElement(LookupElementBuilder.create(READS.toString()));
         addTokens(also, results);
         addTokens(behaviors, results);
         // a heavyweight specification case usually is public, as in OpenJML's examples
@@ -156,7 +157,10 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
         addTokens(invariantModifiers, results);
         //add in invariant itself
         results.addElement(LookupElementBuilder.create(INVARIANT.toString()));
-        // and ghost fields
+        // and ghost and model fields, and the clauses for model fields
         results.addElement(LookupElementBuilder.create(GHOST.toString()));
+        results.addElement(LookupElementBuilder.create(MODEL.toString()));
+        results.addElement(LookupElementBuilder.create(REPRESENTS.toString()));
+        results.addElement(LookupElementBuilder.create(IN.toString()));
     }
 }
