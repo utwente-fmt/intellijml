@@ -109,7 +109,9 @@ With an installation, `JMLExamplesOpenJmlTest` also checks the examples that com
 and `demos` folders) with the plugin and with OpenJML's type checking, and compares the lines on which they
 find errors in the JML. The known differences, mostly JML that the plugin does not support yet, are in
 `src/test/testData/openJmlExamples/differences.txt`. When they change, the test fails once and updates that
-file, so `git diff` shows what changed.
+file, so `git diff` shows what changed. `-PjmlExamples=<folder>` compares other examples in the same way, such as
+those of a course: the Java files in the folder, placed by their package; the differences are written to
+`build/jml-examples-differences.txt`, and the test fails if there are any.
 
 More background on the tests is in chapter 8 of the
 [maintainer's guide](docs/Maintainers_Guide.pdf); the instruction there to clone the intellij-community

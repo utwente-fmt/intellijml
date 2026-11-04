@@ -6,6 +6,7 @@ import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
+import com.intellij.openapi.roots.ProjectFileIndex;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.psi.PsiComment;
@@ -24,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -68,16 +71,7 @@ public class JMLExamplesOpenJmlTest extends JavaCodeInsightFixtureTestCase {
                         .getVirtualFile());
             }
             for (VirtualFile file : copies) {
-                myFixture.openFileInEditor(file);
-                Map<Integer, String> plugin = pluginErrors();
-                Map<Integer, String> openJml = openJmlErrors(file);
-                Set<Integer> lines = new TreeSet<>(plugin.keySet());
-                lines.addAll(openJml.keySet());
-                for (int line : lines) {
-                    if (plugin.containsKey(line) == openJml.containsKey(line)) continue;
-                    differences.add(file.getName() + ":" + line + ": " + (plugin.containsKey(line)
-                            ? "plugin | " + plugin.get(line) : "OpenJML | " + openJml.get(line)));
-                }
+                differences.addAll(differences(file, file.getName()));
             }
         }
         List<String> known = Files.exists(KNOWN) ? Files.readAllLines(KNOWN, StandardCharsets.UTF_8) : List.of();
@@ -90,6 +84,67 @@ public class JMLExamplesOpenJmlTest extends JavaCodeInsightFixtureTestCase {
         Files.write(KNOWN, differences, StandardCharsets.UTF_8);
         fail("The differences with OpenJML have changed, and are updated in " + KNOWN + "\nNew:\n"
                 + String.join("\n", added) + "\nGone:\n" + String.join("\n", removed));
+    }
+
+    /**
+     * Compares the plugin with OpenJML on other examples, such as those of a course, which are not part of this
+     * repository: the Java files in a folder and its subfolders, placed by their package, of which those with JML are
+     * compared. It only runs when the folder is given, and then fails if there are differences, which it also writes to
+     * build/jml-examples-differences.txt:
+     * ./gradlew test -PopenJml=&lt;installation&gt; -PjmlExamples=&lt;folder&gt; --tests "*JMLExamplesOpenJmlTest"
+     */
+    public void testOtherExamples() throws Exception {
+        String folder = System.getProperty("jml.examples");
+        if (folder == null) return;
+        Path root = Path.of(folder);
+        List<Path> sources;
+        try (Stream<Path> walk = Files.walk(root)) {
+            sources = walk.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+        }
+        Map<String, VirtualFile> withJml = new TreeMap<>();
+        Set<String> placed = new HashSet<>();
+        for (Path source : sources) {
+            String text = Files.readString(source);
+            Matcher matcher = PACKAGE.matcher(text);
+            String path = (matcher.find() ? matcher.group(1).replace('.', '/') + "/" : "") + source.getFileName();
+            // the same class in another source folder, such as a copy of a solution
+            if (!placed.add(path)) continue;
+            VirtualFile file = myFixture.addFileToProject(path, text).getVirtualFile();
+            if (text.contains("//@") || text.contains("/*@")) withJml.put(root.relativize(source).toString(), file);
+        }
+        List<String> differences = new ArrayList<>();
+        for (Map.Entry<String, VirtualFile> entry : withJml.entrySet()) {
+            differences.addAll(differences(entry.getValue(), entry.getKey()));
+        }
+        Path report = Path.of("build/jml-examples-differences.txt");
+        Files.createDirectories(report.getParent());
+        Files.write(report, differences, StandardCharsets.UTF_8);
+        assertTrue(withJml.size() + " files with JML, differences with OpenJML:\n" + String.join("\n", differences),
+                differences.isEmpty());
+    }
+
+    private static final Pattern PACKAGE =
+            Pattern.compile("^\\s*package\\s+([\\w.]+)\\s*;", Pattern.MULTILINE);
+
+    /**
+     * @param file the file to compare, in the project
+     * @param name the name of the file in the differences
+     * @return the lines with JML on which only the plugin or only OpenJML finds an error, as
+     * "name:line: plugin | message" or "name:line: OpenJML | message"
+     */
+    private List<String> differences(VirtualFile file, String name) throws IOException {
+        myFixture.openFileInEditor(file);
+        Map<Integer, String> plugin = pluginErrors();
+        Map<Integer, String> openJml = openJmlErrors(file);
+        Set<Integer> lines = new TreeSet<>(plugin.keySet());
+        lines.addAll(openJml.keySet());
+        List<String> differences = new ArrayList<>();
+        for (int line : lines) {
+            if (plugin.containsKey(line) == openJml.containsKey(line)) continue;
+            differences.add(name + ":" + line + ": " + (plugin.containsKey(line)
+                    ? "plugin | " + plugin.get(line) : "OpenJML | " + openJml.get(line)));
+        }
+        return differences;
     }
 
     /**
@@ -130,7 +185,10 @@ public class JMLExamplesOpenJmlTest extends JavaCodeInsightFixtureTestCase {
      */
     private Map<Integer, String> openJmlErrors(VirtualFile file) throws IOException {
         Path path = file.toNioPath();
-        List<String> arguments = List.of("-check", "-sourcepath", path.getParent().toString(), path.toString());
+        // the source folder, also for a file in a package
+        VirtualFile sourceRoot = ProjectFileIndex.getInstance(getProject()).getSourceRootForFile(file);
+        Path sourcePath = sourceRoot != null ? sourceRoot.toNioPath() : path.getParent();
+        List<String> arguments = List.of("-check", "-sourcepath", sourcePath.toString(), path.toString());
         Document document = myFixture.getEditor().getDocument();
         Map<Integer, String> errors = new TreeMap<>();
         EscOutput output = new EscOutput(new EscOutput.Listener() {

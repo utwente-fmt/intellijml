@@ -160,6 +160,8 @@ tasks {
         val openJml = providers.gradleProperty("openJml")
         if (openJml.isPresent) {
             systemProperty("openjml.path", openJml.get())
+            // JMLExamplesOpenJmlTest also compares the plugin with OpenJML on the examples in this folder
+            providers.gradleProperty("jmlExamples").orNull?.let { systemProperty("jml.examples", it) }
         } else {
             exclude("**/*OpenJmlTest.class")
         }
