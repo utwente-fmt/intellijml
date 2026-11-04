@@ -9,13 +9,18 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * The purity of a method, as OpenJML 21 determines it: declared with the JML modifier pure or spec_pure, or the
- * annotation @Pure or @SpecPure, on the method or on its class, or inherited from a method that it overrides. A
+ * The purity of a method, as OpenJML 21 determines it: declared with the JML modifier pure or spec_pure (or the
+ * stronger strictly_pure or no_state), or the annotation @Pure or @SpecPure (or @StrictlyPure or @NoState), on the
+ * method or on its class, or inherited from a method that it overrides. A
  * specification may call a spec_pure method, and a pure method whose result is not an object, as a pure method may
  * return a new object (see section 3.9 of the JML reference manual).
  */
 enum Purity {
     NONE, PURE, SPEC_PURE;
+
+    // strictly_pure and no_state (also as the annotations @StrictlyPure and @NoState) are stronger than spec_pure: they
+    // do not allocate objects, and no_state does not even read the heap; for what the plugin checks, they are spec_pure
+    private static final String SPEC_PURE_OR_STRONGER = "spec_pure|strictly_pure|no_state";
 
     /**
      * @param method a method or constructor
@@ -28,7 +33,7 @@ enum Purity {
     private static Purity of(PsiMethod method, Set<PsiMethod> visited) {
         if (!visited.add(method)) return NONE;
         boolean source = !(method instanceof PsiCompiledElement);
-        Purity purity = declared(method, source && JMLAnnotatorUtil.doLinkedCommentsContain(method, "spec_pure", false),
+        Purity purity = declared(method, source && JMLAnnotatorUtil.doLinkedCommentsContain(method, SPEC_PURE_OR_STRONGER, false),
                 source && JMLAnnotatorUtil.doLinkedCommentsContain(method, "pure", false));
         PsiClass owner = method.getContainingClass();
         if (owner != null) purity = strongest(purity, ofClass(owner));
@@ -52,7 +57,7 @@ enum Purity {
         if (psiClass.getModifierList() != null) {
             comments.addAll(com.intellij.psi.util.PsiTreeUtil.getChildrenOfTypeAsList(psiClass.getModifierList(), PsiComment.class));
         }
-        return declared(psiClass, JMLAnnotatorUtil.commentsContain(comments, "spec_pure"),
+        return declared(psiClass, JMLAnnotatorUtil.commentsContain(comments, SPEC_PURE_OR_STRONGER),
                 JMLAnnotatorUtil.commentsContain(comments, "pure"));
     }
 
@@ -75,7 +80,7 @@ enum Purity {
                     && !qualifiedName.equals("org.jmlspecs.annotation." + name))) {
                 continue;
             }
-            if ("SpecPure".equals(name)) return SPEC_PURE;
+            if ("SpecPure".equals(name) || "StrictlyPure".equals(name) || "NoState".equals(name)) return SPEC_PURE;
             if ("Pure".equals(name)) purity = PURE;
         }
         return purity;

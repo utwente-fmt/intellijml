@@ -151,7 +151,7 @@ public class JMLAnnotatorUtil {
     // the keywords of a ghost or model declaration, invariant, initially clause, constraint, represents clause or in
     // clause, at the start of a clause, after modifiers; they can also be names elsewhere, as in "requires model != null;"
     private static final Pattern CLASS_LEVEL = Pattern.compile("(?:^/[/*]|[;@\\r\\n])[\\s@]*(?:" + ALL_MODIFIERS_REGEX
-            + "\\s+)*(?:ghost|model|invariant|initially|constraint|represents|in)(?![\\w$])");
+            + "\\s+)*(?:ghost|model|invariant|initially|constraint|represents|in)(?:_redundantly)?(?![\\w$])");
 
     /**
      * @param invariant an invariant, initially clause or constraint

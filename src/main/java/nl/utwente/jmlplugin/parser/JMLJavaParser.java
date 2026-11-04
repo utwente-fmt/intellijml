@@ -156,7 +156,7 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
         // the token before the current one in this expression, if it is not part of a JML expression
         IElementType previousType = null;
         while (correct && !builder.eof() && type != null && (type.getLanguage() == JavaLanguage.INSTANCE
-                || JMLTokenSet.backslashKeywordsInJavaExpr.contains(type) || JMLTokenSet.logicalOperators.contains(type))) {
+                || JMLTokenSet.backslashKeywordsInJavaExpr.contains(type) || JMLTokenSet.jmlOperators.contains(type))) {
             // check if there is a JML expression
 
             if (type == JMLTypes.TYPE) {
@@ -229,7 +229,7 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
     private static boolean isEndOfExpression(PsiBuilder builder) {
         IElementType type = builder.getTokenType();
         return builder.eof() || type == null || type == JMLTypes.SEMICOLON || (type.getLanguage() != JavaLanguage.INSTANCE
-                && !JMLTokenSet.backslashKeywordsInJavaExpr.contains(type) && !JMLTokenSet.logicalOperators.contains(type));
+                && !JMLTokenSet.backslashKeywordsInJavaExpr.contains(type) && !JMLTokenSet.jmlOperators.contains(type));
     }
 
     /**

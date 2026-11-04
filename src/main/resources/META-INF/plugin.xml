@@ -30,6 +30,8 @@
                                 implementationClass="nl.utwente.jmlplugin.completion.JMLCompletionContributor"
                                 order="first"/>
         <highlightErrorFilter implementation="nl.utwente.jmlplugin.annotator.JMLAnnotator"/>
+        <!-- OpenJML's annotations in Java code, such as @NonNull -->
+        <annotator language="JAVA" implementationClass="nl.utwente.jmlplugin.annotator.JMLJavaAnnotationAnnotator"/>
         <!-- the body of a pure method, which OpenJML only checks when it verifies the method -->
         <localInspection language="JAVA" shortName="JMLPureMethod" groupName="JML"
                          displayName="Pure method changes state" enabledByDefault="true" level="WARNING"

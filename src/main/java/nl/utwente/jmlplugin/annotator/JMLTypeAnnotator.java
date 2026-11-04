@@ -975,6 +975,10 @@ public class JMLTypeAnnotator {
                 // this is a valid replacement as the JML operators want booleans on both sides of
                 // the operator, and so does &&
                 result.addText("&&", currentChild);
+            } else if (elemType == JMLTypes.SUBTYPE) {
+                // the subtype relation between two types, which are classes in the Java expression, is a boolean, as
+                // a comparison of the two classes is
+                result.addText("==", currentChild);
             } else if (elemType == JMLTypes.TYPE_CAPS) {
                 // replace \TYPE
                 result.add("java.lang.Class", PsiType.getJavaLangClass(currentChild.getManager(), currentChild.getResolveScope()), currentChild);
@@ -990,7 +994,7 @@ public class JMLTypeAnnotator {
                 }
                 InnerJavaExprResult exprRes = annotateInnerJavaExpr(javaChild, holder, extraVars, false, true);
                 // a class literal cannot have type arguments or be of a type parameter, so use the erasure
-                result.add(TypeConversionUtil.erasure(exprRes.getType()).getCanonicalText() + ".class",
+                result.add(comparedType(currentChild, TypeConversionUtil.erasure(exprRes.getType()).getCanonicalText() + ".class"),
                         PsiType.getJavaLangClass(currentChild.getManager(), currentChild.getResolveScope()), exprRes.isCorrect(), currentChild);
             } else if (currentChild instanceof JMLElemTypeExpr) {
                 checkElemTypeExpr(holder, extraVars, result, currentChild);
@@ -1140,6 +1144,27 @@ public class JMLTypeAnnotator {
     }
 
     /**
+     * @param element      a type expression, such as \type(String), \typeof(x) or \elemtype(t)
+     * @param classLiteral the class literal that replaces it in the Java expression, such as "String.class"
+     * @return the class literal as a Class&lt;?&gt; if the type is compared with ==, != or &lt;:, as Java does not
+     * compare a Class&lt;String&gt; with a Class&lt;Object&gt;; otherwise the class literal itself, so that messages name
+     * the class
+     */
+    private static String comparedType(PsiElement element, String classLiteral) {
+        if (!isComparison(PsiTreeUtil.skipWhitespacesAndCommentsBackward(element))
+                && !isComparison(PsiTreeUtil.skipWhitespacesAndCommentsForward(element))) {
+            return classLiteral;
+        }
+        return "((java.lang.Class<?>) " + classLiteral + ")";
+    }
+
+    private static boolean isComparison(@Nullable PsiElement element) {
+        if (element == null) return false;
+        IElementType type = element.getNode().getElementType();
+        return type == JavaTokenType.EQEQ || type == JavaTokenType.NE || type == JMLTypes.SUBTYPE;
+    }
+
+    /**
      * \type(typeName)
      * Checks the name can be resolved and replaces the expression with the typeName.class
      *
@@ -1161,7 +1186,7 @@ public class JMLTypeAnnotator {
         else if (typeName.getFirstChild() != null && typeName.getFirstChild().getNode().getElementType() == JMLTypes.TYPE_CAPS) {
             newText = "java.lang.Class.class";
         } else {
-            newText = getTypeString(typeName, result, holder);
+            newText = comparedType(current, getTypeString(typeName, result, holder));
         }
         result.add(newText,
                 PsiType.getJavaLangClass(current.getManager(), current.getResolveScope()), correct, current);
@@ -1278,6 +1303,7 @@ public class JMLTypeAnnotator {
             // way to get the generic type, so that is why we are doing a text replacement instead
             newText = exprRes.getExpr().getType().getCanonicalText().replaceAll("^java\\.lang\\.Class<(.*)\\[]>$", "$1")
                     .replace("? extends ", "") + ".class";
+            newText = comparedType(current, newText);
         } else {
             // the generic part is not an array
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NO_ARRAY).range(innerJavaExpr).create();

@@ -122,6 +122,15 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testExtraSyntax() {
+        for (String annotation : List.of("NonNull", "Nullable", "StrictlyPure", "NoState")) {
+            myFixture.addFileToProject("org/jmlspecs/annotation/" + annotation + ".java",
+                    "package org.jmlspecs.annotation;\npublic @interface " + annotation + " {}\n");
+        }
+        myFixture.configureByFile("ExtraSyntax.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testAcceptedByOpenJml() {
         myFixture.configureByFile("AcceptedByOpenJml.java");
         myFixture.checkHighlighting(true, false, true, false);

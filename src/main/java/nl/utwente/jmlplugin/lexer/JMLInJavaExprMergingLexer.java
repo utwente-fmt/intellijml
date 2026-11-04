@@ -160,6 +160,10 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
                     // ==>
                     originalLexer.advance();
                     return JMLTypes.LOGICAL_IMPL;
+                } else if (type == JavaTokenType.LT /* < */ && originalLexer.getTokenType() == JavaTokenType.COLON /* : */) {
+                    // <:, the subtype relation
+                    originalLexer.advance();
+                    return JMLTypes.SUBTYPE;
                 }
             }
             return type;

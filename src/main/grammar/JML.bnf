@@ -32,6 +32,9 @@
     NULLABLE_BY_DEFAULT = 'nullable_by_default'
     NON_NULL_BY_DEFAULT = 'non_null_by_default'
     SPEC_PURE = 'spec_pure'
+    // the stronger kinds of purity of the JML reference manual, which specifications may call as spec_pure methods
+    STRICTLY_PURE = 'strictly_pure'
+    NO_STATE = 'no_state'
     // the arithmetic modes of OpenJML, for the code and the specifications of a class or method
     CODE_JAVA_MATH = 'code_java_math'
     SPEC_JAVA_MATH = 'spec_java_math'
@@ -147,7 +150,7 @@ class_invariant ::= modifiers? (invariant | initially | constraint) java_expr cl
 
 // modifiers for methods and fields
 modifiers ::= ((SPEC_PUBLIC | SPEC_PROTECTED | pure | instance | helper | nullable | NON_NULL | NULLABLE_BY_DEFAULT
-    | NON_NULL_BY_DEFAULT | SPEC_PURE | math_modifier | java_modifier) SEMICOLON* AT_SIGN*)+
+    | NON_NULL_BY_DEFAULT | SPEC_PURE | STRICTLY_PURE | NO_STATE | math_modifier | java_modifier) SEMICOLON* AT_SIGN*)+
 private math_modifier ::= CODE_JAVA_MATH | SPEC_JAVA_MATH | CODE_SAFE_MATH | SPEC_SAFE_MATH | CODE_BIGINT_MATH
     | SPEC_BIGINT_MATH
 private java_modifier ::= public | private | protected | static | final

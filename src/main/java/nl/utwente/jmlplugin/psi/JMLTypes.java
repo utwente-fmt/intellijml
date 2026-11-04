@@ -76,6 +76,8 @@ public interface JMLTypes extends JMLGrammarTypes {
     IElementType LOGICAL_EQ = new JMLElementType("<==>");
     IElementType LOGICAL_IMPL_REV = new JMLElementType("<==");
     IElementType LOGICAL_NOT_EQ = new JMLElementType("<=!=>");
+    // the subtype relation between two types, as in "\typeof(o) <: \type(Number)"
+    IElementType SUBTYPE = new JMLElementType("<:");
 
     class Factory {
         public static PsiElement createElement(ASTNode node) {

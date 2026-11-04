@@ -22,7 +22,7 @@ public class JMLTokenSet {
 
     public static final TokenSet allModifiers = TokenSet.orSet(mathModifiers, TokenSet.create(
             SPEC_PUBLIC, SPEC_PROTECTED, PURE, INSTANCE, HELPER, NULLABLE, NON_NULL, NULLABLE_BY_DEFAULT,
-            NON_NULL_BY_DEFAULT, SPEC_PURE, PUBLIC, PRIVATE, PROTECTED, STATIC, FINAL
+            NON_NULL_BY_DEFAULT, SPEC_PURE, STRICTLY_PURE, NO_STATE, PUBLIC, PRIVATE, PROTECTED, STATIC, FINAL
     ));
 
     // the modifiers for whether a field, parameter, variable or method result may be null
@@ -45,7 +45,7 @@ public class JMLTokenSet {
             specVisibilityModifiers, nullityModifiers, TokenSet.create(INSTANCE));
 
     public static final TokenSet methodDeclModifiers = TokenSet.orSet(
-            specVisibilityModifiers, nullityModifiers, mathModifiers, TokenSet.create(PURE, SPEC_PURE, HELPER));
+            specVisibilityModifiers, nullityModifiers, mathModifiers, TokenSet.create(PURE, SPEC_PURE, STRICTLY_PURE, NO_STATE, HELPER));
 
     public static final TokenSet also = TokenSet.create(ALSO);
 
@@ -136,6 +136,9 @@ public class JMLTokenSet {
             JavaTokenType.SHORT_KEYWORD, JavaTokenType.LONG_KEYWORD, JavaTokenType.VOID_KEYWORD);
 
     public static final TokenSet logicalOperators = TokenSet.create(LOGICAL_IMPL, LOGICAL_EQ, LOGICAL_IMPL_REV, LOGICAL_NOT_EQ);
+
+    // the operators of JML in a Java expression: the logical ones and the subtype relation <:
+    public static final TokenSet jmlOperators = TokenSet.orSet(logicalOperators, TokenSet.create(SUBTYPE));
 
     // used for syntax highlighting
     public static final TokenSet backslashKeywords = TokenSet.orSet(TokenSet.create(NOT_SPECIFIED, NOTHING, EVERYTHING, INTO), backslashKeywordsInJavaExpr);

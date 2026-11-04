@@ -70,6 +70,34 @@ REST=[^@;().,:*\[\]\s]
   "initially"                 { return INITIALLY; }
   "constraint"                { return CONSTRAINT; }
   "spec_pure"                 { return SPEC_PURE; }
+  "strictly_pure"             { return STRICTLY_PURE; }
+  "no_state"                  { return NO_STATE; }
+  // the redundant forms of clauses, which repeat what the other clauses imply, as OpenJML accepts them; they are
+  // checked as the clause they repeat
+  "requires_redundantly"      { return REQUIRES; }
+  "ensures_redundantly"       { return ENSURES; }
+  "signals_redundantly"       { return SIGNALS; }
+  "signals_only_redundantly"  { return SIGNALS_ONLY; }
+  "assignable_redundantly"    { return ASSIGNABLE; }
+  "modifiable_redundantly"    { return MODIFIABLE; }
+  "modifies_redundantly"      { return MODIFIES; }
+  "assigns_redundantly"       { return ASSIGNS; }
+  "diverges_redundantly"      { return DIVERGES; }
+  "accessible_redundantly"    { return ACCESSIBLE; }
+  "reads_redundantly"         { return READS; }
+  "invariant_redundantly"     { return INVARIANT; }
+  "initially_redundantly"     { return INITIALLY; }
+  "constraint_redundantly"    { return CONSTRAINT; }
+  "assert_redundantly"        { return ASSERT; }
+  "assume_redundantly"        { return ASSUME; }
+  "loop_invariant_redundantly" { return LOOPINVARIANT; }
+  "maintaining_redundantly"   { return MAINTAINING; }
+  "decreases_redundantly"     { return DECREASES; }
+  "decreasing_redundantly"    { return DECREASING; }
+  "loop_decreases_redundantly" { return LOOP_DECREASES; }
+  "loop_writes_redundantly"   { return LOOP_WRITES; }
+  "loop_modifies_redundantly" { return LOOP_MODIFIES; }
+  "loop_assigns_redundantly"  { return LOOP_ASSIGNS; }
   "code_java_math"            { return CODE_JAVA_MATH; }
   "spec_java_math"            { return SPEC_JAVA_MATH; }
   "code_safe_math"            { return CODE_SAFE_MATH; }

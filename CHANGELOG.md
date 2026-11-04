@@ -78,7 +78,13 @@
   - a message in an `assert` statement, as in Java: `//@ assert x >= 0 : "x is negative";`
   - `final` ghost variables and model fields, such as `//@ public static final ghost int MAX = 10;`
   - OpenJML's annotations `@Pure`, `@SpecPure`, `@SpecPublic` and `@SpecProtected` (from `org.jmlspecs.annotation`),
-    which mean the same as the modifiers in a JML comment
+    which mean the same as the modifiers in a JML comment, and `@NonNull` and `@Nullable`, which, like `non_null` and
+    `nullable`, are not permitted on a primitive type
+  - `strictly_pure` and `no_state` (also `@StrictlyPure` and `@NoState`), the stronger kinds of purity of the JML
+    reference manual, which specifications may call like `spec_pure` methods
+  - the redundant forms of clauses, such as `requires_redundantly`, `ensures_redundantly` and `assert_redundantly`,
+    which are checked as the clauses they repeat
+  - the subtype relation `<:` between types, as in `\typeof(o) <: \type(Number)`
 - OpenJML's warnings about `also`: the specification of a method that overrides another one should begin with `also`,
   as it adds to the specification of the overridden method, and that of a method that overrides nothing may not
 - OpenJML's warning "There is no point to a declaration being both public and spec_public"
@@ -188,6 +194,8 @@
 - Comments such as `// @Override` or `// @formatter:off` were treated as JML comments
 - Two specification cases joined by `also` that each have a `signals_only` clause gave a warning
 - `(\sum int i; 0 <= i && i < \result.length; \result[i])` gave "must be numeric, but is int[]"
+- Comparing types, as in `\typeof(o) == \type(String)`, gave "This operator cannot be applied to type Class<Object>
+  and type Class<String>"
 - `\type(String[])` was treated as `\type(String)`, and `\type(T)` or `\typeof(x)` with a type parameter `T`
   gave an error
 - Quantified variables could not have a qualified or generic type, such as `java.util.List<Integer>`
