@@ -44,6 +44,18 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         } else if ((element instanceof JMLRequiresClause || element.getParent() instanceof JMLSpecBody) && checkRedundantNotSpecified(element)) {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.NOT_SPECIFIED_REDUNDANT).create();
             return true;
+        } else if (element instanceof JMLSignalsClause && isInBehavior(element, JMLTypes.NORMAL_BEHAVIOR)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.SIGNALS_IN_NORMAL_BEHAVIOR).range(element.getFirstChild()).create();
+        } else if (element instanceof JMLSignalsOnlyClause && isInBehavior(element, JMLTypes.NORMAL_BEHAVIOR)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.SIGNALS_ONLY_IN_NORMAL_BEHAVIOR).range(element.getFirstChild()).create();
+        } else if (element instanceof JMLEnsuresClause && isInBehavior(element, JMLTypes.EXCEPTIONAL_BEHAVIOR)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ENSURES_IN_EXCEPTIONAL_BEHAVIOR).range(element.getFirstChild()).create();
+        } else if (element instanceof JMLBehaviorHeader behavior && isMoreVisibleThanMethod(behavior)) {
+            holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.BEHAVIOR_MORE_VISIBLE).create();
+            return true;
+        } else if (element.getParent() instanceof JMLBehaviorHeader) {
+            // the visibility of a specification case is not a modifier of the method
+            return true;
         } else if (element.getNode().getElementType() == JMLTypes.RESULT && checkBackslashResultAllowed(element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.BACKSLASH_RESULT_NOT_ALLOWED).create();
         } else if (element instanceof JMLOldExpr && checkOldExprAllowed((JMLOldExpr) element)) {
@@ -72,6 +84,24 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         return false;
     }
 
+
+    /**
+     * @param clause a clause of a method specification
+     * @param kind   NORMAL_BEHAVIOR or EXCEPTIONAL_BEHAVIOR
+     * @return whether the clause is in a specification case with that behavior
+     */
+    private static boolean isInBehavior(PsiElement clause, IElementType kind) {
+        JMLBehaviorHeader behavior = SpecCases.behavior(clause);
+        return behavior != null && SpecCases.kind(behavior) == kind;
+    }
+
+    /**
+     * @return whether the behavior is more visible than its method; without a modifier, it has package visibility
+     */
+    private static boolean isMoreVisibleThanMethod(JMLBehaviorHeader behavior) {
+        return getJavaContext(behavior) instanceof PsiMethod method
+                && SpecCases.accessLevel(behavior) > SpecVisibility.specAccessLevel(method);
+    }
 
     /**
      * Checks whether a specification is allowed at its position in the Java file

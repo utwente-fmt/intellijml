@@ -233,9 +233,11 @@ public class JMLAnnotatorUtil {
      * @return the number of matches found
      */
     private static int countTextMatchesAcrossComments(@NotNull ArrayList<PsiComment> comments, String regex, int maxCount) {
-        // only captures whole words by using negative lookahead
+        // only captures whole words by using negative lookahead; the visibility of a specification case, as in
+        // "public normal_behavior", is not a modifier
         Pattern pattern = PATTERNS.computeIfAbsent(regex,
-                key -> Pattern.compile("(?<=@|;|\\*\\)|" + ALL_MODIFIERS_REGEX + ")\\s*(" + regex + ")(?!\\w)"));
+                key -> Pattern.compile("(?<=@|;|\\*\\)|" + ALL_MODIFIERS_REGEX + ")\\s*(" + regex + ")(?!\\w)"
+                        + "(?!\\s+(?:normal_|exceptional_)?behaviou?r(?!\\w))"));
         int count = 0;
         for (PsiComment comment : comments) {
             String commentText = comment.getText();

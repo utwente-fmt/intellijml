@@ -13,6 +13,13 @@
 - Enter in a `/*@ ... @*/` comment starts the new line with an `@` below the one above it, and closes a comment
   that is not closed yet with `@*/`. Enter in the middle of a `//@` comment makes the rest a `//@` comment too.
   This replaces the live templates that Enter expanded after `@` and `;`.
+- Heavyweight specification cases: `normal_behavior`, `exceptional_behavior` and `behavior` (also spelled
+  `behaviour`), with a visibility such as `public normal_behavior`, which were a syntax error. They are checked
+  as OpenJML does, with its messages: a `normal_behavior` may not have `signals` or `signals_only` clauses, an
+  `exceptional_behavior` no `ensures` clauses, the clauses have the visibility of the specification case (package
+  without a modifier) instead of that of the method, and a specification case that is more visible than its
+  method gets a warning. In `//@` comments, a behavior applies to the clauses on the lines after it, and `also`
+  can be on a line of its own. Completion suggests them.
 - Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in
   `// @` or `/* @`, which makes the comment an ordinary comment instead of JML
 

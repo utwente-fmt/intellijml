@@ -40,6 +40,9 @@ public class JMLTokenSet {
 
     public static final TokenSet also = TokenSet.create(ALSO);
 
+    // the start of a heavyweight specification case, after an optional visibility modifier
+    public static final TokenSet behaviors = TokenSet.create(NORMAL_BEHAVIOR, EXCEPTIONAL_BEHAVIOR, BEHAVIOR);
+
     public static final TokenSet javaKeywords = TokenSet.create(THIS, SUPER);
 
     public static final TokenSet generalJMLKeywordsInJava = TokenSet.create(NOT_SPECIFIED, OLD, TYPE_OF, TYPE_CAPS, ELEM_TYPE, TYPE, NON_NULL_ELEMENTS);
@@ -66,7 +69,7 @@ public class JMLTokenSet {
     public static final TokenSet backslashKeywordsInJavaExpr = TokenSet.orSet(quantifiers,
             TokenSet.create(RESULT, OLD, TYPE_OF, ELEM_TYPE, TYPE, TYPE_CAPS, NON_NULL_ELEMENTS));
 
-    public static final TokenSet allOuterKeywords = TokenSet.orSet(methodSpecCaseKeywords, allModifiers,
+    public static final TokenSet allOuterKeywords = TokenSet.orSet(methodSpecCaseKeywords, allModifiers, behaviors,
             TokenSet.create(INVARIANT, MAINTAINING, LOOPINVARIANT, ASSUME, ASSERT, ALSO));
 
     // used to check for keywords that have rules in the form of \tokentype(java_expr),

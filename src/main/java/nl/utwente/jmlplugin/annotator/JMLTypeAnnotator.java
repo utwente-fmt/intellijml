@@ -138,7 +138,7 @@ public class JMLTypeAnnotator {
         }
         // the fields in the reference must be visible enough for the method specification
         if (resolvedReference != null && javaContext instanceof PsiMethod method) {
-            checkAssignableVisibility(resolvedReference, method, holder);
+            checkAssignableVisibility(resolvedReference, element, method, holder);
         }
     }
 
@@ -147,11 +147,13 @@ public class JMLTypeAnnotator {
      * enough for the method specification
      *
      * @param reference the reference, created from the text in the assignable clause
+     * @param element   the reference in the assignable clause
      * @param method    the method that the specification belongs to
      * @param holder    the Annotation holder
      */
-    private static void checkAssignableVisibility(PsiExpression reference, PsiMethod method, AnnotationHolder holder) {
-        int specLevel = SpecVisibility.specAccessLevel(method);
+    private static void checkAssignableVisibility(PsiExpression reference, PsiElement element, PsiMethod method,
+                                                  AnnotationHolder holder) {
+        int specLevel = SpecCases.accessLevel(element, method);
         for (PsiExpression part = reference; part instanceof PsiReferenceExpression ref; part = ref.getQualifierExpression()) {
             if (ref.resolve() instanceof PsiField field) {
                 SpecVisibility.Problem problem = SpecVisibility.checkInMethodSpec(field, "assignable", specLevel);
@@ -382,7 +384,7 @@ public class JMLTypeAnnotator {
                     if (result.isCorrect() && invariant != null) {
                         checkInvariantVisibility(invariant, visitor);
                     } else if (result.isCorrect() && clause != null && getJavaContext(element) instanceof PsiMethod method) {
-                        checkMethodSpecVisibility(method, clause, visitor);
+                        checkMethodSpecVisibility(element, method, clause, visitor);
                     }
                 }
 
@@ -654,12 +656,15 @@ public class JMLTypeAnnotator {
     /**
      * Checks that the fields and methods in a clause of a method specification are visible enough
      *
+     * @param element an element of the clause
      * @param method  the method that the specification belongs to
      * @param clause  the name of the clause, such as "requires"
      * @param visitor the visitor after it did all its visiting (so with resolved references)
      */
-    private static void checkMethodSpecVisibility(PsiMethod method, String clause, JMLJavaExprVisitor visitor) {
-        int specLevel = SpecVisibility.specAccessLevel(method);
+    private static void checkMethodSpecVisibility(PsiElement element, PsiMethod method, String clause,
+                                                  JMLJavaExprVisitor visitor) {
+        // a heavyweight specification case has the visibility of its behavior
+        int specLevel = SpecCases.accessLevel(element, method);
         for (Map.Entry<PsiElement, JavaResolveResult> ref : visitor.getResolvedReferences().entrySet()) {
             PsiElement referredElement = ref.getValue().getElement();
             if (referredElement instanceof PsiField || referredElement instanceof PsiMethod) {

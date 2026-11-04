@@ -107,5 +107,10 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testOpenJMLBehaviors() {
+        myFixture.configureByFile("OpenJMLBehaviors.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
 
 }

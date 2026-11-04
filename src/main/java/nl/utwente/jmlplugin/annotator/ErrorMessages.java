@@ -24,6 +24,12 @@ public final class ErrorMessages {
     // Semantic error messages
     public static final String REQUIRES_FIRST = "Requires clauses must be placed before all other clauses in a specification as it is a pre-condition";
     public static final String MULTIPLE_SIGNALS_ONLY = "Use a single signals_only clause to avoid confusion";
+    // OpenJML's messages for clauses that a normal_behavior or exceptional_behavior does not allow
+    public static final String SIGNALS_IN_NORMAL_BEHAVIOR = "Signals clauses are not permitted in normal specification cases";
+    public static final String SIGNALS_ONLY_IN_NORMAL_BEHAVIOR = "Signals_only clauses are not permitted in normal specification cases";
+    public static final String ENSURES_IN_EXCEPTIONAL_BEHAVIOR = "Ensures clauses are not permitted in exceptional specification cases";
+    // OpenJML gives this as a lint warning
+    public static final String BEHAVIOR_MORE_VISIBLE = "There is no point to a specification case having more visibility than its method";
     public static final String DUPLICATE_MODIFIER = "This modifier has already been used in this specification";
     public static final String MULTIPLE_VISIBILITY_MODIFIERS = "You cannot have multiple visibility modifiers (public, protected or private)";
     public static final String MULTIPLE_SPEC_VISIBILITY_MODIFIERS = "You cannot have multiple specification visibility modifiers (spec_public or spec_protected)";

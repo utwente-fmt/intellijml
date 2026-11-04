@@ -3,7 +3,9 @@ package nl.utwente.jmlplugin.completion;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
+import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.psi.tree.IElementType;
 import com.intellij.util.ProcessingContext;
 import nl.utwente.jmlplugin.annotator.CommentPosition;
 import org.jetbrains.annotations.NotNull;
@@ -135,6 +137,12 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
     private static void fillMethodSpecCompletions(@NotNull CompletionResultSet results) {
         addTokens(methodSpecCaseKeywords, results);
         addTokens(also, results);
+        addTokens(behaviors, results);
+        // a heavyweight specification case usually is public, as in OpenJML's examples
+        for (IElementType behavior : behaviors.getTypes()) {
+            results.addElement(PrioritizedLookupElement.withPriority(LookupElementBuilder.create("public " + behavior),
+                    JMLCompletionWeights.KEYWORD.getWeight()));
+        }
     }
 
     /**

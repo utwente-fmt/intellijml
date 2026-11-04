@@ -53,6 +53,15 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testBehaviors() {
+        doTest(true, true);
+    }
+
+    public void testAlsoAlone() {
+        // the "//@ also" between two specification cases in line comments
+        doTest(true, true);
+    }
+
     public void testCorrectAssert() {
         doTest(true, true);
     }

@@ -42,6 +42,12 @@ REST=[^@;().,:*\[\]\s]
   "spec_public"               { return SPEC_PUBLIC; }
   "spec_protected"            { return SPEC_PROTECTED; }
   "loop_invariant"            { return LOOPINVARIANT; }
+  "normal_behavior"           { return NORMAL_BEHAVIOR; }
+  "normal_behaviour"          { return NORMAL_BEHAVIOR; }
+  "exceptional_behavior"      { return EXCEPTIONAL_BEHAVIOR; }
+  "exceptional_behaviour"     { return EXCEPTIONAL_BEHAVIOR; }
+  "behavior"                  { return BEHAVIOR; }
+  "behaviour"                 { return BEHAVIOR; }
   "@"                         { return AT_SIGN; }
   ";"                         { return SEMICOLON; }
   "("                         { return L_PAREN; }

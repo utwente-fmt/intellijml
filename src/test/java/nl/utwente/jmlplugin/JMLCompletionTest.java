@@ -36,6 +36,8 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public static List<String> START_KEYWORDS = Arrays.asList(getText(methodSpecCaseKeywords));
     public static List<String> METHOD_MODIFIERS = Arrays.asList(getText(methodDeclModifiers));
     public static List<String> ALSO = Arrays.asList(getText(also));
+    public static List<String> BEHAVIORS = Arrays.asList("normal_behavior", "exceptional_behavior", "behavior",
+            "public normal_behavior", "public exceptional_behavior", "public behavior");
 
     @Override
     protected @NotNull LightProjectDescriptor getProjectDescriptor() {
@@ -66,7 +68,7 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public void testStartingJMLKeywords() {
         List<String> strings = completeIn("JMLStartingKeywords.java");
 
-        assertSameElements(strings, ContainerUtil.concat(START_KEYWORDS, METHOD_MODIFIERS, ALSO));
+        assertSameElements(strings, ContainerUtil.concat(START_KEYWORDS, METHOD_MODIFIERS, ALSO, BEHAVIORS));
     }
 
     public void testJMLJavaField() {

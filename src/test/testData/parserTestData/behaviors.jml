@@ -1,0 +1,10 @@
+@ public normal_behavior
+    requires x > 0;
+    ensures \result > 0;
+  also
+  private exceptional_behaviour
+    signals_only RuntimeException;
+  also
+    ensures true;
+  protected behavior
+    assignable x;

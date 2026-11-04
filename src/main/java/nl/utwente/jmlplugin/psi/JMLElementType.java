@@ -20,6 +20,7 @@ public class JMLElementType extends IElementType {
             entry("ASSERT_STATEMENT", "assert statement"),
             entry("ASSIGNABLE_CLAUSE", "assignable clause"),
             entry("ASSUME_STATEMENT", "assume statement"),
+            entry("BEHAVIOR_HEADER", "behavior"),
             entry("CLASS_INVARIANT", "class invariant"),
             entry("ENSURES_CLAUSE", "ensures clause"),
             entry("IN_METHOD_SPEC", "in-method specification"),

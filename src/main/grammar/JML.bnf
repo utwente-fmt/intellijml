@@ -29,6 +29,10 @@
     SPEC_PUBLIC = 'spec_public'
     SPEC_PROTECTED = 'spec_protected'
     LOOPINVARIANT = 'loop_invariant'
+    // the lexer also gives these for the British spellings, such as normal_behaviour
+    NORMAL_BEHAVIOR = 'normal_behavior'
+    EXCEPTIONAL_BEHAVIOR = 'exceptional_behavior'
+    BEHAVIOR = 'behavior'
 
     IDENT = "regexp:[_$a-zA-Z][_$a-zA-Z0-9]*"
 
@@ -56,6 +60,7 @@
   name("store_ref")="name"
   name("store_ref_keyword")="\\nothing, \\everything, \\not_specified"
   name("in_method_spec")="in-method specification"
+  name("behavior_header")="behavior"
 }
 
 // root jml element
@@ -63,10 +68,15 @@ jml_root ::= jml_specification
 
 jml_specification ::= AT_SIGN+ ((method_jml | class_invariants | modifiers | in_method_spec) AT_SIGN*)?
 
-// specifications above methods
-method_jml ::= also? method_spec AT_SIGN* modifiers*
-method_spec ::= spec_case (AT_SIGN* also spec_case)*
-private spec_case ::= requires_clause+ spec_body? | spec_body
+// specifications above methods; "also" can be on a line of its own, as in "//@ also"
+method_jml ::= also? method_spec AT_SIGN* modifiers* | also
+// a heavyweight specification case starts with a behavior, such as "public normal_behavior", also without "also"
+// before it, as OpenJML allows
+method_spec ::= spec_case (AT_SIGN* also spec_case | heavyweight_spec_case)*
+private spec_case ::= heavyweight_spec_case | lightweight_spec_case
+private heavyweight_spec_case ::= AT_SIGN* behavior_header lightweight_spec_case?
+private lightweight_spec_case ::= requires_clause+ spec_body? | spec_body
+behavior_header ::= (public | protected | private)? (NORMAL_BEHAVIOR | EXCEPTIONAL_BEHAVIOR | BEHAVIOR)
 spec_body ::= (AT_SIGN* (ensures_clause | signals_clause | signals_only_clause | assignable_clause))+
 
 // clauses allowed in method specifications
