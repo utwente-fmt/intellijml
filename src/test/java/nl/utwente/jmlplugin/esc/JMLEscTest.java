@@ -15,6 +15,7 @@ import com.intellij.psi.PsiMethod;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import nl.utwente.jmlplugin.esc.EscOutput.Counterexample;
 import nl.utwente.jmlplugin.esc.EscOutput.Diagnostic;
 import nl.utwente.jmlplugin.esc.EscOutput.Status;
 import org.jetbrains.annotations.NotNull;
@@ -78,6 +79,73 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
               Valid:        1
             """;
 
+    private static final String MAX = """
+            package demo;
+
+            public class Max {
+                //@ ensures \\result >= a && \\result >= b && \\result >= c;
+                public int max(int a, int b, char c) {
+                    int max = a;
+                    if (b > max) max = b;
+                    if (c > max) max = b;
+                    return max;
+                }
+            }
+            """;
+
+    // what OpenJML 21.0.29 writes for "--esc --progress --subexpressions --counterexample" on Max.java, with fewer
+    // variables of the prover's model
+    private static final String MAX_OUTPUT = """
+            Proving methods in demo.Max
+            Starting proof of demo.Max.max(int,int,char) with prover z3-5.1.0
+            Method assertions are INVALID
+            src\\demo\\Max.java:9: verify: The prover cannot establish an assertion (Postcondition: src\\demo\\Max.java:4:) in method max
+                    return max;
+                    ^
+            src\\demo\\Max.java:4: verify: Associated declaration: src\\demo\\Max.java:9:
+                //@ ensures \\result >= a && \\result >= b && \\result >= c;
+                    ^
+
+            TRACE of demo.Max.max(int,int,char)
+            src\\demo\\Max.java:1: \trequires true;
+            \t\t\tVALUE: true\t === true
+            src\\demo\\Max.java:6: \tint max = a
+            \t\t\tVALUE: max\t === (- 1)
+            src\\demo\\Max.java:7: \tif (b > max) ...
+            \t\t\tVALUE: b > max\t === true
+            \t\t\tVALUE: (b > max)\t === true
+            \t\t\t\tCondition = true
+            src\\demo\\Max.java:7: \tmax = b
+            \t\t\tVALUE: max = b\t === 0
+            src\\demo\\Max.java:8: \tif (c > max) ...
+            \t\t\tVALUE: c > max\t === true
+            \t\t\tVALUE: (c > max)\t === true
+            \t\t\t\tCondition = true
+            src\\demo\\Max.java:8: \tmax = b
+            \t\t\tVALUE: max = b\t === 0
+            src\\demo\\Max.java:9: \treturn max;
+            src\\demo\\Max.java:4: \tensures \\result >= a && \\result >= b && \\result >= c;
+            src\\demo\\Max.java:9: Invalid assertion (Postcondition)
+            : src\\demo\\Max.java:4: Associated location
+
+
+            COUNTEREXAMPLE
+            _JML__tmp`25 = true
+            java.lang.Object_`isalloc___22_0___5 = ((as const (Array REF Bool)) true)
+            max_151_151___19 = 0
+            b_126_126___15 = 0
+            b_0_0___10 = 0
+            a_119_119___14 = (- 1)
+            c_134_134___16 = 1
+            c_0_0___11 = 0
+            demo.Max__heap___0_111___18 = 2
+            `THIS = |`THIS|
+            a_0_0___9 = 0
+
+            Completed proof of demo.Max.max(int,int,char) with prover z3-5.1.0 - with warnings [3,98 secs]
+            Completed proving methods in demo.Max [4,20 secs]
+            """;
+
     @Override
     protected @NotNull LightProjectDescriptor getProjectDescriptor() {
         return JAVA_21;
@@ -103,10 +171,103 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
             public void diagnostic(@NotNull Diagnostic d) {
                 events.add(d.file() + ":" + d.line() + ":" + d.column() + " " + d.kind() + " [" + d.method() + "] " + d.message());
             }
+
+            @Override
+            public void counterexample(@NotNull Counterexample counterexample) {
+                StringBuilder event = new StringBuilder("counterexample [" + counterexample.method() + "]");
+                for (EscOutput.Step step : counterexample.trace()) {
+                    event.append("\n  ").append(step.line()).append(": ").append(step.text());
+                    for (EscOutput.Value value : step.values()) event.append(" | ").append(value.expression()).append(" = ").append(value.value());
+                }
+                event.append("\n  ").append(counterexample.declarations());
+                events.add(event.toString());
+            }
         });
         output.lines().forEach(parser::line);
         parser.flush();
         return events;
+    }
+
+    public void testReadCounterexample() {
+        assertEquals(List.of(
+                "start demo.Max.max(int,int,char)",
+                "src\\demo\\Max.java:9:8 verify [demo.Max.max(int,int,char)] The prover cannot establish an assertion (Postcondition: src\\demo\\Max.java:4:) in method max",
+                "src\\demo\\Max.java:4:8 verify [demo.Max.max(int,int,char)] Associated declaration: src\\demo\\Max.java:9:",
+                """
+                        counterexample [demo.Max.max(int,int,char)]
+                          1: requires true; | true = true
+                          6: int max = a | max = (- 1)
+                          7: if (b > max) ... | b > max = true | (b > max) = true
+                          7: max = b | max = b = 0
+                          8: if (c > max) ... | c > max = true | (c > max) = true
+                          8: max = b | max = b = 0
+                          9: return max;
+                          4: ensures \\result >= a && \\result >= b && \\result >= c;
+                          {151=0, 126=0, 119=(- 1), 134=1}""",
+                "end demo.Max.max(int,int,char) FAILED with warnings"), read(MAX_OUTPUT));
+    }
+
+    public void testReadCounterexamplesOfFailures() {
+        // a counterexample for each assertion that does not hold, possibly without trace or model
+        String twice = MAX_OUTPUT.substring(MAX_OUTPUT.indexOf("src\\demo\\Max.java:9: verify"), MAX_OUTPUT.indexOf("Completed proof"));
+        String output = "Starting proof of demo.Max.max(int,int,char) with prover z3-5.1.0\n" + twice
+                + twice.substring(0, twice.indexOf("COUNTEREXAMPLE")) + "A.java:2: verify: Something else\n"
+                + twice.substring(twice.indexOf("COUNTEREXAMPLE"));
+        List<String> counterexamples = read(output).stream().filter(event -> event.startsWith("counterexample")).toList();
+        assertEquals(3, counterexamples.size());
+        assertTrue(counterexamples.get(0), counterexamples.get(0).contains("6: int max = a") && counterexamples.get(0).contains("119=(- 1)"));
+        assertTrue(counterexamples.get(1), counterexamples.get(1).contains("6: int max = a") && counterexamples.get(1).endsWith("{}"));
+        assertTrue(counterexamples.get(2), !counterexamples.get(2).contains("int max = a") && counterexamples.get(2).contains("119=(- 1)"));
+    }
+
+    public void testValues() {
+        assertEquals("-1", EscValues.value("(- 1)"));
+        assertEquals("2147483647", EscValues.value("2147483647"));
+        assertEquals("false", EscValues.value("false"));
+        assertEquals("null", EscValues.value("NULL"));
+        assertEquals("this", EscValues.value("|`THIS|"));
+        assertEquals("object#21", EscValues.value("REF!val!21"));
+        assertEquals("NaN", EscValues.value("(_ NaN 11 53)"));
+        assertEquals("-0.0", EscValues.value("(_ -zero 11 53)"));
+        assertEquals("Infinity", EscValues.value("(_ +oo 8 24)"));
+        assertEquals("3.0", EscValues.value("(fp #b0 #b10000000000 #x8000000000000)"));
+        assertEquals("-1.0", EscValues.value("(fp #b1 #x7f #b00000000000000000000000)"));
+        assertNull(EscValues.value("(store ((as const (Array REF Int)) 0) REF!val!6 5)"));
+        assertEquals("'a'", EscValues.value("97", "char"));
+        assertEquals("'\\u0001'", EscValues.value("1", "char"));
+        assertEquals("97", EscValues.value("97", "int"));
+
+        assertEquals("count", EscValues.name("count"));
+        assertEquals("count", EscValues.name("count -= 1"));
+        assertEquals("max", EscValues.name("max = b"));
+        assertEquals("i", EscValues.name("++i"));
+        assertEquals("\\old(added)", EscValues.name("\\old(added)"));
+        assertEquals("this.data[i]", EscValues.name("this.data[i]"));
+        assertEquals("s.length()", EscValues.name("s.length()"));
+        // the value of i++ is the value before
+        assertNull(EscValues.name("i++"));
+        assertNull(EscValues.name("count == added - removed"));
+        assertNull(EscValues.name("a <= b"));
+        assertNull(EscValues.name("Integer.MAX_VALUE"));
+        assertNull(EscValues.name("0"));
+        assertNull(EscValues.name("(long)amount"));
+    }
+
+    public void testValuesOfLine() {
+        Map<String, String> values = new LinkedHashMap<>();
+        EscValues.add(values, new EscOutput.Step("A.java", 7, "if (b > max) ...", List.of(
+                new EscOutput.Value("b > max", "true"), new EscOutput.Value("(b > max)", "true"))));
+        EscValues.add(values, new EscOutput.Step("A.java", 7, "max = b", List.of(new EscOutput.Value("max = b", "0"))));
+        assertEquals("b > max: true, max: 0", EscValues.text(values));
+        // a loop: the last values count
+        values.clear();
+        for (int i = 0; i < 3; i++) {
+            EscValues.add(values, new EscOutput.Step("A.java", 8, "Loop test", List.of(new EscOutput.Value("3", "3"),
+                    new EscOutput.Value("i", String.valueOf(i)), new EscOutput.Value("i < 3", String.valueOf(i < 2)))));
+            EscValues.add(values, new EscOutput.Step("A.java", 8, "_JML__tmp`3 = sum", List.of(
+                    new EscOutput.Value("_JML__tmp`3", "1"), new EscOutput.Value("sum += i", String.valueOf(i)))));
+        }
+        assertEquals("i: 2, i < 3: false, sum: 2", EscValues.text(values));
     }
 
     public void testReadOutput() {
@@ -148,6 +309,7 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
                     public static int count(List<String> list, int... extra) { return list.size(); }
                     public static int[] array(java.util.Map.Entry<String, Integer>[] entries) { return null; }
                     public static <T> T generic(T value) { return value; }
+                    public static int find(/*@ nullable @*/ String name, int /*@ nullable @*/ [] values) { return 0; }
 
                     public static class Inner {
                         public int one() { return 1; }
@@ -159,10 +321,11 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         // the signatures as OpenJML writes them
         for (String openJml : List.of("demo.Shapes.Shapes()", "demo.Shapes.id(int)", "demo.Shapes.id(String)",
                 "demo.Shapes.count(java.util.List<String>,int...)", "demo.Shapes.array(java.util.Map.Entry<String,Integer>[])",
-                "demo.Shapes.generic(T)", "demo.Shapes.Inner.one()")) {
+                "demo.Shapes.generic(T)", "demo.Shapes.Inner.one()", "demo.Shapes.find(@Nullable String,int @Nullable [])",
+                "demo.Shapes.find(java.lang.@org.jmlspecs.annotation.Nullable String,int @org.jmlspecs.annotation.Nullable [])")) {
             assertTrue(openJml + " not in " + keys.keySet(), keys.containsKey(EscOutput.key(openJml)));
         }
-        assertEquals(7, keys.size());
+        assertEquals(8, keys.size());
         PsiMethod one = PsiTreeUtil.findChildrenOfType(myFixture.getFile(), PsiMethod.class).stream()
                 .filter(m -> m.getName().equals("one")).findFirst().orElseThrow();
         assertEquals("demo.Shapes.Inner.one", EscMethods.optionName(one));
@@ -222,6 +385,95 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         OUTPUT.lines().filter(line -> !line.contains("deposit")).forEach(parser::line);
         parser.flush();
         snapshot.dispose();
+    }
+
+    /**
+     * Shows what OpenJML found about max, as the verifier does
+     */
+    private void verifiedMax(String text) {
+        myFixture.configureByText("Max.java", text);
+        Document document = myFixture.getEditor().getDocument();
+        EscVerifier.Snapshot snapshot = new EscVerifier.Snapshot(document);
+        EscResults results = EscResults.getInstance(getProject());
+        PsiMethod max = PsiTreeUtil.findChildrenOfType(myFixture.getFile(), PsiMethod.class).iterator().next();
+        String key = EscMethods.key(max);
+        Map<String, List<EscVerifier.Parameter>> parameters = EscVerifier.parameters(getProject(),
+                myFixture.getFile().getVirtualFile(), document, Map.of(key, max));
+        long run = results.newRun();
+        results.clear(List.of(key), myFixture.getFile().getVirtualFile());
+        results.put(key, new EscResults.MethodResult(myFixture.getFile().getVirtualFile(),
+                document.createRangeMarker(max.getTextRange()), max.getText(), Status.RUNNING, "", run));
+        EscOutput parser = new EscOutput(new EscOutput.Listener() {
+            @Override
+            public void methodStarted(@NotNull String method) {
+            }
+
+            @Override
+            public void methodCompleted(@NotNull String method, @NotNull Status status, @NotNull String result) {
+                results.complete(EscOutput.key(method), run, status, result);
+            }
+
+            @Override
+            public void diagnostic(@NotNull Diagnostic diagnostic) {
+                int offset = snapshot.offset(diagnostic.line(), diagnostic.column());
+                EscVerifier.add(getProject(), myFixture.getFile().getVirtualFile(), document, offset, diagnostic,
+                        List.of(Path.of("src")), run);
+            }
+
+            @Override
+            public void counterexample(@NotNull Counterexample counterexample) {
+                EscVerifier.placeValues(getProject(), counterexample, myFixture.getFile().getVirtualFile(),
+                        path -> path.endsWith("Max.java"), snapshot, parameters, run);
+            }
+        });
+        MAX_OUTPUT.lines().forEach(parser::line);
+        parser.flush();
+        snapshot.dispose();
+    }
+
+    /**
+     * @return the values at the end of the lines, by the start of the line
+     */
+    private Map<String, String> valuesInEditor() {
+        Map<String, String> values = new LinkedHashMap<>();
+        Document document = myFixture.getEditor().getDocument();
+        EscValuesLinePainter painter = new EscValuesLinePainter();
+        for (int line = 0; line < document.getLineCount(); line++) {
+            var extensions = painter.getLineExtensions(getProject(), myFixture.getFile().getVirtualFile(), line);
+            if (extensions == null) continue;
+            String start = document.getText(new TextRange(document.getLineStartOffset(line), document.getLineEndOffset(line))).trim();
+            values.put(start.substring(0, Math.min(start.length(), 20)),
+                    extensions.stream().map(info -> info.getText()).reduce("", String::concat).trim());
+        }
+        return values;
+    }
+
+    public void testValuesInEditor() {
+        verifiedMax(MAX);
+        // the parameters, from the prover's model, and the values of the trace on the lines it goes through
+        assertEquals(Map.of(
+                "public int max(int a", "a: -1, b: 0, c: '\\u0001'",
+                "int max = a;", "max: -1",
+                "if (b > max) max = b", "b > max: true, max: 0",
+                "if (c > max) max = b", "c > max: true, max: 0"), valuesInEditor());
+        // editing the method hides them
+        Document document = myFixture.getEditor().getDocument();
+        WriteCommandAction.runWriteCommandAction(getProject(), () ->
+                document.insertString(document.getText().indexOf("return max"), "max++; "));
+        assertEquals(Map.of(), valuesInEditor());
+    }
+
+    public void testValuesWithCrLf() {
+        // OpenJML counts the \r of a line end in the position of a parameter in its model, the document does not
+        String crlf = MAX.replace("\n", "\r\n");
+        myFixture.configureByText("Max.java", crlf);
+        PsiMethod max = PsiTreeUtil.findChildrenOfType(myFixture.getFile(), PsiMethod.class).iterator().next();
+        WriteCommandAction.runWriteCommandAction(getProject(), () ->
+                myFixture.getFile().getVirtualFile().setDetectedLineSeparator("\r\n"));
+        List<EscVerifier.Parameter> parameters = EscVerifier.parameters(getProject(), myFixture.getFile().getVirtualFile(),
+                myFixture.getEditor().getDocument(), Map.of("max", max)).get("max");
+        assertEquals(crlf.indexOf("a, int b"), parameters.get(0).position());
+        assertEquals(5, parameters.get(0).line());
     }
 
     public void testProblemsInEditor() {
@@ -316,6 +568,8 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         assertEquals(Path.of("src", "demo", "Account.java").toString(), arguments.getLast());
         assertEquals("--esc", arguments.get(0));
         assertTrue(arguments.toString(), arguments.contains("--method=demo.Account.abs"));
+        // the values of counterexamples
+        assertTrue(arguments.toString(), arguments.containsAll(List.of("--subexpressions", "--counterexample")));
         int sourcePath = arguments.indexOf("-sourcepath");
         assertEquals("src" + java.io.File.pathSeparator + "test", arguments.get(sourcePath + 1));
         assertEquals("lib.jar", arguments.get(arguments.indexOf("-classpath") + 1));

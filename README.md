@@ -43,9 +43,12 @@ run does not get the init script. Maven run configurations are not supported.
 prove that methods meet their JML specifications, without running them. A method with a JML specification
 also has an icon in the gutter that verifies it. While OpenJML works, the progress shows which method it is
 proving; afterwards the gutter shows for every method whether it is verified, and what OpenJML could not
-prove is marked in the code (the statement, and the `ensures` or other clause it is about). Editing a method
-hides its results, as they may no longer hold. **Show output** in the notification shows OpenJML's own
-output. OpenJML cannot tell overloaded methods apart, so Verify Method verifies all methods with that name
+prove is marked in the code (the statement, and the `ensures` or other clause it is about). For a method that
+OpenJML cannot verify, the values of a counterexample are shown at the end of the lines, as the debugger shows
+values: the values of the parameters for which the method goes wrong, and of the variables, fields and
+conditions on the lines it goes through, also on an invariant that does not hold. Editing a method hides its
+results, as they may no longer hold. **Show output** in the notification shows OpenJML's own output, with the
+trace of each counterexample. OpenJML cannot tell overloaded methods apart, so Verify Method verifies all methods with that name
 in the class.
 
 This uses the same OpenJML installation as Run with JML Checks. OpenJML keeps running in the background after

@@ -63,9 +63,23 @@ public final class EscResults implements Disposable {
                           @NotNull String message, @Nullable String method, long run) {
     }
 
+    /**
+     * The values on a line of the counterexample of a method that OpenJML cannot verify
+     *
+     * @param file   the file
+     * @param line   the line
+     * @param text   the values, such as "count: 281, added: 20819"
+     * @param method the key of the method
+     * @param run    the verification that gave the counterexample, from {@link #newRun}
+     */
+    public record LineValues(@NotNull VirtualFile file, @NotNull RangeMarker line, @NotNull String text,
+                             @NotNull String method, long run) {
+    }
+
     // by the key of the method
     private final Map<String, MethodResult> methods = new ConcurrentHashMap<>();
     private final List<Problem> problems = new CopyOnWriteArrayList<>();
+    private final List<LineValues> values = new CopyOnWriteArrayList<>();
     // the output of the last verification
     private volatile String output = "";
     private final AtomicLong runs = new AtomicLong();
@@ -108,6 +122,33 @@ public final class EscResults implements Disposable {
     }
 
     /**
+     * @param line a line of the file, starting at 0
+     * @return the values of the counterexample on the line, or null if there are none, or the method has changed or
+     * is verified again since
+     */
+    public @Nullable String values(@NotNull VirtualFile file, int line) {
+        for (LineValues lineValues : values) {
+            if (!lineValues.file().equals(file) || !lineValues.line().isValid()) continue;
+            RangeMarker marker = lineValues.line();
+            if (marker.getDocument().getLineNumber(marker.getStartOffset()) != line) continue;
+            MethodResult method = method(lineValues.method());
+            if (method != null && method.run() == lineValues.run()) return lineValues.text();
+        }
+        return null;
+    }
+
+    /**
+     * @return whether the method has values of a counterexample from the verification
+     */
+    boolean hasValues(@NotNull String method, long run) {
+        return values.stream().anyMatch(lineValues -> lineValues.method().equals(method) && lineValues.run() == run);
+    }
+
+    void add(@NotNull LineValues lineValues) {
+        values.add(lineValues);
+    }
+
+    /**
      * @return whether any method of the file is being verified
      */
     public boolean isRunning(@NotNull VirtualFile file) {
@@ -129,6 +170,11 @@ public final class EscResults implements Disposable {
             boolean remove = keys.contains(problem.method())
                     || problem.method() == null && problem.file().equals(wholeFile);
             if (remove) problem.range().dispose();
+            return remove;
+        });
+        values.removeIf(lineValues -> {
+            boolean remove = keys.contains(lineValues.method());
+            if (remove) lineValues.line().dispose();
             return remove;
         });
     }
@@ -174,7 +220,9 @@ public final class EscResults implements Disposable {
     public void dispose() {
         methods.values().forEach(result -> result.range().dispose());
         problems.forEach(problem -> problem.range().dispose());
+        values.forEach(lineValues -> lineValues.line().dispose());
         methods.clear();
         problems.clear();
+        values.clear();
     }
 }

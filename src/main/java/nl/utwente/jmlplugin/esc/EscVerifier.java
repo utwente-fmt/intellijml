@@ -15,6 +15,8 @@ import com.intellij.notification.NotificationGroupManager;
 import com.intellij.notification.NotificationType;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.EditorFactory;
 import com.intellij.openapi.editor.RangeMarker;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.module.Module;
@@ -29,8 +31,10 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
+import nl.utwente.jmlplugin.esc.EscOutput.Counterexample;
 import nl.utwente.jmlplugin.esc.EscOutput.Diagnostic;
 import nl.utwente.jmlplugin.esc.EscOutput.Status;
+import nl.utwente.jmlplugin.esc.EscOutput.Step;
 import nl.utwente.jmlplugin.rac.OpenJml;
 import nl.utwente.jmlplugin.rac.OpenJmlCompiler;
 import nl.utwente.jmlplugin.rac.OpenJmlNotifications;
@@ -45,6 +49,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Predicate;
 
 /**
  * Verifies methods with OpenJML's extended static checking (ESC): OpenJML tries to prove that the methods meet their
@@ -113,6 +118,7 @@ public final class EscVerifier {
             String key = EscMethods.key(psiMethod);
             if (key != null) scope.put(key, psiMethod);
         }
+        Map<String, List<Parameter>> parameters = parameters(project, virtualFile, document, scope);
         long run = results.newRun();
         results.clear(scope.keySet(), virtualFile);
         for (Map.Entry<String, PsiMethod> entry : scope.entrySet()) {
@@ -154,10 +160,22 @@ public final class EscVerifier {
                             restart(project, virtualFile);
                         }, project.getDisposed());
                     }
+
+                    @Override
+                    public void counterexample(@NotNull Counterexample counterexample) {
+                        // after the diagnostics about the assertion
+                        ApplicationManager.getApplication().invokeLater(() -> placeValues(project, counterexample,
+                                virtualFile, path -> isFile(path, virtualFile), snapshot, parameters, run),
+                                project.getDisposed());
+                    }
                 });
+                boolean[] inModel = {false};
                 try {
                     summary.exitCode = OpenJmlWorkerService.getInstance().run(installation, arguments, line -> {
-                        output.append(line).append('\n');
+                        // the prover's model is not readable, and its values are shown in the editor
+                        if (line.equals("COUNTEREXAMPLE")) inModel[0] = true;
+                        if (!inModel[0]) output.append(line).append('\n');
+                        else if (line.isBlank()) inModel[0] = false;
                         parser.line(line);
                     }, indicator);
                 } catch (IOException e) {
@@ -284,7 +302,9 @@ public final class EscVerifier {
     static @NotNull List<String> arguments(@NotNull Project project, @NotNull List<Path> sourceRoots,
                                            @NotNull List<String> classPath, @NotNull Path file,
                                            @NotNull Charset encoding, @Nullable String methodName) {
-        List<String> arguments = new ArrayList<>(List.of("--esc", "--progress"));
+        // with the values of a counterexample for an assertion that OpenJML cannot prove: the values of subexpressions
+        // on the way to it, and the prover's model, for the values of the parameters
+        List<String> arguments = new ArrayList<>(List.of("--esc", "--progress", "--subexpressions", "--counterexample"));
         if (methodName != null) arguments.add("--method=" + methodName);
         // OpenJML reads options from openjml.properties in the directory it runs in, which for OpenJML on the
         // command line is usually the project
@@ -343,6 +363,106 @@ public final class EscVerifier {
         String method = diagnostic.method() == null ? null : EscOutput.key(diagnostic.method());
         EscResults.getInstance(project).add(new EscResults.Problem(file, marker, severity(diagnostic.kind()),
                 message(diagnostic.message(), sourceRoots), method, run));
+    }
+
+    /**
+     * A parameter of a method that is verified, as it was when OpenJML started
+     *
+     * @param name     the name
+     * @param type     the type, such as "char"
+     * @param position the offset of the name in the file as OpenJML reads it, which is how the prover's model names it
+     * @param line     the line of the name, starting at 1
+     * @param column   the column of the name, starting at 0
+     */
+    record Parameter(@NotNull String name, @NotNull String type, int position, int line, int column) {
+    }
+
+    /**
+     * @return the parameters of the methods by the key of the method
+     */
+    static @NotNull Map<String, List<Parameter>> parameters(@NotNull Project project, @NotNull VirtualFile file,
+                                                            @NotNull Document document,
+                                                            @NotNull Map<String, PsiMethod> methods) {
+        // OpenJML counts the characters of the file, in which a line may end with \r\n; the document ends lines with \n
+        boolean crlf = "\r\n".equals(FileDocumentManager.getInstance().getLineSeparator(file, project));
+        Map<String, List<Parameter>> parameters = new HashMap<>();
+        for (Map.Entry<String, PsiMethod> entry : methods.entrySet()) {
+            List<Parameter> list = new ArrayList<>();
+            for (PsiParameter parameter : entry.getValue().getParameterList().getParameters()) {
+                PsiIdentifier name = parameter.getNameIdentifier();
+                if (name == null) continue;
+                int offset = name.getTextRange().getStartOffset();
+                int line = document.getLineNumber(offset);
+                list.add(new Parameter(parameter.getName(), parameter.getType().getCanonicalText(),
+                        offset + (crlf ? line : 0), line + 1, offset - document.getLineStartOffset(line)));
+            }
+            parameters.put(entry.getKey(), list);
+        }
+        return parameters;
+    }
+
+    /**
+     * Shows the values of a counterexample at the end of the lines of the method, as the debugger does: the values
+     * of the parameters, and of the variables, fields and conditions on the lines that the counterexample goes
+     * through, also on the lines outside the method that OpenJML reports about, such as an invariant that does not
+     * hold. Only the first counterexample of a method is shown, for the first assertion that OpenJML cannot prove.
+     */
+    static void placeValues(@NotNull Project project, @NotNull Counterexample counterexample,
+                            @NotNull VirtualFile verifiedFile, @NotNull Predicate<String> isVerifiedFile,
+                            @NotNull Snapshot snapshot, @NotNull Map<String, List<Parameter>> parameters, long run) {
+        EscResults results = EscResults.getInstance(project);
+        String key = EscOutput.key(counterexample.method());
+        EscResults.MethodResult method = results.method(key);
+        if (method == null || method.run() != run || results.hasValues(key, run)) return;
+        Document document = FileDocumentManager.getInstance().getDocument(verifiedFile);
+        if (document == null) return;
+        // the lines of the method, and the lines of the problems in its proof
+        Set<Integer> lines = new HashSet<>();
+        TextRange range = method.range().getTextRange();
+        for (int line = document.getLineNumber(range.getStartOffset()); line <= document.getLineNumber(range.getEndOffset()); line++) {
+            lines.add(line);
+        }
+        for (EscResults.Problem problem : results.problems(verifiedFile)) {
+            if (key.equals(problem.method()) && problem.run() == run) {
+                lines.add(document.getLineNumber(problem.range().getStartOffset()));
+            }
+        }
+        Map<Integer, Map<String, String>> values = new TreeMap<>();
+        for (Parameter parameter : parameters.getOrDefault(key, List.of())) {
+            String value = counterexample.declarations().get(parameter.position());
+            String shown = value == null ? null : EscValues.value(value, parameter.type());
+            int offset = snapshot.offset(parameter.line(), parameter.column());
+            if (shown == null || offset < 0) continue;
+            values.computeIfAbsent(document.getLineNumber(offset), line -> new LinkedHashMap<>()).put(parameter.name(), shown);
+        }
+        Map<String, Boolean> sameFile = new HashMap<>();
+        for (Step step : counterexample.trace()) {
+            if (!sameFile.computeIfAbsent(step.file(), isVerifiedFile::test)) continue;
+            int offset = snapshot.offset(step.line(), -1);
+            if (offset < 0) continue;
+            int line = document.getLineNumber(offset);
+            if (lines.contains(line)) EscValues.add(values.computeIfAbsent(line, l -> new LinkedHashMap<>()), step);
+        }
+        for (Map.Entry<Integer, Map<String, String>> entry : values.entrySet()) {
+            if (entry.getValue().isEmpty()) continue;
+            int line = entry.getKey();
+            RangeMarker marker = document.createRangeMarker(document.getLineStartOffset(line), document.getLineEndOffset(line));
+            results.add(new EscResults.LineValues(verifiedFile, marker, EscValues.text(entry.getValue()), key, run));
+        }
+        for (Editor editor : EditorFactory.getInstance().getEditors(document, project)) {
+            editor.getContentComponent().repaint();
+        }
+    }
+
+    /**
+     * @return whether a path as OpenJML writes it is the file
+     */
+    static boolean isFile(@NotNull String path, @NotNull VirtualFile file) {
+        try {
+            return file.equals(LocalFileSystem.getInstance().findFileByNioFile(Path.of(path)));
+        } catch (InvalidPathException e) {
+            return false;
+        }
     }
 
     private static @NotNull HighlightSeverity severity(@NotNull String kind) {

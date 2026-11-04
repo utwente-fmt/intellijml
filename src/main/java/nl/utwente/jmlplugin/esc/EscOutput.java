@@ -4,12 +4,15 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Reads the output of OpenJML's static checking with --progress, line by line, as OpenJML writes it
+ * Reads the output of OpenJML's static checking with --progress, line by line, as OpenJML writes it. With
+ * --subexpressions and --counterexample, it also reads the counterexample of an assertion that OpenJML cannot prove.
  */
 public final class EscOutput {
     /**
@@ -41,6 +44,39 @@ public final class EscOutput {
     }
 
     /**
+     * The value of an expression in a counterexample
+     *
+     * @param expression the expression, as OpenJML writes it, such as "count" or "count == \old(count) + 1"
+     * @param value      the value, as the prover writes it, such as "(- 1)" or "REF!val!2"
+     */
+    public record Value(@NotNull String expression, @NotNull String value) {
+    }
+
+    /**
+     * A step of the trace of a counterexample: a statement or clause that the counterexample goes through
+     *
+     * @param file   the path of the file, as OpenJML writes it
+     * @param line   the line, starting at 1
+     * @param text   the statement or clause, such as "if (b > max) ..." or "Loop test"
+     * @param values the values of its subexpressions (with --subexpressions), in the order OpenJML writes them
+     */
+    public record Step(@NotNull String file, int line, @NotNull String text, @NotNull List<Value> values) {
+    }
+
+    /**
+     * A counterexample: values for which an assertion in a method does not hold
+     *
+     * @param method       the signature of the method, as OpenJML writes it
+     * @param trace        the statements and clauses that the counterexample goes through, with the values of their
+     *                     subexpressions
+     * @param declarations the values of variables by the position of their declaration (the offset of the name in
+     *                     the file), such as the values of the parameters when the method is called
+     */
+    public record Counterexample(@NotNull String method, @NotNull List<Step> trace,
+                                 @NotNull Map<Integer, String> declarations) {
+    }
+
+    /**
      * Receives what OpenJML reports
      */
     public interface Listener {
@@ -49,18 +85,39 @@ public final class EscOutput {
         void methodCompleted(@NotNull String method, @NotNull Status status, @NotNull String result);
 
         void diagnostic(@NotNull Diagnostic diagnostic);
+
+        /**
+         * Receives the counterexample of an assertion that OpenJML cannot prove, after the diagnostics about it
+         */
+        default void counterexample(@NotNull Counterexample counterexample) {
+        }
     }
 
     private static final Pattern STARTING = Pattern.compile("Starting proof of (.+) with prover \\S+\\s*");
     private static final Pattern COMPLETED = Pattern.compile("Completed proof of (.+) with prover \\S+ - (.+?)(?: \\[[^]]*])?\\s*");
     private static final Pattern DIAGNOSTIC = Pattern.compile("(.+?\\.(?:java|jml)):(\\d+): (verify|error|warning|note): (.*)");
     private static final Pattern CARET = Pattern.compile("[ \\t]*\\^\\s*");
+    private static final String TRACE = "TRACE of ";
+    private static final String MODEL = "COUNTEREXAMPLE";
+    private static final Pattern STEP = Pattern.compile("(.+?\\.(?:java|jml)):(\\d+): \\t(.*)");
+    private static final Pattern VALUE = Pattern.compile("\\s+VALUE: (.*?)\\t === (.*)");
+    // a variable in the prover's model, such as "amount_219_219___16 = (- 1)" for the parameter amount, whose name is
+    // at offset 219 in the file
+    private static final Pattern DECLARATION = Pattern.compile("[A-Za-z_$][\\w$]*_(\\d+)_(\\d+)___\\d+ = (.*)");
+
+    // what the lines after a diagnostic are part of: a trace (--subexpressions) or the prover's model
+    // (--counterexample), which both end with an empty line
+    private enum Block {NONE, TRACE, MODEL}
 
     private final Listener listener;
     private String method;
     // the diagnostic whose source line and caret may follow
     private Diagnostic pending;
     private int linesAfterPending;
+    private Block block = Block.NONE;
+    // the counterexample that is being read, or null
+    private List<Step> trace;
+    private Map<Integer, String> declarations;
 
     public EscOutput(@NotNull Listener listener) {
         this.listener = listener;
@@ -70,6 +127,19 @@ public final class EscOutput {
      * Reads a line of the output
      */
     public void line(@NotNull String line) {
+        if (block != Block.NONE && readCounterexample(line)) return;
+        if (line.startsWith(TRACE) || line.equals(MODEL)) {
+            // the trace comes first, and the model may follow it
+            if (block == Block.NONE && line.startsWith(TRACE) || trace == null) {
+                flush();
+                trace = new ArrayList<>();
+                declarations = new LinkedHashMap<>();
+            }
+            block = line.equals(MODEL) ? Block.MODEL : Block.TRACE;
+            return;
+        }
+        // the counterexample ends before the next report
+        if (trace != null && isReport(line)) flush();
         if (pending != null) {
             Matcher caret = CARET.matcher(line);
             if (caret.matches()) {
@@ -99,13 +169,56 @@ public final class EscOutput {
     }
 
     /**
-     * Reports a diagnostic that OpenJML showed without a caret; call it after the last line
+     * Reads a line of a trace or of the prover's model
+     *
+     * @return whether the line is part of it
+     */
+    private boolean readCounterexample(@NotNull String line) {
+        if (line.isBlank()) {
+            block = Block.NONE;
+            return true;
+        }
+        if (isReport(line)) {
+            block = Block.NONE;
+            return false;
+        }
+        Matcher matcher;
+        if (block == Block.TRACE) {
+            if ((matcher = VALUE.matcher(line)).matches()) {
+                if (!trace.isEmpty()) {
+                    trace.get(trace.size() - 1).values().add(new Value(matcher.group(1), matcher.group(2)));
+                }
+            } else if ((matcher = STEP.matcher(line)).matches()) {
+                trace.add(new Step(matcher.group(1), Integer.parseInt(matcher.group(2)), matcher.group(3),
+                        new ArrayList<>()));
+            }
+            // and lines such as "Condition = true", or the one about the assertion that does not hold
+            return true;
+        }
+        // a variable that is declared at the position, rather than one that the prover made up
+        if ((matcher = DECLARATION.matcher(line)).matches() && matcher.group(1).equals(matcher.group(2))
+                && !matcher.group(1).equals("0")) {
+            declarations.putIfAbsent(Integer.parseInt(matcher.group(1)), matcher.group(3));
+        }
+        return true;
+    }
+
+    /**
+     * Reports a diagnostic that OpenJML showed without a caret, and the counterexample that is being read; call it
+     * after the last line
      */
     public void flush() {
         if (pending != null) {
             Diagnostic diagnostic = pending;
             pending = null;
             listener.diagnostic(diagnostic);
+        }
+        if (trace != null) {
+            List<Step> steps = trace;
+            trace = null;
+            block = Block.NONE;
+            if (method != null) listener.counterexample(new Counterexample(method, steps, declarations));
+            declarations = null;
         }
     }
 
@@ -124,8 +237,9 @@ public final class EscOutput {
     /**
      * Makes the signature of a method as OpenJML writes it comparable to the one made from the source by
      * {@link EscMethods#key}: OpenJML writes some parameter types with their package and type arguments, and some
-     * without, as in "demo.Shapes.count(java.util.List&lt;String&gt;,int...)". This leaves out both, giving
-     * "demo.Shapes.count(List,int...)".
+     * without, as in "demo.Shapes.count(java.util.List&lt;String&gt;,int...)", and annotations, as in
+     * "demo.Shapes.find(@Nullable String)" for a parameter that is nullable in JML. This leaves them out, giving
+     * "demo.Shapes.count(List,int...)" and "demo.Shapes.find(String)".
      *
      * @param signature the signature of a method, with the qualified name of its class
      * @return the signature with simple names for the parameter types, without type arguments
@@ -133,10 +247,13 @@ public final class EscOutput {
     public static @NotNull String key(@NotNull String signature) {
         int open = signature.indexOf('(');
         if (open < 0 || !signature.endsWith(")")) return signature;
-        // without type arguments and spaces
+        // without annotations, such as "@Nullable String" or "java.lang.@org.jmlspecs.annotation.Nullable String" for
+        // a parameter that is nullable in JML, type arguments and spaces
+        String withoutAnnotations = signature.substring(open + 1, signature.length() - 1)
+                .replaceAll("@[\\w$.]+(\\([^)]*\\))?", "");
         StringBuilder parameters = new StringBuilder();
         int depth = 0;
-        for (char c : signature.substring(open + 1, signature.length() - 1).toCharArray()) {
+        for (char c : withoutAnnotations.toCharArray()) {
             if (c == '<') depth++;
             else if (c == '>') depth--;
             else if (depth == 0 && !Character.isWhitespace(c)) parameters.append(c);

@@ -137,6 +137,12 @@ public class JMLEscOpenJmlTest extends JavaCodeInsightFixtureTestCase {
                 "return x < 0 ? -x : x; | The prover cannot establish an assertion (Postcondition: demo\\Account.java:11:) in method abs"
                         .replace("\\", java.io.File.separator)));
         assertTrue(results.output(), results.output().contains("Completed proof of demo.Account.abs(int)"));
+        // the value of the parameter in the counterexample, at the end of its line, and not the prover's model
+        int line = myFixture.getEditor().getDocument().getLineNumber(file.getText().indexOf("public int abs"));
+        String values = results.values(file.getVirtualFile(), line);
+        assertTrue(String.valueOf(values), values != null && values.matches("x: -?\\d+"));
+        assertFalse(results.output(), results.output().contains("COUNTEREXAMPLE"));
+        assertTrue(results.output(), results.output().contains("TRACE of demo.Account.abs(int)"));
     }
 
     private static void waitFor(BooleanSupplier condition) throws InterruptedException {

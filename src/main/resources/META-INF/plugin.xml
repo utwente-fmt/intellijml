@@ -47,6 +47,7 @@
         <externalAnnotator language="JAVA" implementationClass="nl.utwente.jmlplugin.esc.EscAnnotator"/>
         <codeInsight.lineMarkerProvider language="JAVA"
                                         implementationClass="nl.utwente.jmlplugin.esc.EscLineMarkerProvider"/>
+        <editor.linePainter implementation="nl.utwente.jmlplugin.esc.EscValuesLinePainter"/>
         <completion.confidence language="JML"
                                implementationClass="nl.utwente.jmlplugin.completion.JMLCompletionConfidence"
                                id="asTrue" order="first"/>
