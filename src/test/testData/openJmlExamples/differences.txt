@@ -6,4 +6,3 @@ LemmaExample.java:17: plugin | Modifier, at-sign, semicolon, or type name expect
 Polygon.java:65: plugin | Method specifications are not allowed in a class body
 T_Old.java:5: plugin | Method could not be resolved, maybe the parameters do not correspond?
 T_Old.java:15: plugin | Method could not be resolved, maybe the parameters do not correspond?
-T_PureMethod3.java:20: OpenJML | Pure methods may not assign to any fields: count in T_PureMethod3.Counter.count()

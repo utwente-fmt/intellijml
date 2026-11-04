@@ -30,6 +30,10 @@
                                 implementationClass="nl.utwente.jmlplugin.completion.JMLCompletionContributor"
                                 order="first"/>
         <highlightErrorFilter implementation="nl.utwente.jmlplugin.annotator.JMLAnnotator"/>
+        <!-- the body of a pure method, which OpenJML only checks when it verifies the method -->
+        <localInspection language="JAVA" shortName="JMLPureMethod" groupName="JML"
+                         displayName="Pure method changes state" enabledByDefault="true" level="WARNING"
+                         implementationClass="nl.utwente.jmlplugin.annotator.JMLPureMethodInspection"/>
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/JMLDarculaColorScheme.xml"/>
         <additionalTextAttributes scheme="Default"
                                   file="colorSchemes/JMLDefaultLightColorScheme.xml"/>

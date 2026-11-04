@@ -21,7 +21,7 @@ import org.jetbrains.annotations.Nullable;
 public class SpecVisibilityFix implements IntentionAction {
     private final SmartPsiElementPointer<PsiMember> member;
     private final String name;
-    // spec_public or spec_protected
+    // spec_public or spec_protected, or pure for a method that a pure method calls (see JMLPureMethodInspection)
     private final String modifier;
 
     SpecVisibilityFix(@NotNull PsiMember member, @NotNull String modifier) {

@@ -82,6 +82,15 @@
 - OpenJML's warnings about `also`: the specification of a method that overrides another one should begin with `also`,
   as it adds to the specification of the overridden method, and that of a method that overrides nothing may not
 - OpenJML's warning "There is no point to a declaration being both public and spec_public"
+- A warning for code in a `pure` method that changes the state, which OpenJML only reports when it verifies the
+  method: an assignment (also `++` or `+=`) to a field of `this`, a static field, or a field or array element of a
+  parameter or of the value of a field, and a call of a method or constructor that is not `pure` and has no
+  `assignable` clause. A pure constructor may assign the fields of the new object. A quick fix declares the called
+  method `pure`. It is an inspection, *Pure method changes state* in the JML group, which can be turned off.
+- OpenJML's errors for `assignable` clauses that do not fit a pure method or a constructor: a pure method may only
+  have `assignable \nothing` ("Pure methods may not assign to any fields"), a constructor may not list the fields of
+  the new object, which it may always assign ("Implicit references to 'this' are not permitted in constructor
+  assignable clauses"), and a pure constructor may assign nothing else
 - Warnings for quantified expressions that do not mean what they seem to:
   - OpenJML's warning "Runtime assertion checking is not implemented for this type or number of declarations in a
     quantified expression" (a weak warning), as Run with JML Checks treats such a quantified expression as false (or

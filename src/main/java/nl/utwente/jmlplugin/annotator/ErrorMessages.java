@@ -118,6 +118,32 @@ public final class ErrorMessages {
                 + "a field.</html>";
     }
 
+    // the body of a pure method or constructor, which has an implicit "assignable \nothing": OpenJML's static checking
+    // reports these as assignable violations
+    public static String pureAssigns(boolean constructor, String target) {
+        return "A pure " + (constructor ? "constructor" : "method") + " may not assign to " + target;
+    }
+
+    public static String pureCalls(boolean constructor, String callee) {
+        return "A pure " + (constructor ? "constructor" : "method") + " may not call " + callee
+                + ", which is not pure and has no assignable clause, so it has 'assignable \\everything'";
+    }
+
+    // OpenJML's errors for the assignable clauses of pure methods and of constructors
+    public static String pureMethodAssignable(String item, String method) {
+        return "Pure methods may not assign to any fields: " + item + " in " + method;
+    }
+
+    public static String pureConstructorAssignable(String item) {
+        return "Pure constructors may not assign to any fields other than non-static member fields: " + item;
+    }
+
+    public static final String CONSTRUCTOR_ASSIGNABLE_THIS = "References to 'this' are not permitted in constructor assignable clauses: this";
+
+    public static String constructorAssignableImplicitThis(String name) {
+        return "Implicit references to 'this' are not permitted in constructor assignable clauses: " + name;
+    }
+
     public static final String ASSIGNMENT_NOT_PURE = "JML expressions should be pure and assignments are not pure";
     public static final String INCREMENT_NOT_PURE = "JML expressions should be pure and ++ and -- change a variable";
 

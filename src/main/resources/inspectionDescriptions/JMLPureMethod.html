@@ -1,0 +1,37 @@
+<html>
+<body>
+Reports code in a JML <code>pure</code> method that changes the state of the program, which a pure method may not do.
+<!-- tooltip end -->
+<p>
+    A pure method (also <code>spec_pure</code>, or pure because its class is pure or because it overrides a pure
+    method) has an implicit <code>assignable \nothing</code>: it may only change its local variables and the objects
+    that it creates itself. A pure constructor may also assign the fields of the new object. This inspection reports:
+</p>
+<ul>
+    <li>assignments, also with <code>++</code>, <code>--</code> and <code>+=</code>, to a static field, to a field of
+        <code>this</code>, and to a field or array element of an object that existed before the call, such as a
+        parameter or the value of a field;</li>
+    <li>calls of methods and constructors that are not pure and have no <code>assignable</code> clause, which may
+        therefore change anything.</li>
+</ul>
+<p>Example:</p>
+<pre><code>
+private int count;
+
+//@ pure
+public int next() {
+    count++;            // a pure method may not assign to count
+    return count;
+}
+</code></pre>
+<p>
+    OpenJML's type checking does not check this; Verify with OpenJML reports the same lines as violations of the
+    assignable clause. This inspection does not know the specifications of the Java library, so it does not report
+    calls such as <code>list.add(x)</code>, and it does not compare <code>assignable</code> clauses.
+</p>
+<p>
+    A quick fix declares a called method <code>pure</code>, for a method that does not change the state but is not
+    declared pure.
+</p>
+</body>
+</html>

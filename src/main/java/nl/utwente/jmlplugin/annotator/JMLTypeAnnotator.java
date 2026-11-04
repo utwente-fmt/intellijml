@@ -46,6 +46,9 @@ public class JMLTypeAnnotator {
     public static void annotateTypes(@NotNull PsiElement element, @NotNull AnnotationHolder holder) {
         if (element instanceof JMLStoreRef && element.getParent() instanceof JMLAssignableClause) {
             checkAssignableVarScope(element, holder);
+            FrameRules.check(element, holder);
+        } else if (element instanceof JMLStoreRefKeyword && element.getParent() instanceof JMLAssignableClause) {
+            FrameRules.check(element, holder);
         } else if (element instanceof JMLStoreRef && element.getParent() instanceof JMLReadsClause) {
             checkStoreRefVarScope(element, holder, false);
         } else if (element instanceof JMLRepresentsClause represents) {
