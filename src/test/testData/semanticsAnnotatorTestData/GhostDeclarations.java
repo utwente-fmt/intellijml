@@ -23,7 +23,7 @@ public class GhostDeclarations {
         //@ ghost <error descr="modifier public not allowed here">public</error> int x;
     }
 
-    //<error descr="In-method specifications are not allowed in a class body">@ set count = 2;</error>
+    //<error descr="In-method specifications are not allowed above a field">@ set count = 2;</error>
 
 
     // right above a field or a method, as OpenJML allows

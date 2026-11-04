@@ -65,41 +65,52 @@ public class JMLAnnotatorUtil {
     public static PsiElement getJavaContext(PsiElement element) {
         PsiComment commentContext = getCommentContext(element);
         if (commentContext == null) return null;
-        PsiMember member = memberBelowDocComment(commentContext);
+        PsiMember member = memberBelow(commentContext);
         return member != null ? member : getOwnerIfModifierList(commentContext.getParent());
     }
 
     /**
+     * A comment right above a method or field is part of it in the PSI, but a comment above its documentation
+     * comment, or separated from it by a blank line, is in the class body. OpenJML takes such comments as the JML of
+     * the method or field below them all the same.
+     *
      * @param comment a comment
-     * @return the method or field right below the comment with its documentation comment in between, as in JML above
-     * the Javadoc of a method, which OpenJML takes as the specification of the method; null if there is none, or if the
-     * comment belongs to the class, as an invariant
+     * @return the method or field below the comment in a class body, with only comments and whitespace in between,
+     * also blank lines and a documentation comment; null if there is none, if the comment belongs to the class, as an
+     * invariant, or if it is at the end of a line with a declaration
      */
-    public static @Nullable PsiMember memberBelowDocComment(@NotNull PsiComment comment) {
-        if (!(comment.getParent() instanceof PsiClass)) return null;
-        for (PsiElement next = comment.getNextSibling(); next != null; next = next.getNextSibling()) {
-            if (next instanceof PsiWhiteSpace) {
-                if (!isAtMostOneNewline(next.getText())) return null;
-            } else if (!(next instanceof PsiComment)) {
-                boolean documented = (next instanceof PsiMethod || next instanceof PsiField)
-                        && next.getFirstChild() instanceof PsiDocComment;
-                return documented && !isClassLevelComment(comment) ? (PsiMember) next : null;
-            }
-        }
-        return null;
+    public static @Nullable PsiMember memberBelow(@NotNull PsiComment comment) {
+        if (!(comment.getParent() instanceof PsiClass) || isClassLevelComment(comment) || isTrailing(comment)) return null;
+        PsiElement next = PsiTreeUtil.skipWhitespacesAndCommentsForward(comment);
+        return next instanceof PsiMethod || next instanceof PsiField ? (PsiMember) next : null;
     }
 
     /**
-     * @param member a method or field
-     * @return the comments right above its documentation comment, which OpenJML also takes as its JML
+     * @return whether the comment is at the end of a line with a declaration before it, as in "int x; //@ in size;",
+     * so that it does not belong to the declaration below it
      */
-    public static @NotNull List<PsiComment> commentsAboveDocComment(@NotNull PsiElement member) {
+    private static boolean isTrailing(@NotNull PsiComment comment) {
+        PsiElement previous = comment.getPrevSibling();
+        if (previous instanceof PsiWhiteSpace && !previous.textContains('\n')) previous = previous.getPrevSibling();
+        return previous instanceof PsiMember;
+    }
+
+    /**
+     * @param member a method, field or class
+     * @return the comments above it that are not part of it, but that OpenJML also takes as its JML (see
+     * {@link #memberBelow}): for a method or field in a class body, those separated from it by blank lines or by its
+     * documentation comment; for a class, those right above its documentation comment
+     */
+    public static @NotNull List<PsiComment> commentsAbove(@NotNull PsiElement member) {
         List<PsiComment> comments = new ArrayList<>();
-        if (!(member.getFirstChild() instanceof PsiDocComment)) return comments;
+        boolean blankLines = (member instanceof PsiMethod || member instanceof PsiField) && member.getParent() instanceof PsiClass;
+        if (!blankLines && !(member.getFirstChild() instanceof PsiDocComment)) return comments;
         for (PsiElement previous = member.getPrevSibling(); previous != null; previous = previous.getPrevSibling()) {
             if (previous instanceof PsiComment comment) {
-                comments.add(comment);
-            } else if (!(previous instanceof PsiWhiteSpace) || !isAtMostOneNewline(previous.getText())) {
+                if (blankLines && isTrailing(comment)) break;
+                // an invariant or ghost declaration in between belongs to the class
+                if (!isClassLevelComment(comment)) comments.add(comment);
+            } else if (!(previous instanceof PsiWhiteSpace) || !(blankLines || isAtMostOneNewline(previous.getText()))) {
                 break;
             }
         }
@@ -211,17 +222,20 @@ public class JMLAnnotatorUtil {
         ArrayList<PsiComment> resultList = new ArrayList<>();
         if (myComment == null) return resultList;
         PsiElement parent = myComment.getParent();
+        // in a class body, the comments of the method or field below them may be separated by blank lines
+        boolean blankLines = parent instanceof PsiClass && memberBelow(myComment) != null;
 
         // get all comment backwards from currentComment, we do this always because all functions in the class want those for sure
         PsiElement currentElement = (alsoAddMyself ? myComment : myComment.getPrevSibling());
         while (true) {
-            if (currentElement instanceof PsiComment) {
-                resultList.add((PsiComment) currentElement);
+            if (currentElement instanceof PsiComment comment && !(blankLines && isTrailing(comment))) {
+                // an invariant or ghost declaration in the class body belongs to the class, not to the method below
+                if (!(blankLines && comment != myComment && isClassLevelComment(comment))) resultList.add(comment);
             }
             // max 1 newline is allowed between comments for them to still belong to the same group,
             // unless they are a field or a method, then something other than whitespace is also allowed
             else if (currentElement == null || !(parent instanceof PsiField || parent instanceof PsiMethod || (currentElement instanceof PsiWhiteSpace
-                    && isAtMostOneNewline(currentElement.getText())))) {
+                    && (blankLines || isAtMostOneNewline(currentElement.getText()))))) {
                 // for local variables and parameters, it could be inside the declaration or before, if we are inside, also go before
                 currentElement = null;
                 if (parent instanceof PsiLocalVariable) {
@@ -230,11 +244,12 @@ public class JMLAnnotatorUtil {
                 } else if (parent instanceof PsiParameter) {
                     currentElement = parent;
                     parent = null;
-                } else if ((parent instanceof PsiMethod || parent instanceof PsiField)
-                        && parent.getFirstChild() instanceof PsiDocComment) {
-                    // the comments above the documentation of a method or field, which OpenJML also takes as its JML
+                } else if ((parent instanceof PsiMethod || parent instanceof PsiField) && parent.getParent() instanceof PsiClass) {
+                    // the comments above the method or field in the class body, above its documentation or separated
+                    // from it by blank lines, which OpenJML also takes as its JML
                     currentElement = parent;
                     parent = parent.getParent();
+                    blankLines = true;
                 }
                 // was not inside local variable or parameter
                 if (currentElement == null) {
@@ -343,7 +358,7 @@ public class JMLAnnotatorUtil {
             javaElement = getJavaContext(element);
         }
         ArrayList<PsiComment> comments = new ArrayList<>(PsiTreeUtil.getChildrenOfTypeAsList(javaElement, PsiComment.class));
-        if (javaElement != null) comments.addAll(commentsAboveDocComment(javaElement));
+        if (javaElement != null) comments.addAll(commentsAbove(javaElement));
         // comments in between Java modifiers, such as in "public /*@ pure @*/ static int f()"
         if (javaElement instanceof PsiModifierListOwner) {
             comments.addAll(PsiTreeUtil.getChildrenOfTypeAsList(((PsiModifierListOwner) javaElement).getModifierList(), PsiComment.class));

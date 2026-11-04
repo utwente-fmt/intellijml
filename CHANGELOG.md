@@ -157,6 +157,11 @@
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- JML separated from its method or field by a blank line, as in `//@ ensures \result > 0;` followed by a blank line and
+  the method, gave "Method specifications are not allowed in a class body", and modifiers such as `//@ pure` did not
+  apply. As in OpenJML, the JML belongs to the method or field below it; a specification with no method below it gives
+  OpenJML's "Method specifications without a following method declaration". Completion there offers the keywords of
+  both the method or field and the class, such as `invariant`.
 - Fields, methods and variables named after a JML keyword, such as `instance`, `behavior`, `model` or `invariant()`,
   gave syntax errors in expressions, as in `//@ ensures instance != null;`, and in `assignable` clauses. As in
   OpenJML, a keyword is a name where a name fits.

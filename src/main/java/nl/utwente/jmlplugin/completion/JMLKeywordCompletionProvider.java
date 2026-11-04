@@ -5,9 +5,12 @@ import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiComment;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.util.ProcessingContext;
 import nl.utwente.jmlplugin.annotator.CommentPosition;
+import nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil;
 import org.jetbrains.annotations.NotNull;
 
 import static nl.utwente.jmlplugin.completion.JMLCompletionUtils.*;
@@ -30,6 +33,15 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
                                   @NotNull ProcessingContext context,
                                   @NotNull CompletionResultSet result) {
         final CommentPosition position = getCommentPosition(parameters);
+
+        // a comment in the class body that is separated from the method or field below it, by a blank line or by its
+        // documentation, can be the JML of that method or field, as OpenJML takes it, or an invariant or another
+        // declaration of the class
+        PsiComment comment = JMLAnnotatorUtil.getCommentContext(parameters.getPosition());
+        if (comment != null && comment.getParent() instanceof PsiClass
+                && (position == CommentPosition.ABOVE_METHOD || position == CommentPosition.FIELD)) {
+            fillClassInvariantCompletion(result);
+        }
 
         // figure out in what kind of JML comment you are and fill in the appropriate keyword completions.
         switch (position) {

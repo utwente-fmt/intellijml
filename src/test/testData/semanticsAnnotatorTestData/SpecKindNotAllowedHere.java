@@ -12,12 +12,6 @@ public class SpecKindNotAllowedHere {
     //<error descr="In-method specifications are not allowed above a field">@ assert x > 10;</error>
     //@ <warning descr="There is no point to a declaration being both public and spec_public">spec_public</warning>
     public Integer /*@instance*/ x = 10;//@ nullable
-    //<error descr="Modifiers are not allowed in a class body">@ instance;</error>
-
-    //@ public invariant x>5;
-    //<error descr="Method specifications are not allowed in a class body">@ requires x != 0;</error>
-    //<error descr="In-method specifications are not allowed in a class body">@ assert x > 10;</error>
-    //<error descr="Modifiers are not allowed in a class body">@ pure;</error>
 
     //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">x</error> > 5;
     //@ requires x!=0;
@@ -58,4 +52,10 @@ public class SpecKindNotAllowedHere {
 
     }
 
+    // at the end of the class body, with no method or field below
+    //<error descr="Modifiers are not allowed in a class body">@ instance;</error>
+    //@ public invariant x>5;
+    //<error descr="Method specifications without a following method declaration">@ requires x != 0;</error>
+    //<error descr="In-method specifications are not allowed in a class body">@ assert x > 10;</error>
+    //<error descr="Modifiers are not allowed in a class body">@ pure;</error>
 }

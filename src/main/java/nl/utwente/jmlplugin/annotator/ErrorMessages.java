@@ -330,6 +330,8 @@ public final class ErrorMessages {
         } else if (specKind instanceof JMLMethodJml) {
             // OpenJML's message for a specification after a Java annotation or modifier, as in "@Override //@ ensures ..."
             if (position == CommentPosition.METHOD_DECLARATION) return "A method specification incorrectly follows non-JML modifiers";
+            // OpenJML's message for a specification with no method or field below it, as at the end of a class body
+            if (position == CommentPosition.INSIDE_CLASS) return "Method specifications without a following method declaration";
             specKindStr = "Method specifications";
         } else if (specKind instanceof JMLInMethodSpec) {
             specKindStr = "In-method specifications";

@@ -44,7 +44,7 @@ enum Purity {
      */
     private static Purity ofClass(PsiClass psiClass) {
         if (psiClass instanceof PsiCompiledElement) return NONE;
-        List<PsiComment> comments = new ArrayList<>(JMLAnnotatorUtil.commentsAboveDocComment(psiClass));
+        List<PsiComment> comments = new ArrayList<>(JMLAnnotatorUtil.commentsAbove(psiClass));
         PsiElement lBrace = psiClass.getLBrace();
         for (PsiComment comment : com.intellij.psi.util.PsiTreeUtil.getChildrenOfTypeAsList(psiClass, PsiComment.class)) {
             if (lBrace == null || comment.getTextOffset() < lBrace.getTextOffset()) comments.add(comment);

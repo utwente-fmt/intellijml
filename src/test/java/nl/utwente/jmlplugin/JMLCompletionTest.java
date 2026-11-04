@@ -440,15 +440,19 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public void testClassInvariant() {
         List<String> strings = completeIn("ClassInvariant.java");
 
+        // the comment is separated from the field below it by a blank line, so it can be the JML of the field,
+        // as OpenJML takes it, or an invariant or another declaration of the class
         assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost", "model",
-                "represents", "in");
+                "represents", "in", "nullable", "non_null", "spec_protected", "spec_public");
     }
 
     public void testClassInvariantSemicolon() {
         List<String> strings = completeIn("ClassInvariantSemicolon.java");
 
+        // the comment is separated from the field below it by a blank line, so it can be the JML of the field,
+        // as OpenJML takes it, or an invariant or another declaration of the class
         assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost", "model",
-                "represents", "in");
+                "represents", "in", "nullable", "non_null", "spec_protected", "spec_public");
     }
 
     public void testFieldModifiers() {
