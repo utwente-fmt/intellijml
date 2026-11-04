@@ -1,16 +1,4 @@
 <templateSet group="JML">
-    <template name="@" value="@&#10;$END$&#10;*/" shortcut="ENTER"
-              description="Complete JML comment" toReformat="true" toShortenFQNames="true">
-        <context>
-            <option name="JML" value="true"/>
-        </context>
-    </template>
-    <template name=";" value=";&#10;" shortcut="ENTER" description="Newline Indent"
-              toReformat="false" toShortenFQNames="true">
-        <context>
-            <option name="JML" value="true"/>
-        </context>
-    </template>
 	  <template name="\forall" value="(\forall int $END$; ; )" description="\forall completion" toReformat="false" toShortenFQNames="true">
     <context>
       <option name="JML" value="true" />

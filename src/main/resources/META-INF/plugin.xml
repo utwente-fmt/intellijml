@@ -51,6 +51,8 @@
         <!-- before IntelliJ's own Java import optimizer, which it uses: only one optimizer per language is used -->
         <lang.importOptimizer language="JAVA" implementationClass="nl.utwente.jmlplugin.editor.JMLImportOptimizer"
                               order="first"/>
+        <!-- before Java's own handling of Enter in comments -->
+        <enterHandlerDelegate implementation="nl.utwente.jmlplugin.editor.JMLEnterHandler" order="first"/>
         <lang.documentationProvider language="JAVA"
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLDocumentationProvider"
                                     order="first"/>
