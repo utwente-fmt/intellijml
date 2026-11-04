@@ -36,6 +36,25 @@ the main source set with OpenJML into `build/jml-checks/classes`, and runs the `
 these classes first on the class path, on OpenJML's Java. The build script itself is not changed, and a normal
 run does not get the init script. Maven run configurations are not supported.
 
+## Verifying with OpenJML
+
+**Verify Method with OpenJML** and **Verify File with OpenJML** (in the editor's right-click menu and the
+**Code** menu; Verify File also in the Project tool window) let OpenJML's extended static checking try to
+prove that methods meet their JML specifications, without running them. A method with a JML specification
+also has an icon in the gutter that verifies it. While OpenJML works, the progress shows which method it is
+proving; afterwards the gutter shows for every method whether it is verified, and what OpenJML could not
+prove is marked in the code (the statement, and the `ensures` or other clause it is about). Editing a method
+hides its results, as they may no longer hold. **Show output** in the notification shows OpenJML's own
+output. OpenJML cannot tell overloaded methods apart, so Verify Method verifies all methods with that name
+in the class.
+
+This uses the same OpenJML installation as Run with JML Checks. OpenJML keeps running in the background after
+a verification (it stops after 10 minutes without one), because starting it takes a few seconds: verifying a
+simple method again takes less than a second. The source folders of the module and the modules it depends
+on are OpenJML's source path, so it finds the specifications of the classes the code uses, and the module's
+libraries are its class path. An `openjml.properties` file in the project folder is passed to OpenJML. The
+gutter icons can be turned off in **Settings | Editor | General | Gutter Icons**.
+
 ## Build from source
 
 1. Import the source code into IntelliJ IDEA.
@@ -77,8 +96,8 @@ the first time (about 6 MB, into `~/.m2`). The test classes are in `src/test/jav
 open are in `src/test/testData` (these are not compiled, so they may contain broken Java). The build
 fails if any test is skipped, because that happens when a test run is interrupted part-way.
 
-`JMLRacOpenJmlTest` runs programs with JML checks with a real OpenJML, so it only runs when you give an
-installation: `./gradlew test -PopenJml=<folder of the OpenJML installation>`.
+`JMLRacOpenJmlTest` and `JMLEscOpenJmlTest` run programs with JML checks and verify methods with a real
+OpenJML, so they only run when you give an installation: `./gradlew test -PopenJml=<folder of the OpenJML installation>`.
 
 More background on the tests is in chapter 8 of the
 [maintainer's guide](docs/Maintainers_Guide.pdf); the instruction there to clone the intellij-community

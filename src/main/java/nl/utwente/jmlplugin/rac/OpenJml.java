@@ -1,6 +1,9 @@
 package nl.utwente.jmlplugin.rac;
 
+import com.intellij.openapi.module.LanguageLevelUtil;
+import com.intellij.openapi.module.Module;
 import com.intellij.openapi.util.SystemInfo;
+import com.intellij.pom.java.LanguageLevel;
 import com.intellij.openapi.util.text.StringUtil;
 import nl.utwente.jmlplugin.settings.JMLApplicationSettings;
 import org.jetbrains.annotations.NotNull;
@@ -9,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Collection;
 
 /**
  * An installation of OpenJML (https://www.openjml.org), which compiles Java code with run time checks of its JML
@@ -63,6 +67,25 @@ public final class OpenJml {
      */
     public static @NotNull Path jdk(@NotNull Path installation) {
         return installation.resolve("jdk");
+    }
+
+    /**
+     * OpenJML compiles Java 21, and programs with run time checks run on OpenJML's Java 21, so the modules must not
+     * use newer Java. Needs a read action.
+     *
+     * @param modules the modules
+     * @param toDo    what the user wants to do with OpenJML, such as "run it with JML checks"
+     * @return the problem, or null if there is none
+     */
+    public static @Nullable String languageLevelProblem(@NotNull Collection<Module> modules, @NotNull String toDo) {
+        for (Module module : modules) {
+            LanguageLevel level = LanguageLevelUtil.getEffectiveLanguageLevel(module);
+            if (level.isAtLeast(LanguageLevel.JDK_22)) {
+                return "OpenJML " + VERSION + " compiles and runs Java 21, but module '" + module.getName() + "' uses " +
+                        level.getPresentableText() + ". Set its language level to 21 or lower to " + toDo + ".";
+            }
+        }
+        return null;
     }
 
     /**

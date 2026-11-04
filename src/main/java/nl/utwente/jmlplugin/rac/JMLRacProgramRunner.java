@@ -22,7 +22,6 @@ import com.intellij.execution.ui.RunContentDescriptor;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
-import com.intellij.openapi.module.LanguageLevelUtil;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -30,7 +29,6 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.projectRoots.JavaSdk;
 import com.intellij.openapi.vfs.encoding.EncodingProjectManager;
-import com.intellij.pom.java.LanguageLevel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.concurrency.AsyncPromise;
 import org.jetbrains.concurrency.Promise;
@@ -69,7 +67,7 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
         Project project = environment.getProject();
         Path installation = OpenJml.installation();
         if (installation == null) {
-            OpenJmlNotifications.notInstalled(project);
+            OpenJmlNotifications.notInstalled(project, JMLRacExecutor.TEXT, JMLRacExecutor.PURPOSE);
             return Promises.resolvedPromise(null);
         }
         FileDocumentManager.getInstance().saveAllDocuments();
@@ -158,14 +156,8 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
      * @param modules the modules of the program
      */
     static void checkLanguageLevel(@NotNull Collection<Module> modules) throws ExecutionException {
-        for (Module module : modules) {
-            LanguageLevel level = ReadAction.compute(() -> LanguageLevelUtil.getEffectiveLanguageLevel(module));
-            if (level.isAtLeast(LanguageLevel.JDK_22)) {
-                throw new ExecutionException("OpenJML " + OpenJml.VERSION + " compiles and runs Java 21, but module '" +
-                        module.getName() + "' uses " + level.getPresentableText() + ". Set its language level to 21 " +
-                        "or lower to run it with JML checks.");
-            }
-        }
+        String problem = ReadAction.compute(() -> OpenJml.languageLevelProblem(modules, "run it with JML checks"));
+        if (problem != null) throw new ExecutionException(problem);
     }
 
     /**

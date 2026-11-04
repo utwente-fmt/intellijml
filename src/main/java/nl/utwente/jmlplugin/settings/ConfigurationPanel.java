@@ -44,7 +44,8 @@ public class ConfigurationPanel extends JPanel {
         openJmlRow.add(download, BorderLayout.EAST);
 
         JBLabel openJmlComment = new JBLabel("<html>Used by <b>Run with JML Checks</b>, which runs a program or tests " +
-                "with checks of the JML specifications. OpenJML compiles Java 21 and older; the download is " +
+                "with checks of the JML specifications, and by <b>Verify with OpenJML</b>, which tries to prove " +
+                "that methods meet them. OpenJML compiles Java 21 and older; the download is " +
                 OpenJmlInstaller.SIZE + ".</html>");
         openJmlComment.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         openJmlComment.setFontColor(UIUtil.FontColor.BRIGHTER);

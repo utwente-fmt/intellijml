@@ -6,6 +6,10 @@
   application reports violated specifications in the Run tool window, with links to the source. The plugin offers to download OpenJML (about 220 MB) the first time, or
   an installation can be chosen in Settings | Tools | IntelliJML. It works for applications and JUnit tests,
   and for tests and applications that Gradle runs.
+- **Verify Method with OpenJML** and **Verify File with OpenJML**: OpenJML's extended static checking tries to
+  prove that methods meet their specifications. What it cannot prove is marked in the code, and the gutter shows
+  for every method whether it is verified; a gutter icon on a method with a specification verifies it. OpenJML
+  keeps running between verifications, so verifying a method again takes about a second instead of four.
 - Enter in a `/*@ ... @*/` comment starts the new line with an `@` below the one above it, and closes a comment
   that is not closed yet with `@*/`. Enter in the middle of a `//@` comment makes the rest a `//@` comment too.
   This replaces the live templates that Enter expanded after `@` and `;`.

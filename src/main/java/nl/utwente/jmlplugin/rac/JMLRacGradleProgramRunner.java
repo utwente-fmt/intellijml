@@ -60,7 +60,7 @@ public class JMLRacGradleProgramRunner extends AsyncProgramRunner<RunnerSettings
         }
         Path installation = OpenJml.installation();
         if (installation == null) {
-            OpenJmlNotifications.notInstalled(environment.getProject());
+            OpenJmlNotifications.notInstalled(environment.getProject(), JMLRacExecutor.TEXT, JMLRacExecutor.PURPOSE);
             return Promises.resolvedPromise(null);
         }
         JMLRacProgramRunner.checkLanguageLevel(gradleModules(configuration));

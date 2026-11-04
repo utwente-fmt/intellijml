@@ -1,0 +1,446 @@
+package nl.utwente.jmlplugin.esc;
+
+import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
+import com.intellij.execution.executors.DefaultRunExecutor;
+import com.intellij.execution.filters.TextConsoleBuilderFactory;
+import com.intellij.execution.ui.ConsoleView;
+import com.intellij.execution.ui.ConsoleViewContentType;
+import com.intellij.execution.ui.RunContentDescriptor;
+import com.intellij.execution.ui.RunContentManager;
+import com.intellij.lang.annotation.HighlightSeverity;
+import com.intellij.lang.injection.InjectedLanguageManager;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationAction;
+import com.intellij.notification.NotificationGroupManager;
+import com.intellij.notification.NotificationType;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.RangeMarker;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
+import com.intellij.openapi.module.Module;
+import com.intellij.openapi.module.ModuleUtilCore;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.roots.ModuleRootManager;
+import com.intellij.openapi.roots.OrderEnumerator;
+import com.intellij.openapi.roots.ProjectFileIndex;
+import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.psi.*;
+import nl.utwente.jmlplugin.esc.EscOutput.Diagnostic;
+import nl.utwente.jmlplugin.esc.EscOutput.Status;
+import nl.utwente.jmlplugin.rac.OpenJml;
+import nl.utwente.jmlplugin.rac.OpenJmlCompiler;
+import nl.utwente.jmlplugin.rac.OpenJmlNotifications;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jetbrains.jps.model.java.JavaSourceRootType;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.util.*;
+
+/**
+ * Verifies methods with OpenJML's extended static checking (ESC): OpenJML tries to prove that the methods meet their
+ * JML specifications. Its messages are shown in the editor, and the result of every method in the gutter.
+ */
+public final class EscVerifier {
+    public static final String FEATURE = "Verify with OpenJML";
+    private static final String PURPOSE = "OpenJML tries to prove that methods meet their JML specifications.";
+
+    private EscVerifier() {
+    }
+
+    /**
+     * Verifies all methods in a Java file
+     */
+    public static void verifyFile(@NotNull PsiFile file) {
+        verify(EscMethods.hostFile(file), null);
+    }
+
+    /**
+     * Verifies a method, and the methods with the same name in its class, as OpenJML cannot tell them apart
+     */
+    public static void verifyMethod(@NotNull PsiMethod method) {
+        verify(method.getContainingFile(), method);
+    }
+
+    private static void verify(@NotNull PsiFile file, @Nullable PsiMethod method) {
+        Project project = file.getProject();
+        VirtualFile virtualFile = file.getVirtualFile();
+        if (virtualFile == null || !virtualFile.isInLocalFileSystem()) return;
+        Path installation = OpenJml.installation();
+        if (installation == null) {
+            OpenJmlNotifications.notInstalled(project, FEATURE, PURPOSE);
+            return;
+        }
+        Module module = ModuleUtilCore.findModuleForFile(virtualFile, project);
+        if (module == null) {
+            OpenJmlNotifications.error(project, "Cannot verify " + virtualFile.getName(),
+                    "OpenJML can only verify files in the source folders of a module.");
+            return;
+        }
+        Set<Module> modules = OpenJmlCompiler.withDependencies(List.of(module));
+        String levelProblem = OpenJml.languageLevelProblem(modules, "verify it");
+        if (levelProblem != null) {
+            OpenJmlNotifications.error(project, "Cannot verify " + virtualFile.getName(), levelProblem);
+            return;
+        }
+        // OpenJML reads the files
+        FileDocumentManager.getInstance().saveAllDocuments();
+        Document document = FileDocumentManager.getInstance().getDocument(virtualFile);
+        if (document == null) return;
+        PsiDocumentManager.getInstance(project).commitDocument(document);
+
+        boolean tests = ProjectFileIndex.getInstance(project).isInTestSourceContent(virtualFile);
+        List<Path> sourceRoots = sourceRoots(modules, tests);
+        String methodName = method == null ? null : EscMethods.optionName(method);
+        List<String> arguments = arguments(project, sourceRoots, classPath(module, tests), virtualFile.toNioPath(),
+                virtualFile.getCharset(), methodName);
+
+        // the methods and lines as they are now, to show the results in the right place if the file is edited while
+        // OpenJML runs
+        Snapshot snapshot = new Snapshot(document);
+        EscResults results = EscResults.getInstance(project);
+        Map<String, PsiMethod> scope = new LinkedHashMap<>();
+        for (PsiMethod psiMethod : method == null ? EscMethods.methods(file) : EscMethods.overloads(method)) {
+            String key = EscMethods.key(psiMethod);
+            if (key != null) scope.put(key, psiMethod);
+        }
+        long run = results.newRun();
+        results.clear(scope.keySet(), virtualFile);
+        for (Map.Entry<String, PsiMethod> entry : scope.entrySet()) {
+            TextRange range = entry.getValue().getTextRange();
+            results.put(entry.getKey(), new EscResults.MethodResult(virtualFile, document.createRangeMarker(range),
+                    document.getText(range), Status.RUNNING, "", run));
+        }
+        DaemonCodeAnalyzer.getInstance(project).restart(file);
+
+        String title = method == null ? virtualFile.getName() : method.getName() + "()";
+        new Task.Backgroundable(project, "Verifying " + title + " with OpenJML", true) {
+            private final StringBuilder output = new StringBuilder();
+            private final Summary summary = new Summary();
+
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                indicator.setIndeterminate(true);
+                indicator.setText2("Starting OpenJML");
+                EscOutput parser = new EscOutput(new EscOutput.Listener() {
+                    @Override
+                    public void methodStarted(@NotNull String method) {
+                        indicator.setText2("Proving " + method);
+                    }
+
+                    @Override
+                    public void methodCompleted(@NotNull String method, @NotNull Status status, @NotNull String result) {
+                        summary.count(status);
+                        ApplicationManager.getApplication().invokeLater(() -> {
+                            results.complete(EscOutput.key(method), run, status, result);
+                            restart(project, virtualFile);
+                        }, project.getDisposed());
+                    }
+
+                    @Override
+                    public void diagnostic(@NotNull Diagnostic diagnostic) {
+                        if (diagnostic.kind().equals("error")) summary.errors++;
+                        ApplicationManager.getApplication().invokeLater(() -> {
+                            place(project, diagnostic, virtualFile, snapshot, sourceRoots, run);
+                            restart(project, virtualFile);
+                        }, project.getDisposed());
+                    }
+                });
+                try {
+                    summary.exitCode = OpenJmlWorkerService.getInstance().run(installation, arguments, line -> {
+                        output.append(line).append('\n');
+                        parser.line(line);
+                    }, indicator);
+                } catch (IOException e) {
+                    throw new RuntimeException(e.getMessage() + (output.isEmpty() ? "" : "\n" + output), e);
+                }
+                parser.flush();
+            }
+
+            @Override
+            public void onSuccess() {
+                results.setOutput(output.toString());
+                notifySummary(project, title, summary);
+            }
+
+            @Override
+            public void onThrowable(@NotNull Throwable error) {
+                results.setOutput(output.toString());
+                OpenJmlNotifications.error(project, "OpenJML could not verify " + title, String.valueOf(error.getMessage()));
+            }
+
+            @Override
+            public void onFinished() {
+                // after the diagnostics that are still to be placed
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    results.stopRunning(scope.keySet(), run);
+                    snapshot.dispose();
+                    restart(project, virtualFile);
+                }, project.getDisposed());
+            }
+        }.queue();
+    }
+
+    /**
+     * Counts the results of a verification
+     */
+    private static final class Summary {
+        volatile int verified;
+        volatile int failed;
+        volatile int other;
+        volatile int errors;
+        volatile int exitCode;
+
+        synchronized void count(@NotNull Status status) {
+            switch (status) {
+                case VERIFIED -> verified++;
+                case FAILED -> failed++;
+                default -> other++;
+            }
+        }
+    }
+
+    private static void notifySummary(@NotNull Project project, @NotNull String title, @NotNull Summary summary) {
+        int methods = summary.verified + summary.failed + summary.other;
+        String content;
+        NotificationType type;
+        if (summary.errors > 0 || methods == 0 && summary.exitCode != 0) {
+            content = "OpenJML found errors, so it did not verify " + title + ".";
+            type = NotificationType.ERROR;
+        } else if (methods == 0) {
+            content = "OpenJML found no methods to verify in " + title + ".";
+            type = NotificationType.INFORMATION;
+        } else if (summary.verified == methods) {
+            content = methods == 1 ? "The method is verified." : "All " + methods + " methods are verified.";
+            type = NotificationType.INFORMATION;
+        } else {
+            content = summary.verified + " of " + methods + (methods == 1 ? " method is" : " methods are") + " verified";
+            if (summary.failed > 0) content += ", OpenJML could not prove " + summary.failed;
+            if (summary.other > 0) content += ", " + summary.other + " did not finish";
+            content += ".";
+            type = NotificationType.WARNING;
+        }
+        Notification notification = NotificationGroupManager.getInstance().getNotificationGroup(OpenJmlNotifications.GROUP)
+                .createNotification("OpenJML: " + title, content, type);
+        notification.addAction(NotificationAction.createSimple("Show output", () -> showOutput(project, title)));
+        notification.notify(project);
+    }
+
+    /**
+     * Shows the output of the last verification in the Run tool window, with links to the source
+     */
+    private static void showOutput(@NotNull Project project, @NotNull String title) {
+        ConsoleView console = TextConsoleBuilderFactory.getInstance().createBuilder(project).getConsole();
+        console.print(EscResults.getInstance(project).output(), ConsoleViewContentType.NORMAL_OUTPUT);
+        RunContentDescriptor descriptor = new RunContentDescriptor(console, null, console.getComponent(),
+                "OpenJML: " + title);
+        RunContentManager.getInstance(project).showRunContent(DefaultRunExecutor.getRunExecutorInstance(), descriptor);
+    }
+
+    private static void restart(@NotNull Project project, @NotNull VirtualFile file) {
+        PsiFile psiFile = PsiManager.getInstance(project).findFile(file);
+        if (psiFile != null) DaemonCodeAnalyzer.getInstance(project).restart(psiFile);
+    }
+
+    /**
+     * @return the source folders in which OpenJML finds the classes that the verified code uses, and their
+     * specifications
+     */
+    static @NotNull List<Path> sourceRoots(@NotNull Collection<Module> modules, boolean tests) {
+        List<Path> roots = new ArrayList<>();
+        for (Module module : modules) {
+            ModuleRootManager rootManager = ModuleRootManager.getInstance(module);
+            List<VirtualFile> moduleRoots = new ArrayList<>(rootManager.getSourceRoots(JavaSourceRootType.SOURCE));
+            if (tests) moduleRoots.addAll(rootManager.getSourceRoots(JavaSourceRootType.TEST_SOURCE));
+            for (VirtualFile root : moduleRoots) {
+                if (root.isInLocalFileSystem()) roots.add(root.toNioPath());
+            }
+        }
+        return roots;
+    }
+
+    /**
+     * @return the libraries that the code uses; the classes of the project come from the source folders
+     */
+    static @NotNull List<String> classPath(@NotNull Module module, boolean tests) {
+        OrderEnumerator enumerator = OrderEnumerator.orderEntries(module).recursively().withoutSdk().librariesOnly();
+        if (!tests) enumerator = enumerator.productionOnly();
+        return enumerator.classes().getPathsList().getPathList();
+    }
+
+    /**
+     * @param methodName the name of the method to verify, for --method, or null for all methods in the file
+     * @return the arguments for OpenJML
+     */
+    static @NotNull List<String> arguments(@NotNull Project project, @NotNull List<Path> sourceRoots,
+                                           @NotNull List<String> classPath, @NotNull Path file,
+                                           @NotNull Charset encoding, @Nullable String methodName) {
+        List<String> arguments = new ArrayList<>(List.of("--esc", "--progress"));
+        if (methodName != null) arguments.add("--method=" + methodName);
+        // OpenJML reads options from openjml.properties in the directory it runs in, which for OpenJML on the
+        // command line is usually the project
+        Path properties = projectProperties(project);
+        if (properties != null) arguments.addAll(List.of("--properties", properties.toString()));
+        if (!sourceRoots.isEmpty()) {
+            arguments.addAll(List.of("-sourcepath", String.join(File.pathSeparator, sourceRoots.stream().map(Path::toString).toList())));
+        }
+        if (!classPath.isEmpty()) arguments.addAll(List.of("-classpath", String.join(File.pathSeparator, classPath)));
+        arguments.addAll(List.of("-encoding", encoding.name(), file.toString()));
+        return arguments;
+    }
+
+    private static @Nullable Path projectProperties(@NotNull Project project) {
+        if (project.getBasePath() == null) return null;
+        try {
+            Path properties = Path.of(project.getBasePath(), "openjml.properties");
+            return Files.isRegularFile(properties) ? properties : null;
+        } catch (InvalidPathException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Shows a message of OpenJML in the editor
+     */
+    static void place(@NotNull Project project, @NotNull Diagnostic diagnostic, @NotNull VirtualFile verifiedFile,
+                      @NotNull Snapshot snapshot, @NotNull List<Path> sourceRoots, long run) {
+        VirtualFile file;
+        try {
+            file = LocalFileSystem.getInstance().findFileByNioFile(Path.of(diagnostic.file()));
+        } catch (InvalidPathException e) {
+            return;
+        }
+        if (file == null) return;
+        Document document = FileDocumentManager.getInstance().getDocument(file);
+        if (document == null) return;
+        int offset = file.equals(verifiedFile) ? snapshot.offset(diagnostic.line(), diagnostic.column())
+                : Snapshot.offset(document, diagnostic.line(), diagnostic.column());
+        if (offset >= 0) add(project, file, document, offset, diagnostic, sourceRoots, run);
+    }
+
+    /**
+     * Shows a message of OpenJML in the editor, at an offset in the current document
+     */
+    static void add(@NotNull Project project, @NotNull VirtualFile file, @NotNull Document document, int offset,
+                    @NotNull Diagnostic diagnostic, @NotNull List<Path> sourceRoots, long run) {
+        PsiDocumentManager.getInstance(project).commitDocument(document);
+        PsiFile psiFile = PsiManager.getInstance(project).findFile(file);
+        TextRange range = psiFile == null ? null : range(psiFile, document, offset);
+        if (range == null) {
+            int lineEnd = document.getLineEndOffset(document.getLineNumber(offset));
+            range = new TextRange(offset, Math.min(offset + 1, lineEnd));
+        }
+        RangeMarker marker = document.createRangeMarker(range);
+        String method = diagnostic.method() == null ? null : EscOutput.key(diagnostic.method());
+        EscResults.getInstance(project).add(new EscResults.Problem(file, marker, severity(diagnostic.kind()),
+                message(diagnostic.message(), sourceRoots), method, run));
+    }
+
+    private static @NotNull HighlightSeverity severity(@NotNull String kind) {
+        return switch (kind) {
+            case "error" -> HighlightSeverity.ERROR;
+            case "note" -> HighlightSeverity.WEAK_WARNING;
+            default -> HighlightSeverity.WARNING;
+        };
+    }
+
+    /**
+     * @return OpenJML's message, with the paths of files relative to their source folder, as in
+     * "(Postcondition: demo\Account.java:24:)"
+     */
+    static @NotNull String message(@NotNull String message, @NotNull List<Path> sourceRoots) {
+        for (Path root : sourceRoots) {
+            message = message.replace(root + "\\", "").replace(root + "/", "");
+        }
+        return message;
+    }
+
+    /**
+     * @return the part of the code that a message at the offset is about: the largest element that starts there and
+     * ends on the same line, such as the statement at a "return", or the clause at an "ensures" in JML
+     */
+    static @Nullable TextRange range(@NotNull PsiFile file, @NotNull Document document, int offset) {
+        int lineEnd = document.getLineEndOffset(document.getLineNumber(offset));
+        InjectedLanguageManager injection = InjectedLanguageManager.getInstance(file.getProject());
+        PsiElement element = injection.findInjectedElementAt(file, offset);
+        if (element == null) element = file.findElementAt(offset);
+        if (element == null || element instanceof PsiWhiteSpace) return null;
+        TextRange range = hostRange(injection, element);
+        if (range.getStartOffset() != offset) return null;
+        for (PsiElement parent = element.getParent(); parent != null && !(parent instanceof PsiFile); parent = parent.getParent()) {
+            TextRange parentRange = hostRange(injection, parent);
+            if (parentRange.getStartOffset() != offset || parentRange.getEndOffset() > lineEnd) break;
+            range = parentRange;
+        }
+        return range.isEmpty() ? null : range;
+    }
+
+    private static @NotNull TextRange hostRange(@NotNull InjectedLanguageManager injection, @NotNull PsiElement element) {
+        return injection.injectedToHost(element, element.getTextRange());
+    }
+
+    /**
+     * The lines of a document when OpenJML started, so that a line and column that OpenJML reports can be found
+     * after the document has been edited
+     */
+    static final class Snapshot {
+        private final Document document;
+        private final List<RangeMarker> lines = new ArrayList<>();
+        private final List<String> texts = new ArrayList<>();
+
+        Snapshot(@NotNull Document document) {
+            this.document = document;
+            for (int line = 0; line < document.getLineCount(); line++) {
+                TextRange range = new TextRange(document.getLineStartOffset(line), document.getLineEndOffset(line));
+                lines.add(document.createRangeMarker(range));
+                texts.add(document.getText(range));
+            }
+        }
+
+        /**
+         * @param line   a line, starting at 1
+         * @param column a column, starting at 0, or -1 for the start of the code on the line
+         * @return the offset of the place now, or -1 if the line has changed
+         */
+        int offset(int line, int column) {
+            if (line < 1 || line > lines.size()) return -1;
+            RangeMarker marker = lines.get(line - 1);
+            String text = texts.get(line - 1);
+            if (!marker.isValid() || !document.getText(marker.getTextRange()).equals(text)) return -1;
+            return marker.getStartOffset() + column(text, column);
+        }
+
+        /**
+         * @return the offset of the place in the document as it is now
+         */
+        static int offset(@NotNull Document document, int line, int column) {
+            if (line < 1 || line > document.getLineCount()) return -1;
+            int start = document.getLineStartOffset(line - 1);
+            String text = document.getText(new TextRange(start, document.getLineEndOffset(line - 1)));
+            return start + column(text, column);
+        }
+
+        private static int column(@NotNull String line, int column) {
+            if (column < 0) {
+                // the start of the code
+                int start = 0;
+                while (start < line.length() && Character.isWhitespace(line.charAt(start))) start++;
+                return start;
+            }
+            return Math.min(column, line.length());
+        }
+
+        void dispose() {
+            lines.forEach(RangeMarker::dispose);
+        }
+    }
+}

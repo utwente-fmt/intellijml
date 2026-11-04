@@ -16,33 +16,45 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 /**
- * Notifications about the OpenJML installation that Run with JML Checks needs
+ * Notifications of the plugin, such as about the OpenJML installation that Run with JML Checks and Verify with
+ * OpenJML need
  */
-final class OpenJmlNotifications {
-    private static final String GROUP = "IntelliJML";
+public final class OpenJmlNotifications {
+    public static final String GROUP = "IntelliJML";
 
     private OpenJmlNotifications() {
     }
 
     /**
      * Tells that OpenJML is needed, with actions to download it or to choose an installation in the settings
+     *
+     * @param feature what needs OpenJML, such as "Run with JML Checks"
+     * @param purpose what OpenJML does for it, as a sentence
      */
-    static void notInstalled(@NotNull Project project) {
+    public static void notInstalled(@NotNull Project project, @NotNull String feature, @NotNull String purpose) {
         Notification notification = NotificationGroupManager.getInstance().getNotificationGroup(GROUP).createNotification(
-                "Run with JML Checks needs OpenJML",
-                "OpenJML compiles the program with checks of its JML specifications. Download OpenJML " +
-                        OpenJml.VERSION + " (" + OpenJmlInstaller.SIZE + "), or choose an installation in the settings.",
+                feature + " needs OpenJML",
+                purpose + " Download OpenJML " + OpenJml.VERSION + " (" + OpenJmlInstaller.SIZE +
+                        "), or choose an installation in the settings.",
                 NotificationType.INFORMATION);
-        notification.addAction(NotificationAction.createSimpleExpiring("Download OpenJML", () -> download(project)));
+        notification.addAction(NotificationAction.createSimpleExpiring("Download OpenJML", () -> download(project, feature)));
         notification.addAction(NotificationAction.createSimple("Settings",
                 () -> ShowSettingsUtil.getInstance().showSettingsDialog(project, Configuration.class)));
         notification.notify(project);
     }
 
     /**
-     * Downloads OpenJML in the background, and uses it for Run with JML Checks
+     * Shows an error
      */
-    private static void download(@NotNull Project project) {
+    public static void error(@NotNull Project project, @NotNull String title, @NotNull String content) {
+        NotificationGroupManager.getInstance().getNotificationGroup(GROUP)
+                .createNotification(title, content, NotificationType.ERROR).notify(project);
+    }
+
+    /**
+     * Downloads OpenJML in the background, and uses it from then on
+     */
+    private static void download(@NotNull Project project, @NotNull String feature) {
         new Task.Backgroundable(project, "Downloading OpenJML", true) {
             private Path installation;
 
@@ -59,16 +71,14 @@ final class OpenJmlNotifications {
             public void onSuccess() {
                 JMLApplicationSettings.getInstance().OPENJML_PATH = installation.toString();
                 NotificationGroupManager.getInstance().getNotificationGroup(GROUP).createNotification(
-                        "OpenJML is installed", "Run with JML Checks again to run the program with JML checks.",
+                        "OpenJML is installed", feature + " again to use it.",
                         NotificationType.INFORMATION).notify(project);
             }
 
             @Override
             public void onThrowable(@NotNull Throwable error) {
                 Throwable cause = error.getCause() != null ? error.getCause() : error;
-                NotificationGroupManager.getInstance().getNotificationGroup(GROUP).createNotification(
-                        "OpenJML could not be downloaded", String.valueOf(cause.getMessage()),
-                        NotificationType.ERROR).notify(project);
+                error(project, "OpenJML could not be downloaded", String.valueOf(cause.getMessage()));
             }
         }.queue();
     }

@@ -14,6 +14,9 @@ import javax.swing.*;
  */
 public class JMLRacExecutor extends Executor {
     public static final String ID = "RunWithJMLChecks";
+    public static final String TEXT = "Run with JML Checks";
+    // what OpenJML does for Run with JML Checks
+    public static final String PURPOSE = "OpenJML compiles the program with checks of its JML specifications.";
 
     private static final Icon ICON = IconLoader.getIcon("/Icons/runWithJml.svg", JMLRacExecutor.class);
 
@@ -44,7 +47,7 @@ public class JMLRacExecutor extends Executor {
 
     @Override
     public @NotNull String getActionName() {
-        return "Run with JML Checks";
+        return TEXT;
     }
 
     @Override
@@ -54,7 +57,7 @@ public class JMLRacExecutor extends Executor {
 
     @Override
     public @NotNull String getStartActionText() {
-        return "Run with JML Checks";
+        return TEXT;
     }
 
     @Override

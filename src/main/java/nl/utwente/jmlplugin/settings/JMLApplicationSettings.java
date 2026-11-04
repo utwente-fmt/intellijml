@@ -15,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
 @State(name = "JMLPluginSettings", storages = @Storage("other.xml"))
 public class JMLApplicationSettings implements PersistentStateComponent<JMLApplicationSettings> {
 
-    // the folder of the OpenJML installation for Run with JML Checks, or empty
+    // the folder of the OpenJML installation for Run with JML Checks and Verify with OpenJML, or empty
     public String OPENJML_PATH;
     public boolean RAINBOW_MODE;
 

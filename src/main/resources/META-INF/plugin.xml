@@ -43,6 +43,10 @@
         <programRunner implementation="nl.utwente.jmlplugin.rac.JMLRacProgramRunner"/>
         <consoleFilterProvider implementation="nl.utwente.jmlplugin.rac.JMLRacConsoleFilterProvider"/>
         <notificationGroup id="IntelliJML" displayType="BALLOON"/>
+        <!-- Verify with OpenJML: static checking by OpenJML -->
+        <externalAnnotator language="JAVA" implementationClass="nl.utwente.jmlplugin.esc.EscAnnotator"/>
+        <codeInsight.lineMarkerProvider language="JAVA"
+                                        implementationClass="nl.utwente.jmlplugin.esc.EscLineMarkerProvider"/>
         <completion.confidence language="JML"
                                implementationClass="nl.utwente.jmlplugin.completion.JMLCompletionConfidence"
                                id="asTrue" order="first"/>
@@ -57,4 +61,21 @@
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLDocumentationProvider"
                                     order="first"/>
     </extensions>
+
+    <actions>
+        <group id="IntelliJML.Verify">
+            <separator/>
+            <action id="IntelliJML.VerifyMethod" class="nl.utwente.jmlplugin.esc.VerifyMethodAction"
+                    text="Verify Method with OpenJML" icon="/Icons/verify.svg"
+                    description="Lets OpenJML try to prove that the method at the caret meets its JML specification"/>
+            <action id="IntelliJML.VerifyFile" class="nl.utwente.jmlplugin.esc.VerifyFileAction"
+                    text="Verify File with OpenJML"
+                    description="Lets OpenJML try to prove that the methods in the file meet their JML specifications"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="CodeMenu" anchor="last"/>
+        </group>
+        <reference ref="IntelliJML.VerifyFile">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </reference>
+    </actions>
 </idea-plugin>
