@@ -4,32 +4,19 @@ Bigint.java:8: plugin | Reference cannot be resolved
 Bigint.java:9: plugin | Reference cannot be resolved
 LemmaExample.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'old'
 LemmaExample.java:6: plugin | Reference cannot be resolved
-LemmaExample.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got '/'
 LemmaExample.java:10: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'use'
 LemmaExample.java:15: plugin | Method specifications are not allowed in a class body
 LemmaExample.java:16: plugin | Method specifications are not allowed in a class body
 LemmaExample.java:17: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
 MinMaxExample.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-MinMaxExample.java:7: plugin | This operator cannot be applied to type boolean and type int
-MinMaxExample.java:11: plugin | This operator cannot be applied to type boolean and type int
-MinMaxExample.java:17: plugin | This operator cannot be applied to type boolean and type int
-MinMaxExample.java:18: plugin | This operator cannot be applied to type boolean and type int
-MinMaxExample.java:19: plugin | This operator cannot be applied to type boolean and type int
 MinMaxExample.java:23: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-MinMaxExample.java:26: plugin | This operator cannot be applied to type boolean and type int
-MinMaxExample.java:30: plugin | This operator cannot be applied to type boolean and type int
-MinMaxExample.java:36: plugin | This operator cannot be applied to type boolean and type int
-MinMaxExample.java:37: plugin | This operator cannot be applied to type boolean and type int
-MinMaxExample.java:38: plugin | This operator cannot be applied to type boolean and type int
 MyBox.java:23: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 MyBox.java:30: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-MyBox.java:31: plugin | Modifier, at-sign, ghost, invariant or semicolon expected, got '/'
-MyBox.java:38: plugin | Modifier, at-sign, ghost, invariant or semicolon expected, got '/'
-MyBox.java:49: plugin | Semicolon expected after this token, got 'pure'
+MyBox.java:31: plugin | The helper modifier is only allowed when the method is private or pure
+MyBox.java:38: plugin | The helper modifier is only allowed when the method is private or pure
 MyBox.java:52: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
 MyBox.java:54: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
 MyBox.java:55: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
-MyBox.java:60: plugin | Semicolon expected after this token
 Polygon.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
 Polygon.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
 Polygon.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
@@ -66,9 +53,6 @@ Polygon.java:76: plugin | Class invariant, ghost declaration, in-method specific
 Polygon.java:81: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
 Polygon.java:83: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 Polygon.java:90: plugin | Reference cannot be resolved
-Polygon.java:102: plugin | Semicolon expected after this token
-Polygon.java:106: plugin | Semicolon expected after this token
-Polygon.java:111: plugin | Semicolon expected after this token
 Polygon3.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
 Polygon3.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
 Polygon3.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
@@ -88,9 +72,6 @@ Polygon3.java:42: plugin | Reference cannot be resolved
 Polygon3.java:47: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'represents'
 Polygon3.java:48: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'represents'
 Polygon3.java:58: plugin | Reference cannot be resolved
-Polygon3.java:70: plugin | Semicolon expected after this token
-Polygon3.java:74: plugin | Semicolon expected after this token
-Polygon3.java:79: plugin | Semicolon expected after this token
 PolygonMM.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
 PolygonMM.java:6: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 PolygonMM.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
@@ -121,80 +102,37 @@ PolygonMM.java:91: plugin | Class invariant, ghost declaration, in-method specif
 PolygonMM.java:105: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 PolygonMM.java:109: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
 PolygonMM.java:111: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-PolygonMM.java:130: plugin | Semicolon expected after this token
-PolygonMM.java:134: plugin | Semicolon expected after this token
-PolygonMM.java:139: plugin | Semicolon expected after this token
 Real.java:4: plugin | Unknown keyword \real, or a JML keyword that this plugin does not support
 Real.java:5: plugin | Unknown keyword \real, or a JML keyword that this plugin does not support
 Real.java:8: plugin | Reference cannot be resolved
 Real.java:9: plugin | Reference cannot be resolved
 Real.java:10: plugin | Reference cannot be resolved
-T_arithmetic1.java:5: plugin | Semicolon expected after this token
 T_arithmetic5.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'code_java_math'
 T_arithmetic5.java:6: plugin | Unknown keyword \java_math, or a JML keyword that this plugin does not support
-T_assert2.java:12: plugin | Semicolon expected after this token
 T_assert4.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
-T_assert4.java:12: plugin | Semicolon expected after this token, got 'assert'; Semicolon expected after this token
-T_assume1.java:7: plugin | This operator cannot be applied to type boolean and type int
-T_assume1.java:11: plugin | This operator cannot be applied to type boolean and type int
-T_assume1Ans.java:5: plugin | This operator cannot be applied to type boolean and type int
-T_assume1Ans.java:8: plugin | This operator cannot be applied to type boolean and type int
-T_assume1Ans.java:9: plugin | This operator cannot be applied to type boolean and type int
-T_assume1Ans.java:11: plugin | This operator cannot be applied to type boolean and type int
-T_assume1Ans.java:14: plugin | This operator cannot be applied to type boolean and type int
-T_assume2.java:5: plugin | Semicolon expected after this token
-T_assume3.java:6: plugin | Semicolon expected after this token, got 'assume'; Semicolon expected after this token
 T_BVMult.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'code_java_math'
 T_BVRoundUp.java:8: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'code_java_math'
-T_CallerCallee.java:21: plugin | Semicolon expected after this token
 T_choose.java:4: plugin | Unknown keyword \choose, or a JML keyword that this plugin does not support
 T_choose.java:5: plugin | Unknown keyword \choose, or a JML keyword that this plugin does not support
 T_constraint.java:2: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'code_java_math'
 T_constraint.java:6: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'initially'
 T_constraint.java:7: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'constraint'
 T_dowhile.java:7: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
-T_dowhile.java:8: plugin | This operator cannot be applied to type boolean and type int
-T_dowhile.java:15: plugin | This operator cannot be applied to type boolean and type int
 T_Exception1b.java:12: plugin | Reference(s) to one or more exceptions expected, got '\nothing'
 T_Feasibility2.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reachable'
 T_Feasibility3.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
 T_Feasibility3.java:10: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'unreachable'
-T_Feasibility4.java:5: plugin | Modifier, at-sign, ghost, invariant or semicolon expected, got '/'
-T_foreach.java:4: plugin | This operator cannot be applied to type boolean and type int
 T_foreach.java:6: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
 T_foreach.java:7: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
 T_foreach.java:9: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
-T_forloop.java:6: plugin | This operator cannot be applied to type boolean and type int
 T_forloop.java:12: plugin | A quantified expression should be inside parentheses, including the keyword
-T_frame1.java:24: plugin | Semicolon expected after this token
-T_halt1.java:7: plugin | Semicolon expected after this token
-T_halt1.java:9: plugin | Semicolon expected after this token
 T_halt2.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'halt'
 T_halt2.java:10: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'halt'
-T_halt3.java:7: plugin | Semicolon expected after this token
 T_halt3.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'halt'
-T_halt3.java:10: plugin | Semicolon expected after this token
 T_initially1.java:7: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'initially'
 T_initially2.java:7: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'initially'
-T_LoopBodyError.java:5: plugin | Semicolon expected after this token
-T_LoopBodyError.java:6: plugin | This operator cannot be applied to type boolean and type int
 T_LoopBodyError.java:11: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
-T_LoopBodyError.java:13: plugin | This operator cannot be applied to type boolean and type int
-T_LoopDecreasesError.java:6: plugin | This operator cannot be applied to type boolean and type int
-T_LoopDecreasesError.java:8: plugin | Semicolon expected after this token
-T_LoopDecreasesError.java:12: plugin | This operator cannot be applied to type boolean and type int
-T_LoopInitError.java:5: plugin | Semicolon expected after this token
-T_LoopInitError.java:6: plugin | This operator cannot be applied to type boolean and type int
-T_LoopInitError.java:12: plugin | This operator cannot be applied to type boolean and type int
-T_LoopNegativeError.java:7: plugin | This operator cannot be applied to type boolean and type int
-T_LoopNegativeError.java:9: plugin | Semicolon expected after this token
-T_LoopNegativeError.java:13: plugin | This operator cannot be applied to type boolean and type int
-T_NonNullArrayInit.java:16: plugin | This operator cannot be applied to type boolean and type int
-T_NonNullArrayInit.java:20: plugin | This operator cannot be applied to type boolean and type int
 T_NonNullArrayInit.java:21: plugin | Modifiers are not allowed here
-T_NonNullArrayInit.java:22: plugin | This operator cannot be applied to type boolean and type int
-T_NonNullArrayInitFullJML.java:10: plugin | This operator cannot be applied to type boolean and type int
-T_NonNullArrayInitFullJML.java:14: plugin | This operator cannot be applied to type boolean and type int
 T_NonNullArrayInitFullJML.java:18: plugin | Modifiers are not allowed here
 T_NullableList.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
 T_NullableList.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
@@ -207,19 +145,9 @@ T_NullableListImpl.java:6: plugin | Class invariant, ghost declaration, in-metho
 T_Old.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'old'
 T_Old.java:6: plugin | Reference cannot be resolved
 T_Old.java:7: plugin | Reference cannot be resolved
-T_Old.java:15: plugin | Semicolon expected after this token
-T_order1.java:2: plugin | Modifier, at-sign, ghost, invariant or semicolon expected, got '/'
-T_order1.java:5: plugin | Semicolon expected after this token
-T_order2.java:2: plugin | Modifier, at-sign, ghost, invariant or semicolon expected, got '/'
+T_Old.java:15: plugin | Method could not be resolved, maybe the parameters do not correspond?
 T_Polygon.java:6: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-T_Polygon.java:18: plugin | This operator cannot be applied to type boolean and type int
 T_Polygon.java:26: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-T_PolyTest.java:6: plugin | Semicolon expected after this token
-T_PolyTest.java:7: plugin | Semicolon expected after this token
-T_PolyTest.java:12: plugin | Semicolon expected after this token
-T_PolyTest.java:13: plugin | Semicolon expected after this token
-T_PolyTest2.java:7: plugin | Semicolon expected after this token
-T_PolyTest2.java:8: plugin | Semicolon expected after this token
 T_PureMethod1.java:20: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'assigns'
 T_PureMethod1.java:25: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 T_PureMethod2.java:21: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'assigns'
@@ -229,16 +157,8 @@ T_PureMethod3.java:22: plugin | Class invariant, ghost declaration, in-method sp
 T_PureMethod3.java:26: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 T_PureMethod3.java:32: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 T_PureMethod4.java:6: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-T_PureMethod4.java:12: plugin | Semicolon expected after this token
 T_PureMethod5.java:8: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-T_PureMethod5.java:14: plugin | Semicolon expected after this token
-T_PureMethod5.java:18: plugin | Semicolon expected after this token
-T_Rac1.java:5: plugin | Semicolon expected after this token
 T_RacExit.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'diverges'
-T_RacExit.java:6: plugin | Semicolon expected after this token
-T_RacOutput.java:10: plugin | Semicolon expected after this token
-T_requires3.java:5: plugin | Semicolon expected after this token
-T_requires3.java:6: plugin | Semicolon expected after this token
 T_show2.java:10: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
 T_show2a.java:3: plugin | Unknown keyword \lbl, or a JML keyword that this plugin does not support
 T_show3.java:3: plugin | Class invariants are not allowed above a field, add a newline after the comment
@@ -246,7 +166,6 @@ T_show3.java:9: plugin | Class invariant, ghost declaration, in-method specifica
 T_show4.java:3: plugin | Class invariants are not allowed above a field, add a newline after the comment
 T_show4.java:8: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
 T_SpecifyingExceptionsNone.java:4: plugin | Reference(s) to one or more exceptions expected, got '\nothing'
-T_split1.java:3: plugin | Semicolon expected after this token
 T_split1.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'split'
 T_split1.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'split'
 T_split1.java:17: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
@@ -254,9 +173,6 @@ T_Visibility3.java:3: plugin | Class invariant, ghost declaration, in-method spe
 T_Visibility3.java:5: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'model'
 T_Visibility3.java:6: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'represents'
 T_Visibility3.java:8: plugin | Reference cannot be resolved
-T_WellDefined1.java:5: plugin | Semicolon expected after this token
-T_WellDefined3.java:5: plugin | Semicolon expected after this token
 T_whileloop.java:7: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
 T_whileloop.java:8: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
 T_whileloop.java:10: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
-T_whileloop.java:16: plugin | This operator cannot be applied to type boolean and type int

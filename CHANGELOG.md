@@ -69,6 +69,9 @@
 ### Fixed
 - A comment inside JML, such as `//@ assert x > 0; // why` or `//@ pure // no side effects`, gave a syntax error.
   As in OpenJML, `//` starts a comment to the end of the line, also in a `/*@ ... @*/` comment.
+- Chained comparisons such as `0 <= i < a.length`, which mean `0 <= i && i < a.length`, gave "This operator cannot
+  be applied to type boolean and type int". As in OpenJML, comparisons in the same direction can be chained, and
+  `0 <= i > j` gives "Cannot chain comparisons that are in different directions".
 - `//@ assert`, `assume` and other statements right above a local variable declaration gave "In-method
   specifications are not allowed above a variable declaration"
 - Optimize Imports removed imports that are only used in JML, such as `import java.util.ArrayList;` for

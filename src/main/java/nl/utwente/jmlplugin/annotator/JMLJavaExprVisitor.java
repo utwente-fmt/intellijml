@@ -248,6 +248,17 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         if (operands.length > 0) {
             PsiExpression lOp = operands[0];
             if (!typeErrorGuard(false, lOp)) return;
+            // JML chains comparisons in the same direction, as in "0 <= i < n", which means "0 <= i && i < n": the
+            // comparison continues from the last operand of the one before it, unless that is in parentheses
+            if (direction(tokenType) != 0 && lOp instanceof PsiPolyadicExpression previous
+                    && direction(previous.getOperationTokenType()) != 0 && operands.length > 1) {
+                if (direction(previous.getOperationTokenType()) != direction(tokenType)) {
+                    annotateError(expr.getTokenBeforeOperand(operands[1]), ErrorMessages.CHAIN_DIRECTIONS);
+                    return;
+                }
+                PsiExpression[] previousOperands = previous.getOperands();
+                lOp = previousOperands[previousOperands.length - 1];
+            }
             // for each pair of operands that are next to each other, check whether the types are allowed
             for (int i = 1; i < operands.length; i++) {
                 PsiExpression rOp = operands[i];
@@ -262,6 +273,15 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
             annotateError(expr, ErrorMessages.INVALID_EXPR);
         }
 
+    }
+
+    /**
+     * @return 1 for &lt; and &lt;=, -1 for &gt; and &gt;=, and 0 for other operators
+     */
+    private static int direction(IElementType operator) {
+        if (operator == JavaTokenType.LT || operator == JavaTokenType.LE) return 1;
+        if (operator == JavaTokenType.GT || operator == JavaTokenType.GE) return -1;
+        return 0;
     }
 
     /**

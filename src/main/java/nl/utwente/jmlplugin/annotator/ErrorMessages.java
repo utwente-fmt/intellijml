@@ -48,6 +48,7 @@ public final class ErrorMessages {
 
     // Type error messages
     public static final String INVALID_EXPR = "Not a valid expression";
+    public static final String CHAIN_DIRECTIONS = "Cannot chain comparisons that are in different directions";
     public static final String INCORRECT_REFERENCE = "This is not a correct reference";
     public static final String ASSIGNABLE_ARRAY_ONLY = "You can only use '[*]' on arrays";
     public static final String ASSIGNABLE_CLASS_ONLY = "You can only use '.*' on classes and interfaces";
