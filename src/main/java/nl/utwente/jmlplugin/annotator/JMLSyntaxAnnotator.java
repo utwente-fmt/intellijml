@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin.annotator;
 
+import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.application.ApplicationManager;
@@ -9,6 +10,7 @@ import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiErrorElement;
+import com.intellij.psi.PsiWhiteSpace;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.util.PsiUtil;
 import nl.utwente.jmlplugin.psi.*;
@@ -100,7 +102,27 @@ public class JMLSyntaxAnnotator {
             //noinspection DialogTitleCapitalization
             errorString = errorString.replace("expected", "expected after this token");
         }
-        holder.newAnnotation(HighlightSeverity.ERROR, errorString).range(range != null ? range : element.getTextRange()).create();
+        AnnotationBuilder builder = holder.newAnnotation(HighlightSeverity.ERROR, errorString)
+                .range(range != null ? range : element.getTextRange());
+        JMLCommentFix fix = insertSemicolonFix(element);
+        if (fix != null) builder = builder.withFix(fix);
+        builder.create();
+    }
+
+    /**
+     * @return a fix that inserts the semicolon after the token before the error, if only a semicolon is expected
+     */
+    private static JMLCommentFix insertSemicolonFix(PsiErrorElement element) {
+        if (!element.getErrorDescription().startsWith("semicolon expected")) return null;
+        PsiElement previous = prevLeaf(element);
+        // the @ at the start of a line is not part of the clause
+        while (previous != null && (previous instanceof PsiWhiteSpace || previous.getTextLength() == 0
+                || JMLTypeAnnotatorUtil.isAtSign(previous))) {
+            previous = prevLeaf(previous);
+        }
+        if (previous == null) return null;
+        return JMLCommentFix.create(element, TextRange.from(previous.getTextRange().getEndOffset(), 0), ";",
+                "Insert ';'", "Insert semicolon");
     }
 
     // a backslash keyword, possibly after whitespace

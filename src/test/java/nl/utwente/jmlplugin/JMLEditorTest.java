@@ -1,6 +1,7 @@
 package nl.utwente.jmlplugin;
 
 import com.intellij.codeInsight.actions.OptimizeImportsProcessor;
+import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.injected.editor.EditorWindow;
 import com.intellij.lang.ImportOptimizer;
 import com.intellij.lang.LanguageImportStatements;
@@ -10,6 +11,7 @@ import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
 import nl.utwente.jmlplugin.editor.JMLImportOptimizer;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -226,6 +228,79 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
                 class A {
                     //@ requires x > 0;
                     <caret>
+                    void m(int x) {}
+                }
+                """);
+    }
+
+    /**
+     * Runs the quick fix with the given text, which must be in the file, and checks the result
+     */
+    private void quickFix(String before, String fixText, String after) {
+        myFixture.configureByText("A.java", before);
+        List<IntentionAction> fixes = myFixture.getAllQuickFixes();
+        IntentionAction fix = fixes.stream().filter(f -> f.getText().equals(fixText)).findFirst().orElse(null);
+        assertNotNull(fixes.stream().map(IntentionAction::getText).toList().toString(), fix);
+        myFixture.launchAction(fix);
+        Editor editor = myFixture.getEditor() instanceof EditorWindow window ? window.getDelegate() : myFixture.getEditor();
+        assertEquals(after, editor.getDocument().getText());
+    }
+
+    public void testInsertSemicolon() {
+        quickFix("""
+                class A {
+                    //@ requires x > 0
+                    void m(int x) {}
+                }
+                """, "Insert ';'", """
+                class A {
+                    //@ requires x > 0;
+                    void m(int x) {}
+                }
+                """);
+    }
+
+    public void testInsertSemicolonBeforeNextClause() {
+        quickFix("""
+                class A {
+                    /*@ requires x > 0
+                      @ ensures true;
+                      @*/
+                    void m(int x) {}
+                }
+                """, "Insert ';'", """
+                class A {
+                    /*@ requires x > 0;
+                      @ ensures true;
+                      @*/
+                    void m(int x) {}
+                }
+                """);
+    }
+
+    public void testRemoveWhitespaceBeforeAt() {
+        quickFix("""
+                class A {
+                    // @ requires x > 0;
+                    void m(int x) {}
+                }
+                """, "Remove whitespace before '@'", """
+                class A {
+                    //@ requires x > 0;
+                    void m(int x) {}
+                }
+                """);
+    }
+
+    public void testRemoveWhitespaceBeforeAtInBlockComment() {
+        quickFix("""
+                class A {
+                    /*  @ ensures true; */
+                    void m(int x) {}
+                }
+                """, "Remove whitespace before '@'", """
+                class A {
+                    /*@ ensures true; */
                     void m(int x) {}
                 }
                 """);

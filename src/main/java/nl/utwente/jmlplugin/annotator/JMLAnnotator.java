@@ -1,6 +1,7 @@
 package nl.utwente.jmlplugin.annotator;
 
 import com.intellij.codeInsight.highlighting.HighlightErrorFilter;
+import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
 import com.intellij.lang.annotation.HighlightSeverity;
@@ -67,7 +68,11 @@ public class JMLAnnotator extends HighlightErrorFilter implements Annotator {
             }
             // if the element itself is the first @-sign, then add a weak warning
             if (element.getNode().getElementType() == JMLTypes.AT_SIGN && jmlRoot.getFirstChild().equals(element)) {
-                holder.newAnnotation(HighlightSeverity.WEAK_WARNING, ErrorMessages.WS_BEFORE_AT_SIGN).create();
+                AnnotationBuilder builder = holder.newAnnotation(HighlightSeverity.WEAK_WARNING, ErrorMessages.WS_BEFORE_AT_SIGN);
+                JMLCommentFix fix = JMLCommentFix.create(element, jmlRoot.getPrevSibling().getTextRange(), "",
+                        "Remove whitespace before '@'", "Remove whitespace before '@'");
+                if (fix != null) builder = builder.withFix(fix);
+                builder.create();
             }
             return;
         }

@@ -94,7 +94,10 @@ class JMLTypeAnnotatorUtil {
         return false;
     }
 
-    private static boolean isAtSign(PsiElement element) {
+    /**
+     * @return whether the element is an @, which is a Java token inside a Java expression
+     */
+    static boolean isAtSign(PsiElement element) {
         IElementType type = element.getNode().getElementType();
         return type == JavaTokenType.AT || type == JMLTypes.AT_SIGN;
     }

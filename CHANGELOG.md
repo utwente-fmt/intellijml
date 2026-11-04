@@ -9,6 +9,8 @@
 - Enter in a `/*@ ... @*/` comment starts the new line with an `@` below the one above it, and closes a comment
   that is not closed yet with `@*/`. Enter in the middle of a `//@` comment makes the rest a `//@` comment too.
   This replaces the live templates that Enter expanded after `@` and `;`.
+- Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in
+  `// @` or `/* @`, which makes the comment an ordinary comment instead of JML
 
 ### Changed
 - The plugin can be installed, updated and removed without restarting IntelliJ IDEA
