@@ -156,5 +156,7 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
         addTokens(invariantModifiers, results);
         //add in invariant itself
         results.addElement(LookupElementBuilder.create(INVARIANT.toString()));
+        // and ghost fields
+        results.addElement(LookupElementBuilder.create(GHOST.toString()));
     }
 }

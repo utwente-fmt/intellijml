@@ -5,7 +5,7 @@ package integrationTestData;
  */
 public class Box {
     // should not be zero or negative
-    //@ <error descr="Class invariant, in-method specification, method specification, modifiers or at-sign expected, got 'volume'">volume</error> > 0
+    //@ <error descr="Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'volume'">volume</error> > 0
     //@ spec_public
     private final float volume;
     // is the weight of the box itself plus the weight of the item in it, should not be zero or negative

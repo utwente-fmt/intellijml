@@ -232,7 +232,8 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public void testCodeBlockKeywords() {
         List<String> strings = completeIn("CodeBlockKeywords.java");
 
-        assertSameElements(strings, "assert", "assume", "maintaining", "loop_invariant", "decreases", "loop_writes");
+        assertSameElements(strings, "assert", "assume", "maintaining", "loop_invariant", "decreases", "loop_writes",
+                "ghost", "set");
     }
 
     public void testAssignableSemicolon() {
@@ -410,6 +411,12 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
         assertContainsElements(strings, "\\old()");
     }
 
+    public void testGhostVariables() {
+        List<String> strings = completeIn("GhostVariables.java");
+
+        assertContainsElements(strings, "ghostCount", "ghostTotal", "ghostLocal");
+    }
+
     public void testFresh() {
         List<String> strings = completeIn("Fresh.java");
 
@@ -433,13 +440,13 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public void testClassInvariant() {
         List<String> strings = completeIn("ClassInvariant.java");
 
-        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance");
+        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost");
     }
 
     public void testClassInvariantSemicolon() {
         List<String> strings = completeIn("ClassInvariantSemicolon.java");
 
-        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance");
+        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost");
     }
 
     public void testFieldModifiers() {

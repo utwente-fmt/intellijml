@@ -78,6 +78,15 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testGhostFields() {
+        doTest(true, true);
+    }
+
+    public void testGhostAndSet() {
+        // ghost and set are also names in expressions, as in OpenJML
+        doTest(true, true);
+    }
+
     public void testLoopSpecs() {
         // decreases and loop_writes in all spellings, also with decreasing and decreases as names
         doTest(true, true);

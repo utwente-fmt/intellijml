@@ -59,6 +59,27 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
     }
 
     /**
+     * Parses the declaration in a ghost declaration, after "ghost" and its modifiers, of the form:
+     * type identifier dims? ('=' java_expr)?
+     *
+     * @param builder the PSI tree builder
+     * @param level   the level in the tree
+     * @return true if it could be parsed
+     */
+    public static boolean parseGhostDeclarator(PsiBuilder builder, int level) {
+        PsiBuilder.Marker marker = enter_section_(builder, level, _NONE_, JMLTypes.GHOST_DECLARATOR, "type");
+        boolean correct = parseTypeName(builder, level + 1);
+        correct = correct && consumeToken(builder, JavaTokenType.IDENTIFIER);
+        correct = correct && optionalDims(builder);
+        if (correct && builder.getTokenType() == JavaTokenType.EQ) {
+            builder.advanceLexer();
+            correct = parseJavaExpression(builder, level + 1);
+        }
+        exit_section_(builder, level, marker, correct, false, null);
+        return correct;
+    }
+
+    /**
      * Skips the at-signs at the start of continuation lines, such as in lists that are spread over several lines.
      * Unlike AT_SIGN* in the grammar, this does not add "at-sign" to the expected tokens in error messages.
      *

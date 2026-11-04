@@ -4,6 +4,7 @@ import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.JavaCompletionContributor;
+import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.PsiVariableEx;
@@ -13,6 +14,7 @@ import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.util.IncorrectOperationException;
 import com.intellij.util.ProcessingContext;
 import nl.utwente.jmlplugin.annotator.CommentPosition;
+import nl.utwente.jmlplugin.annotator.Ghosts;
 import nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,6 +30,25 @@ import static nl.utwente.jmlplugin.completion.JMLCompletionUtils.*;
  */
 
 public class JMLJavaIdentifierCompletionProvider extends CompletionProvider<CompletionParameters> {
+
+    /**
+     * Fills in the ghost variables that can be used here: the ghost locals declared before and the ghost fields
+     *
+     * @param parameters - completion context.
+     * @param result     - completion results holder.
+     */
+    private static void fillGhostVariables(@NotNull CompletionParameters parameters, @NotNull CompletionResultSet result) {
+        PsiElement position = parameters.getPosition();
+        PsiComment comment = PsiTreeUtil.getContextOfType(position, PsiComment.class);
+        if (comment == null) return;
+        for (Ghosts.Ghost ghost : Ghosts.visible(position).values()) {
+            PsiType type = ghost.type(comment);
+            LookupElementBuilder lookup = LookupElementBuilder.create(ghost.name()).withTailText(" (ghost)", true)
+                    .withTypeText(type == null ? null : type.getPresentableText());
+            result.addElement(PrioritizedLookupElement.withPriority(lookup,
+                    (ghost.field() ? JMLCompletionWeights.LOCAL_FIELD : JMLCompletionWeights.KEYWORD).getWeight()));
+        }
+    }
 
     public static final JMLJavaIdentifierCompletionProvider INSTANCE = new JMLJavaIdentifierCompletionProvider();
     private static final String EMPTY_STRING = "IntellijIdeaRulezzz";
@@ -60,6 +81,7 @@ public class JMLJavaIdentifierCompletionProvider extends CompletionProvider<Comp
 
         //check for code block completions
         fillMethodLocalVariables(parameters, result);
+        fillGhostVariables(parameters, result);
 
         //fill in Java completions
         addFieldAndMethodCompletions(parameters, result);

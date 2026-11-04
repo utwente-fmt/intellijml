@@ -21,6 +21,6 @@ public class RequiresAfterEnsures {
     /*@
         (* custom error should not be shown if it is not a method spec *)
         invariant 5>3;
-        <error descr="Class invariant, at-sign or semicolon expected, got 'requires'">requires</error> b!=0;
+        <error descr="Class invariant, ghost declaration, at-sign or semicolon expected, got 'requires'">requires</error> b!=0;
     */
 }

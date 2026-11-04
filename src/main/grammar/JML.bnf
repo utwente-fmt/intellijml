@@ -70,6 +70,8 @@
   name("in_method_spec")="in-method specification"
   name("behavior_header")="behavior"
   name("loop_variant")="decreases clause"
+  name("ghost_declaration")="ghost declaration"
+  name("set_statement")="set statement"
   name("loop_assignable_clause")="loop_writes clause"
 }
 
@@ -98,8 +100,11 @@ signals_only_clause ::= SIGNALS_ONLY <<skipAtSigns>> reference_type (<<skipAtSig
 assignable_clause ::= (assignable|modifiable|modifies) <<skipAtSigns>> store_ref_list SEMICOLON+
 private pred_or_not ::= NOT_SPECIFIED | java_expr
 
-// class invariants
-private class_invariants ::= (class_invariant AT_SIGN*)+
+// class invariants and ghost fields; a ghost declaration followed by a statement, such as "ghost int x; set x = 1;", is
+// an in-method specification
+private class_invariants ::= ((class_invariant | ghost_declaration) AT_SIGN*)+ !in_method_keyword
+private in_method_keyword ::= set | assert | assume | maintaining | LOOPINVARIANT | decreases | decreasing
+    | LOOP_DECREASES | LOOP_WRITES | LOOP_MODIFIES | LOOP_ASSIGNS | LOOP_ASSIGNABLE
 class_invariant ::= modifiers? invariant java_expr SEMICOLON+ {pin="java_expr"}
 
 // modifiers for methods and fields
@@ -108,13 +113,19 @@ modifiers ::= ((SPEC_PUBLIC | SPEC_PROTECTED | pure | instance | helper | nullab
 private java_modifier ::= public | private | protected | static
 
 // specification inside a method
-in_method_spec ::= (AT_SIGN* (loop_invariant | loop_variant | loop_assignable_clause | assert_statement | assume_statement))+
+in_method_spec ::= (AT_SIGN* (loop_invariant | loop_variant | loop_assignable_clause | assert_statement | assume_statement
+    | set_statement | ghost_declaration))+
 loop_invariant ::= (maintaining | LOOPINVARIANT) java_expr SEMICOLON+ {pin="java_expr"}
 loop_variant ::= (decreases | decreasing | LOOP_DECREASES) java_expr SEMICOLON+ {pin="java_expr"}
 loop_assignable_clause ::= (LOOP_WRITES | LOOP_MODIFIES | LOOP_ASSIGNS | LOOP_ASSIGNABLE) <<skipAtSigns>> store_ref_list SEMICOLON+
 // separate because in runtime checking they have different behaviours
 assert_statement ::= assert java_expr SEMICOLON+ {pin="java_expr"}
 assume_statement ::= assume java_expr SEMICOLON+ {pin="java_expr"}
+// an assignment to a ghost variable, such as "set count = count + 1;"
+set_statement ::= set java_expr SEMICOLON+ {pin="java_expr"}
+
+// a ghost field or local variable, such as "public ghost int count = 0;", with a type, a name and an optional initializer
+ghost_declaration ::= modifiers? ghost modifiers? <<parseGhostDeclarator>> SEMICOLON+ {pin=2}
 
 
 // store refs

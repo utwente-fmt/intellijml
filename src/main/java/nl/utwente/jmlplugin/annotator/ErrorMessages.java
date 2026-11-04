@@ -33,6 +33,8 @@ public final class ErrorMessages {
     // OpenJML's messages for nullable and non_null
     public static final String CONFLICTING_NULLITY = "Entity has conflicting nullity annotations";
     public static final String CONFLICTING_NULLITY_DEFAULTS = "A declaration may not be both non_null_by_default and nullable_by_default";
+    // OpenJML's message for a set statement that assigns something else than a ghost variable
+    public static final String SET_NOT_GHOST = "The LHS in a set statement must be a ghost variable";
     public static final String DUPLICATE_MODIFIER = "This modifier has already been used in this specification";
     public static final String MULTIPLE_VISIBILITY_MODIFIERS = "You cannot have multiple visibility modifiers (public, protected or private)";
     public static final String MULTIPLE_SPEC_VISIBILITY_MODIFIERS = "You cannot have multiple specification visibility modifiers (spec_public or spec_protected)";
@@ -120,6 +122,31 @@ public final class ErrorMessages {
         return "A " + keyword + " expression may not be in a " + clause + " clause";
     }
 
+    // the messages of OpenJML (and javac) for a ghost variable with the name of another variable, and for an
+    // initializer or a set statement whose value does not fit the variable
+    public static String alreadyDefined(String name, String ownerKind, String owner) {
+        return "variable " + name + " is already defined in " + ownerKind + " " + owner;
+    }
+
+    public static String incompatibleTypes(@NotNull PsiType from, @NotNull PsiType to) {
+        return "incompatible types: " + from.getPresentableText() + " cannot be converted to " + to.getPresentableText();
+    }
+
+    // OpenJML's (and javac's) messages for the modifiers of a ghost declaration
+    public static final String BOTH_INSTANCE_AND_STATIC = "A declaration may not be both instance and static";
+
+    public static String jmlModifierNotAllowedInGhost(boolean field) {
+        return "This JML modifier is not allowed for a " + (field ? "ghost field" : "local variable") + " declaration";
+    }
+
+    public static String javaModifierNotAllowedHere(String modifier) {
+        return "modifier " + modifier + " not allowed here";
+    }
+
+    public static String illegalCombinationOfModifiers(String first, String second) {
+        return "illegal combination of modifiers: " + first + " and " + second;
+    }
+
     public static String nullityOnPrimitive(@NotNull PsiType type) {
         return "the type modifier/annotation is not permitted on a primitive type: " + type.getPresentableText();
     }
@@ -149,6 +176,9 @@ public final class ErrorMessages {
             specKindStr = "Method specifications";
         } else if (specKind instanceof JMLInMethodSpec) {
             specKindStr = "In-method specifications";
+        } else if (specKind instanceof JMLGhostDeclaration) {
+            return "Ghost declarations are not allowed " + position.getPositionString()
+                    + (position == CommentPosition.FIELD ? ", add a newline after the comment" : "");
         } else if (specKind instanceof JMLClassInvariant) {
             return "Class invariants are not allowed " + position.getPositionString()
                     + (position == CommentPosition.FIELD ? ", add a newline after the comment" : "");

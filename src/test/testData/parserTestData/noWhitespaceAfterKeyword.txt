@@ -1,7 +1,7 @@
 JML File(0,54)
   JMLJmlSpecificationImpl(JML specification)(0,1)
     PsiElement(at-sign)('@')(0,1)
-  PsiErrorElement:<class invariant>, <in-method specification>, <method specification>, <modifiers> or at-sign expected, got 'requiresx'(1,10)
+  PsiErrorElement:<class invariant>, <ghost declaration>, <in-method specification>, <method specification>, <modifiers> or at-sign expected, got 'requiresx'(1,10)
     PsiElement(identifier)('requiresx')(1,10)
   PsiElement(REST)('>')(10,11)
   PsiElement(REST)('5')(11,12)

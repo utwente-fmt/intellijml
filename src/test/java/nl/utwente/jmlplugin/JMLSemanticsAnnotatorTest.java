@@ -102,6 +102,11 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testGhostDeclarations() {
+        myFixture.configureByFile("GhostDeclarations.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testRedundantNotSpecified() {
         myFixture.configureByFile("RedundantNotSpecified.java");
         myFixture.checkHighlighting(true, false, true, false);

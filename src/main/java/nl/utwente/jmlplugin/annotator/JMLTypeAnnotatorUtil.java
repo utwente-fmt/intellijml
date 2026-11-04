@@ -313,7 +313,9 @@ class JMLTypeAnnotatorUtil {
      * @return false if it is not allowed
      */
     protected static boolean checkIfExtraVariableAllowed(PsiElement element, ExtraVariables extraVars, AnnotationHolder holder) {
-        if (extraVars.contains(element.getText())) {
+        Ghosts.Ghost ghost = extraVars.findGhost(element.getText());
+        // like a Java field, a ghost field may be hidden by the variable of a quantifier
+        if (extraVars.contains(element.getText()) && (ghost == null || !ghost.field())) {
             // variable already exists in extra variable list
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.OVERRIDING_LOCAL_VAR).range(element).create();
             return false;

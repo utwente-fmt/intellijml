@@ -3,6 +3,7 @@ package nl.utwente.jmlplugin.annotator;
 import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
@@ -28,6 +29,11 @@ import static nl.utwente.jmlplugin.annotator.JMLTypeAnnotatorUtil.*;
  */
 public class JMLTypeAnnotator {
 
+    // the operators of an assignment, such as "=" and "+="
+    private static final TokenSet ASSIGNMENT_OPERATORS = TokenSet.create(JavaTokenType.EQ, JavaTokenType.PLUSEQ,
+            JavaTokenType.MINUSEQ, JavaTokenType.ASTERISKEQ, JavaTokenType.DIVEQ, JavaTokenType.PERCEQ, JavaTokenType.ANDEQ,
+            JavaTokenType.OREQ, JavaTokenType.XOREQ, JavaTokenType.LTLTEQ, JavaTokenType.GTGTEQ, JavaTokenType.GTGTGTEQ);
+
     /**
      * Annotates the elements on type errors
      *
@@ -41,8 +47,129 @@ public class JMLTypeAnnotator {
             checkLoopAssignableVarScope(element, holder);
         } else if (element instanceof JMLReferenceType && (element.getParent() instanceof JMLSignalsClause || element.getParent() instanceof JMLSignalsOnlyClause)) {
             checkSignalsType((JMLReferenceType) element, holder);
-        } else if (element instanceof JMLJavaExpr) {
+        } else if (element instanceof JMLGhostDeclaration ghost) {
+            checkGhostDeclaration(ghost, holder);
+        } else if (element instanceof JMLSetStatement set) {
+            checkSetStatement(set, holder);
+        } else if (element instanceof JMLJavaExpr && !(element.getParent() instanceof JMLSetStatement)) {
             annotateJavaExpr((JMLJavaExpr) element, holder);
+        }
+    }
+
+    /**
+     * Checks a ghost declaration: that its type exists, that no other variable has its name, and that its initializer
+     * fits the type, with the messages of OpenJML
+     *
+     * @param declaration the ghost declaration
+     * @param holder      the Annotation holder
+     */
+    private static void checkGhostDeclaration(JMLGhostDeclaration declaration, AnnotationHolder holder) {
+        JMLGhostDeclarator declarator = Ghosts.declarator(declaration);
+        PsiComment comment = getCommentContext(declaration);
+        String name = declarator == null ? null : declarator.getName();
+        if (name == null || comment == null) return;
+        PsiType type = Ghosts.type(declaration, comment);
+        if (type == null || (type.getDeepComponentType() instanceof PsiClassType classType && classType.resolve() == null)) {
+            PsiElement typeName = declarator.getTypeName();
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.CLASS_REFERENCE_NOT_FOUND)
+                    .range(typeName != null ? typeName : declarator).create();
+            type = null;
+        }
+        // no other variable may have the same name, as in Java
+        String duplicateIn = null;
+        if (Ghosts.isField(declaration) && getParentOfType(comment, PsiClass.class) instanceof PsiClass psiClass) {
+            boolean duplicate = psiClass.findFieldByName(name, false) != null;
+            for (Ghosts.Ghost field : Ghosts.declaredFields(psiClass)) {
+                if (field.declaration() == declaration) break;
+                duplicate |= field.name().equals(name);
+            }
+            if (duplicate) duplicateIn = ErrorMessages.alreadyDefined(name, "class", psiClass.getName());
+        } else if (getParentOfType(comment, PsiMethod.class) instanceof PsiMethod method) {
+            boolean duplicate = Ghosts.locals(declaration).containsKey(name);
+            try {
+                PsiExpression reference = JavaPsiFacade.getElementFactory(comment.getProject()).createExpressionFromText(name, comment);
+                duplicate |= reference instanceof PsiReferenceExpression ref
+                        && (ref.resolve() instanceof PsiLocalVariable || ref.resolve() instanceof PsiParameter);
+            } catch (IncorrectOperationException e) {
+                // not a valid name, the parser gives an error
+            }
+            if (duplicate) duplicateIn = ErrorMessages.alreadyDefined(name, "method", signature(method));
+        }
+        if (duplicateIn != null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, duplicateIn).range(declarator.getNameIdentifier()).create();
+        }
+        // the initializer must fit the type
+        JMLInnerJavaExpr initializer = declarator.getInitializer();
+        if (initializer != null && type != null) {
+            ExtraVariables extraVars = new ExtraVariables();
+            Ghosts.addVisible(declaration, extraVars);
+            InnerJavaExprResult result = annotateInnerJavaExpr(initializer, holder, extraVars, false, true);
+            PsiType initializerType = result.getExpr() == null ? null : result.getExpr().getType();
+            if (result.isCorrect() && initializerType != null && !TypeConversionUtil.isAssignable(type, initializerType)) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.incompatibleTypes(initializerType, type))
+                        .range(initializer).create();
+            }
+        }
+    }
+
+    /**
+     * @param method a method
+     * @return its name with the types of its parameters, as OpenJML shows it, such as "inc(int)"
+     */
+    private static String signature(PsiMethod method) {
+        StringBuilder text = new StringBuilder(method.getName()).append('(');
+        PsiParameter[] parameters = method.getParameterList().getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (i > 0) text.append(',');
+            text.append(parameters[i].getType().getPresentableText());
+        }
+        return text.append(')').toString();
+    }
+
+    /**
+     * Checks a set statement: it must assign a ghost variable, and the value must fit its type
+     *
+     * @param set    the set statement
+     * @param holder the Annotation holder
+     */
+    private static void checkSetStatement(JMLSetStatement set, AnnotationHolder holder) {
+        JMLJavaExpr javaExpr = getChildOfType(set, JMLJavaExpr.class);
+        JMLInnerJavaExpr inner = javaExpr == null ? null : getChildOfType(javaExpr, JMLInnerJavaExpr.class);
+        if (inner == null) return;
+        // the assignment operator, outside parentheses and brackets, and the variable that is assigned
+        PsiElement operator = null;
+        PsiIdentifier variable = null;
+        int depth = 0;
+        for (PsiElement child = inner.getFirstChild(); child != null; child = child.getNextSibling()) {
+            IElementType type = child.getNode().getElementType();
+            if (variable == null && child instanceof PsiIdentifier identifier) variable = identifier;
+            if (type == JavaTokenType.LPARENTH || type == JavaTokenType.LBRACKET) depth++;
+            if (type == JavaTokenType.RPARENTH || type == JavaTokenType.RBRACKET) depth--;
+            if (depth == 0 && ASSIGNMENT_OPERATORS.contains(type)) {
+                operator = child;
+                break;
+            }
+        }
+        ExtraVariables extraVars = new ExtraVariables();
+        Ghosts.addVisible(set, extraVars);
+        Ghosts.Ghost ghost = variable == null ? null : extraVars.findGhost(variable.getText());
+        if (ghost == null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.SET_NOT_GHOST)
+                    .range(variable != null ? variable : inner).create();
+            return;
+        }
+        if (operator == null) return;
+        // check the value, after the operator, and that it fits the variable if it is assigned to the variable itself
+        InnerJavaExprResult value = annotateInnerJavaExpr(inner, holder, extraVars, false, true, true, operator);
+        PsiType variableType = extraVars.findVarAndGetType(variable.getText());
+        PsiType valueType = value.getExpr() == null ? null : value.getExpr().getType();
+        boolean wholeVariable = PsiTreeUtil.skipWhitespacesAndCommentsBackward(operator) == variable;
+        if (operator.getNode().getElementType() == JavaTokenType.EQ && wholeVariable && value.isCorrect()
+                && valueType != null && variableType != null && !TypeConversionUtil.isAssignable(variableType, valueType)) {
+            PsiElement start = PsiTreeUtil.skipWhitespacesAndCommentsForward(operator);
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.incompatibleTypes(valueType, variableType))
+                    .range(new TextRange(start == null ? operator.getTextRange().getEndOffset() : start.getTextRange().getStartOffset(),
+                            inner.getTextRange().getEndOffset())).create();
         }
     }
 
@@ -306,6 +433,8 @@ public class JMLTypeAnnotator {
                 // for loop_invariants add the initializer of the loop
                 addLoopInitializers(element.getParent(), extraVars);
             }
+            // the ghost variables, unless a parameter or another variable has the same name
+            Ghosts.addVisible(element, extraVars);
             // a decreases clause has an integral type, all other expressions are boolean
             boolean variant = element.getParent() instanceof JMLLoopVariant;
             // do the actual checking of the java expression
@@ -346,10 +475,31 @@ public class JMLTypeAnnotator {
     private static InnerJavaExprResult annotateInnerJavaExpr(JMLInnerJavaExpr element, AnnotationHolder holder,
                                                              ExtraVariables extraVars, boolean mustReturnBoolean,
                                                              boolean doTypeChecking, boolean isExpression) {
+        return annotateInnerJavaExpr(element, holder, extraVars, mustReturnBoolean, doTypeChecking, isExpression, null);
+    }
+
+    /**
+     * See {@link #annotateInnerJavaExpr(JMLInnerJavaExpr, AnnotationHolder, ExtraVariables, boolean, boolean, boolean)}
+     *
+     * @param skipThrough a child of the element, such as the "=" in a set statement: it and the children before it
+     *                    are left out, so that only the value after it is checked
+     */
+    @NotNull
+    private static InnerJavaExprResult annotateInnerJavaExpr(JMLInnerJavaExpr element, AnnotationHolder holder,
+                                                             ExtraVariables extraVars, boolean mustReturnBoolean,
+                                                             boolean doTypeChecking, boolean isExpression,
+                                                             @Nullable PsiElement skipThrough) {
         InnerJavaExprResult result = new InnerJavaExprResult(element);
         if (element == null) return result;
         PsiElement currentChild = element.getFirstChild();
+        boolean skipping = skipThrough != null;
         while (currentChild != null) {
+            if (skipping) {
+                result.addText("", currentChild);
+                skipping = currentChild != skipThrough;
+                currentChild = currentChild.getNextSibling();
+                continue;
+            }
             IElementType elemType = currentChild.getNode().getElementType();
             if (elemType == JMLTypes.RESULT) {
                 checkBackslashResult(element, holder, result, currentChild);
@@ -412,6 +562,9 @@ public class JMLTypeAnnotator {
             } else if (currentChild instanceof PsiIdentifier) {
                 // replaces the reference if it is in extraVars
                 String newText = getReplacementIfNeeded((PsiIdentifier) currentChild, extraVars);
+                if (!newText.equals(currentChild.getText())) {
+                    checkGhostFieldVisibility((PsiIdentifier) currentChild, extraVars, holder);
+                }
                 result.addText(newText, currentChild);
             } else if (currentChild instanceof PsiComment) {
                 // just remove comments
@@ -718,6 +871,48 @@ public class JMLTypeAnnotator {
             case PsiModifier.PRIVATE -> PsiUtil.ACCESS_LEVEL_PRIVATE;
             default -> PsiUtil.ACCESS_LEVEL_PACKAGE_LOCAL;
         };
+    }
+
+    /**
+     * @param invariant a class invariant
+     * @return its visibility, as in PsiUtil.getAccessLevel: package without a modifier, or public in an interface
+     */
+    private static int invariantAccessLevel(JMLClassInvariant invariant) {
+        PsiElement visibilityModifier = findFirstModifierInInvariant(invariant.getModifiers(),
+                TokenSet.create(JMLTypes.PRIVATE, JMLTypes.PUBLIC, JMLTypes.PROTECTED));
+        if (visibilityModifier != null) return accessLevel(visibilityModifier.getText());
+        return getJavaContext(invariant) instanceof PsiClass psiClass && psiClass.isInterface()
+                ? PsiUtil.ACCESS_LEVEL_PUBLIC : PsiUtil.ACCESS_LEVEL_PACKAGE_LOCAL;
+    }
+
+    /**
+     * Checks that a ghost field that is used in a method specification or an invariant is visible enough, with the
+     * rules for fields that are not final (see SpecVisibility): at least as visible as a method specification, and
+     * exactly as visible as an invariant
+     *
+     * @param identifier the name of a variable in a JML expression
+     * @param extraVars  the extra variables, with the ghost variables
+     * @param holder     the Annotation holder
+     */
+    private static void checkGhostFieldVisibility(PsiIdentifier identifier, ExtraVariables extraVars, AnnotationHolder holder) {
+        Ghosts.Ghost ghost = extraVars.findGhost(identifier.getText());
+        if (ghost == null || !ghost.field()) return;
+        int level = ghost.accessLevel();
+        JMLClassInvariant invariant = getParentOfType(identifier, JMLClassInvariant.class);
+        String clause = methodSpecClause(identifier);
+        String message = null;
+        if (invariant != null && CommentPosition.isInvariantOnCorrectPosition(invariant)) {
+            int invariantLevel = invariantAccessLevel(invariant);
+            if (level != invariantLevel) {
+                message = ErrorMessages.identifierNotVisible(SpecVisibility.name(level), "invariant", SpecVisibility.name(invariantLevel));
+            }
+        } else if (clause != null && getJavaContext(identifier) instanceof PsiMethod method) {
+            int specLevel = SpecCases.accessLevel(identifier, method);
+            if (level < specLevel) {
+                message = ErrorMessages.identifierNotVisible(SpecVisibility.name(level), clause, SpecVisibility.name(specLevel));
+            }
+        }
+        if (message != null) holder.newAnnotation(HighlightSeverity.ERROR, message).range(identifier).create();
     }
 
     /**

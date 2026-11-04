@@ -113,7 +113,7 @@ class SpecVisibility {
      * @param level an access level, as in PsiUtil.getAccessLevel
      * @return the name that OpenJML uses for it
      */
-    private static String name(int level) {
+    static String name(int level) {
         return switch (level) {
             case PsiUtil.ACCESS_LEVEL_PUBLIC -> "public";
             case PsiUtil.ACCESS_LEVEL_PROTECTED -> "protected";

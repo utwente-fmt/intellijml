@@ -28,6 +28,7 @@ public interface JMLTypes extends JMLGrammarTypes {
     IElementType INVARIANT_FOR_EXPR = new JMLElementType("\\invariant_for() expression");
     IElementType NOT_MODIFIED_EXPR = new JMLElementType("\\not_modified() expression");
     IElementType INNER_JAVA_EXPR = new JMLElementType("expression");
+    IElementType GHOST_DECLARATOR = new JMLElementType("ghost variable");
 
     IElementType JAVA_EXPR_TOKEN = new JMLTokenType("JAVA_EXPR_TOKEN");
     IElementType RESULT = new JMLTokenType("\\result");
@@ -79,6 +80,8 @@ public interface JMLTypes extends JMLGrammarTypes {
                 return new JMLNonNullElementsExpr(node);
             } else if (type == FRESH_EXPR || type == INVARIANT_FOR_EXPR || type == NOT_MODIFIED_EXPR) {
                 return new JMLBackslashFunctionExpr(node);
+            } else if (type == GHOST_DECLARATOR) {
+                return new JMLGhostDeclarator(node);
             } else if (type == INNER_JAVA_EXPR) {
                 return new JMLInnerJavaExpr(node);
             }

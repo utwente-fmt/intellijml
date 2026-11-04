@@ -63,7 +63,9 @@ public class JMLMergingLexer extends MergingLexerAdapter {
 
         private boolean merging = false;
         private boolean javaExprExpected = false;
-        // whether merging or javaExprExpected was set at the start of the last token
+        // after "ghost": the declaration after the modifiers, such as "int x = 0", is merged as a Java expression
+        private boolean declarationExpected = false;
+        // whether merging, javaExprExpected or declarationExpected was set at the start of the last token
         private boolean inClauseAtTokenStart = false;
         // the number of open parentheses in the Java expression that is being merged, as the semicolons of a
         // quantifier are inside parentheses
@@ -78,6 +80,7 @@ public class JMLMergingLexer extends MergingLexerAdapter {
         void reset() {
             merging = false;
             javaExprExpected = false;
+            declarationExpected = false;
             inClauseAtTokenStart = false;
             parenDepth = 0;
             previous = null;
@@ -121,26 +124,42 @@ public class JMLMergingLexer extends MergingLexerAdapter {
          */
         @Override
         public IElementType merge(IElementType type, Lexer originalLexer) {
-            clauseStartAtTokenStart = atClauseStart();
+            clauseStartAtTokenStart = previous == null || previous == JMLTypes.SEMICOLON || previous == JMLTypes.AT_SIGN;
             IElementType result = mergeToken(type, originalLexer);
             if (!commentsAndWhitespace.contains(result)) previous = result;
             return result;
         }
 
         /**
-         * @return whether a contextual keyword, such as decreases, starts a clause here: at the start of the
-         * specification, or after a semicolon or an at-sign, but not in a list such as "loop_writes x, decreasing;"
+         * @param type a contextual keyword
+         * @return whether the keyword, such as decreases, starts a clause here: at the start of the specification, or
+         * after a semicolon or an at-sign, but not in a list such as "loop_writes x, decreasing;"; ghost can also
+         * follow a modifier, as in "public ghost int x;"
          */
-        private boolean atClauseStart() {
-            return previous == null || previous == JMLTypes.SEMICOLON || previous == JMLTypes.AT_SIGN;
+        private boolean atClauseStart(IElementType type) {
+            return clauseStartAtTokenStart || (type == JMLTypes.GHOST && JMLTokenSet.allModifiers.contains(previous));
         }
 
         private IElementType mergeToken(IElementType type, Lexer originalLexer) {
-            inClauseAtTokenStart = merging || javaExprExpected;
+            inClauseAtTokenStart = merging || javaExprExpected || declarationExpected;
             // outside a Java expression, a keyword such as decreases that does not start a clause is a name, as in
             // "loop_writes x, decreasing;"
-            if (!merging && JMLTokenSet.contextualKeywords.contains(type) && !atClauseStart()) {
+            if (!merging && JMLTokenSet.contextualKeywords.contains(type) && !atClauseStart(type)) {
                 return JMLTypes.IDENT;
+            }
+            if (type == JMLTypes.GHOST) {
+                declarationExpected = true;
+                return type;
+            }
+            // the declaration after ghost and its modifiers is a Java expression, until the semicolon
+            if (declarationExpected && !commentsAndWhitespace.contains(type) && type != JMLTypes.AT_SIGN
+                    && !JMLTokenSet.allModifiers.contains(type)) {
+                declarationExpected = false;
+                if (type != JMLTypes.SEMICOLON) {
+                    merging = true;
+                    parenDepth = 0;
+                    lastWord = null;
+                }
             }
             // merge until you see that the expression ended, assuming greedy matching
             LexerPosition startPos;

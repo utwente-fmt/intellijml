@@ -55,7 +55,7 @@ public class StorageSpace {
     //@ ensures <error descr="This must be of type boolean, but is float">\result == boxes.size() == 0 ? 0 : getTotalWeight() / <warning descr="JML expressions should be pure and this method might not be pure">getNrOfBoxes()</warning></error>; (* need parentheses around conditional expression *)
     // some syntactical errors
     //@ ensures \result == (boxes.size() == 0 ? 0 : getTotalWeight() / getNrOfBoxes()<error descr="Semicolon expected after this token">)</error>
-    //@ <error descr="Class invariant, in-method specification, method specification, modifiers or at-sign expected, got 'esuress'">esuress</error> \result >= 0;
+    //@ <error descr="Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'esuress'">esuress</error> \result >= 0;
     //@ ensures <error descr="Unknown keyword \rsul, or a JML keyword that this plugin does not support">\rsul</error> >= 0;
     //@ requires \not_specified;
     // some semantic errors with exceptions

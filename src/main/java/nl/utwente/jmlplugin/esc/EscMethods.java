@@ -3,6 +3,7 @@ package nl.utwente.jmlplugin.esc;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.psi.*;
 import com.intellij.psi.util.PsiTreeUtil;
+import nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -117,6 +118,7 @@ public final class EscMethods {
 
     private static boolean isJml(@NotNull PsiComment comment) {
         String text = comment.getText();
-        return text.startsWith("//@") || text.startsWith("/*@");
+        // a ghost field right above the method is not its specification
+        return (text.startsWith("//@") || text.startsWith("/*@")) && !JMLAnnotatorUtil.isGhostComment(comment);
     }
 }

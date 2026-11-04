@@ -11,6 +11,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiModifierList;
 import com.intellij.psi.tree.IElementType;
+import nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil;
 import nl.utwente.jmlplugin.lexer.JMLMultiLayerLexer;
 import nl.utwente.jmlplugin.syntax_highlighting.JMLSyntaxHighlighter;
 import org.jetbrains.annotations.Nls;
@@ -46,7 +47,8 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
             }
             EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
             for (PsiElement elem: children) {
-                if (elem instanceof PsiComment &&
+                // a ghost field right above the method is not part of its specification
+                if (elem instanceof PsiComment comment && !JMLAnnotatorUtil.isGhostComment(comment) &&
                         (elem.getText().startsWith("/*@") || elem.getText().startsWith("//@"))) {
 
                     PsiComment jmlComment = (PsiComment) elem;

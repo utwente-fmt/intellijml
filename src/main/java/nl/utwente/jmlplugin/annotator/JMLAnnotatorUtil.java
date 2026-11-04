@@ -35,6 +35,9 @@ public class JMLAnnotatorUtil {
                 .collect(Collectors.joining("|", "(", ")"));
     }
 
+    // the keyword of a ghost declaration
+    private static final Pattern GHOST = Pattern.compile("(?<!\\w)ghost(?!\\w)");
+
     // whitespace with at most one line break
     private static final Pattern AT_MOST_ONE_NEWLINE = Pattern.compile("[ \t ]*(\n|\r\n)?[ \t ]*");
 
@@ -79,6 +82,15 @@ public class JMLAnnotatorUtil {
      */
     public static PsiComment getCommentContext(PsiElement element) {
         return PsiTreeUtil.getContextOfType(element, PsiComment.class);
+    }
+
+    /**
+     * @param comment a JML comment
+     * @return whether it declares a ghost variable, such as a ghost field right above a method, which is not part of
+     * the method's specification
+     */
+    public static boolean isGhostComment(@NotNull PsiComment comment) {
+        return GHOST.matcher(comment.getText()).find();
     }
 
     /**
@@ -271,8 +283,8 @@ public class JMLAnnotatorUtil {
         int count = 0;
         for (PsiComment comment : comments) {
             String commentText = comment.getText();
-            // check that it is a JML comment
-            if (commentText.startsWith("/*@") || commentText.startsWith("//@")) {
+            // check that it is a JML comment; the modifiers in a ghost declaration belong to the ghost variable
+            if ((commentText.startsWith("/*@") || commentText.startsWith("//@")) && !GHOST.matcher(commentText).find()) {
                 Matcher matcher = pattern.matcher(commentText);
                 while (matcher.find()) {
                     count++;

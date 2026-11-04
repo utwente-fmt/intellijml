@@ -45,6 +45,8 @@ REST=[^@;().,:*\[\]\s]
   "nullable_by_default"       { return NULLABLE_BY_DEFAULT; }
   "non_null_by_default"       { return NON_NULL_BY_DEFAULT; }
   "loop_invariant"            { return LOOPINVARIANT; }
+  "ghost"                     { return GHOST; }
+  "set"                       { return SET; }
   "decreases"                 { return DECREASES; }
   "decreasing"                { return DECREASING; }
   "loop_decreases"            { return LOOP_DECREASES; }

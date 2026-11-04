@@ -54,7 +54,7 @@ public class JMLTokenSet {
 
     // keywords that start a clause, but are also allowed as the name of a variable in a Java expression, as in
     // OpenJML: they only end a Java expression after a semicolon, outside parentheses
-    public static final TokenSet contextualKeywords = TokenSet.create(DECREASES, DECREASING);
+    public static final TokenSet contextualKeywords = TokenSet.create(DECREASES, DECREASING, GHOST, SET);
 
     public static final TokenSet javaKeywords = TokenSet.create(THIS, SUPER);
 
@@ -66,12 +66,16 @@ public class JMLTokenSet {
 
     // used for lexers / parsers
     public static final TokenSet keywordsBeforeJavaExpr = TokenSet.orSet(loopVariantKeywords, TokenSet.create(
-            REQUIRES, PRE, ENSURES, POST, MAINTAINING, LOOPINVARIANT, ASSUME, ASSERT, INVARIANT
+            REQUIRES, PRE, ENSURES, POST, MAINTAINING, LOOPINVARIANT, ASSUME, ASSERT, INVARIANT, SET
     ));
 
     // the keywords that completion offers in a method body; the other spellings are left out
     public static final TokenSet codeBlockKeywords = TokenSet.create(ASSERT, ASSUME, MAINTAINING, LOOPINVARIANT,
-            DECREASES, LOOP_WRITES);
+            DECREASES, LOOP_WRITES, GHOST, SET);
+
+    // the modifiers that a ghost field can have; a ghost local variable can only have nullable or non_null
+    public static final TokenSet ghostFieldModifiers = TokenSet.orSet(visibilityModifiers, nullityModifiers,
+            TokenSet.create(STATIC, INSTANCE));
 
     public static final TokenSet commentsAndWhitespace = TokenSet.create(INFORMAL_DESCRIPTION, TokenType.WHITE_SPACE);
 

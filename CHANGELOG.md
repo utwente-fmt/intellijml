@@ -30,6 +30,13 @@
 - `\fresh(x)`, `\invariant_for(x)` and `\not_modified(x, ...)` in expressions, with OpenJML's checks: the argument of
   `\fresh` and `\invariant_for` must be an object, and `\fresh` and `\not_modified` are not allowed in `requires`
   clauses and invariants (`\not_modified` also not in loop invariants)
+- Ghost variables: `ghost` fields in a class body (also right above a field or method), such as
+  `//@ public ghost int count = 0;`, and `ghost` local variables in a method body, which JML expressions can use, and
+  `set` statements that assign them, such as `//@ set count = count + 1;`. They are checked as OpenJML does, with its
+  messages: the type must exist, the initializer and the assigned value must fit the type, no other variable may have
+  the same name, `set` can only assign a ghost variable, a ghost field must be visible enough for the specification
+  that uses it, and the modifiers must fit a ghost field or a local variable. `ghost` and `set` can still be names.
+  Completion offers the ghost variables in expressions.
 - Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in
   `// @` or `/* @`, which makes the comment an ordinary comment instead of JML
 
@@ -56,6 +63,8 @@
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- `//@ assert`, `assume` and other statements right above a local variable declaration gave "In-method
+  specifications are not allowed above a variable declaration"
 - Optimize Imports removed imports that are only used in JML, such as `import java.util.ArrayList;` for
   `//@ ensures \result instanceof ArrayList;`
 - `assignable` and `signals_only` lists that continue on a new line starting with `@` gave a syntax error

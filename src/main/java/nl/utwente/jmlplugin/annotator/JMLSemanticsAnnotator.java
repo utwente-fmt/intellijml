@@ -75,6 +75,9 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
                     .range(argument != null ? argument : element).create();
         } else if (element instanceof JMLOldExpr && checkOldExprAllowed((JMLOldExpr) element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.OLD_EXPR_NOT_ALLOWED).create();
+        } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())
+                && getParentOfType(element, JMLGhostDeclaration.class) instanceof JMLGhostDeclaration ghost) {
+            return checkGhostModifier(element, ghost, holder);
         } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())) {
             CommentPosition modifierPosition = CommentPosition.getModifierPosition(element);
             if (checkModifierAllowedHere(element.getNode().getElementType(), modifierPosition)) {
@@ -137,28 +140,42 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         CommentPosition position = CommentPosition.getCommentPosition(jmlRoot);
         // see whether it is a method spec, class invariant, modifiers or in-method specification
         PsiElement jmlSpecKind = getChildOfAnyType(jmlRoot, JMLMethodJml.class,
-                JMLClassInvariant.class, JMLModifiers.class, JMLInMethodSpec.class);
+                JMLClassInvariant.class, JMLModifiers.class, JMLInMethodSpec.class, JMLGhostDeclaration.class);
+        // ghost declarations together with an invariant are in a class body
+        JMLClassInvariant invariant = getChildOfType(jmlRoot, JMLClassInvariant.class);
+        if (jmlSpecKind instanceof JMLGhostDeclaration && invariant != null) jmlSpecKind = invariant;
+        // a ghost declaration declares a ghost field in a class body, and a ghost local variable in a method body
+        boolean ghostOrInMethod = jmlSpecKind instanceof JMLGhostDeclaration || jmlSpecKind instanceof JMLInMethodSpec;
         boolean allowed = false;
         if (jmlSpecKind != null) {
             switch (position) {
+                case VAR_DECLARATION:
+                    // above a local variable declaration, statements are allowed too, but not inside it
+                    PsiComment comment = getCommentContext(jmlRoot);
+                    allowed = jmlSpecKind instanceof JMLModifiers
+                            || (ghostOrInMethod && comment != null && comment.getParent() instanceof PsiCodeBlock);
+                    break;
                 case FIELD:
+                    // a ghost field right above a field, as in OpenJML
+                    allowed = jmlSpecKind instanceof JMLModifiers || jmlSpecKind instanceof JMLGhostDeclaration;
+                    break;
                 case ABOVE_CLASS:
                 case PARAMETER:
-                case VAR_DECLARATION:
                 case METHOD_DECLARATION:
                     allowed = jmlSpecKind instanceof JMLModifiers;
                     break;
                 case INSIDE_CLASS:
-                    allowed = jmlSpecKind instanceof JMLClassInvariant;
+                    allowed = jmlSpecKind instanceof JMLClassInvariant || jmlSpecKind instanceof JMLGhostDeclaration;
                     break;
                 case ABOVE_METHOD:
-                    allowed = jmlSpecKind instanceof JMLModifiers || jmlSpecKind instanceof JMLMethodJml;
+                    allowed = jmlSpecKind instanceof JMLModifiers || jmlSpecKind instanceof JMLMethodJml
+                            || jmlSpecKind instanceof JMLGhostDeclaration;
                     break;
                 case BEFORE_METHOD_BODY:
                     allowed = jmlSpecKind instanceof JMLMethodJml;
                     break;
                 case CODE_BLOCK:
-                    allowed = jmlSpecKind instanceof JMLInMethodSpec;
+                    allowed = ghostOrInMethod;
                     break;
                 default:
                     break;
@@ -219,6 +236,51 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             default:
                 return true;
         }
+    }
+
+    /**
+     * Checks a modifier of a ghost declaration: a ghost field can have a visibility, static or instance, and a
+     * nullity, a ghost local variable only a nullity
+     *
+     * @param element a modifier
+     * @param ghost   the ghost declaration that it is in
+     * @param holder  the Annotation holder
+     * @return false if the modifier has an error
+     */
+    private static boolean checkGhostModifier(PsiElement element, JMLGhostDeclaration ghost, AnnotationHolder holder) {
+        IElementType type = element.getNode().getElementType();
+        boolean field = Ghosts.isField(ghost);
+        TokenSet allowed = field ? JMLTokenSet.ghostFieldModifiers : JMLTokenSet.nullityModifiers;
+        List<PsiElement> modifiers = Ghosts.modifiers(ghost);
+        List<IElementType> types = new ArrayList<>();
+        for (PsiElement modifier : modifiers) types.add(modifier.getNode().getElementType());
+        List<IElementType> before = types.subList(0, Math.max(0, modifiers.indexOf(element)));
+        PsiComment comment = getCommentContext(ghost);
+        String message = null;
+        IElementType otherVisibility = before.stream()
+                .filter(other -> other != type && JMLTokenSet.visibilityModifiers.contains(other)).findFirst().orElse(null);
+        if (!allowed.contains(type)) {
+            boolean javaModifier = JMLTokenSet.visibilityModifiers.contains(type) || type == JMLTypes.STATIC;
+            message = javaModifier ? ErrorMessages.javaModifierNotAllowedHere(element.getText())
+                    : ErrorMessages.jmlModifierNotAllowedInGhost(field);
+        } else if (JMLTokenSet.visibilityModifiers.contains(type) && otherVisibility != null) {
+            message = ErrorMessages.illegalCombinationOfModifiers(otherVisibility.toString(), element.getText());
+        } else if ((type == JMLTypes.STATIC && before.contains(JMLTypes.INSTANCE))
+                || (type == JMLTypes.INSTANCE && before.contains(JMLTypes.STATIC))) {
+            message = ErrorMessages.BOTH_INSTANCE_AND_STATIC;
+        } else if (JMLTokenSet.nullityModifiers.contains(type)
+                && types.contains(type == JMLTypes.NON_NULL ? JMLTypes.NULLABLE : JMLTypes.NON_NULL)) {
+            message = ErrorMessages.CONFLICTING_NULLITY;
+        } else if (JMLTokenSet.nullityModifiers.contains(type) && comment != null
+                && Ghosts.type(ghost, comment) instanceof PsiPrimitiveType primitive) {
+            message = ErrorMessages.nullityOnPrimitive(primitive);
+        } else if (before.contains(type)) {
+            holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.DUPLICATE_MODIFIER).create();
+            return true;
+        }
+        if (message == null) return true;
+        holder.newAnnotation(HighlightSeverity.ERROR, message).create();
+        return false;
     }
 
     /**

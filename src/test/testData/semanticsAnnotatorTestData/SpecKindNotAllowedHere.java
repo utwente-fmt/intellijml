@@ -26,7 +26,8 @@ public class SpecKindNotAllowedHere {
 
         //<error descr="Class invariants are not allowed above a variable declaration">@ invariant x > 5;</error>
         //<error descr="Method specifications are not allowed above a variable declaration">@ requires x != 0;</error>
-        //<error descr="In-method specifications are not allowed above a variable declaration">@ assert x > 10;</error>
+        // statements are allowed above a local variable declaration, as in OpenJML
+        //@ assert x > 10;
         //@ nullable;
         Integer /*@<warning descr="This modifier has already been used in this specification">nullable</warning>*/ z /*@<warning descr="This modifier has already been used in this specification">nullable</warning>*/;
 
