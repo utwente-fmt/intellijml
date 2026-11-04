@@ -30,6 +30,8 @@
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- Optimize Imports removed imports that are only used in JML, such as `import java.util.ArrayList;` for
+  `//@ ensures \result instanceof ArrayList;`
 - `assignable` and `signals_only` lists that continue on a new line starting with `@` gave a syntax error
 - Typing `/*@` at the very end of a file caused an exception
 - The quick documentation of a method showed `<` and `&&` in its JML wrongly, and left out modifiers such as
