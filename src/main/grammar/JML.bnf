@@ -45,6 +45,8 @@
     LOOP_MODIFIES = 'loop_modifies'
     LOOP_ASSIGNS = 'loop_assigns'
     LOOP_ASSIGNABLE = 'loop_assignable'
+    // the keyword of an old clause; OLD is \old, in Java expressions
+    OLD_KEYWORD = 'old'
     // the lexer also gives these for the British spellings, such as normal_behaviour
     NORMAL_BEHAVIOR = 'normal_behavior'
     EXCEPTIONAL_BEHAVIOR = 'exceptional_behavior'
@@ -83,6 +85,7 @@
   name("represents_clause")="represents clause"
   name("in_clause")="in clause"
   name("reads_clause")="reads clause"
+  name("old_clause")="old clause"
   name("set_statement")="set statement"
   name("diverges_clause")="diverges clause"
   name("check_statement")="check statement"
@@ -106,10 +109,10 @@ method_jml ::= also? method_spec AT_SIGN* modifiers* | also
 method_spec ::= spec_case (AT_SIGN* also spec_case | heavyweight_spec_case)*
 private spec_case ::= heavyweight_spec_case | lightweight_spec_case
 private heavyweight_spec_case ::= AT_SIGN* behavior_header lightweight_spec_case?
-private lightweight_spec_case ::= requires_clause+ spec_body? | spec_body
+private lightweight_spec_case ::= (requires_clause | AT_SIGN* old_clause)+ spec_body? | spec_body
 behavior_header ::= (public | protected | private)? (NORMAL_BEHAVIOR | EXCEPTIONAL_BEHAVIOR | BEHAVIOR)
 spec_body ::= (AT_SIGN* (ensures_clause | signals_clause | signals_only_clause | assignable_clause | diverges_clause
-    | reads_clause))+
+    | reads_clause | old_clause))+
 
 // clauses allowed in method specifications
 requires_clause ::= AT_SIGN* (requires|pre) pred_or_not SEMICOLON+ {pin="pred_or_not"}
@@ -122,6 +125,9 @@ assignable_clause ::= (assignable|modifiable|modifies|assigns) <<skipAtSigns>> s
 diverges_clause ::= diverges pred_or_not SEMICOLON+ {pin="pred_or_not"}
 // the locations that the method may read, such as "reads \nothing;", also spelled accessible
 reads_clause ::= (reads | accessible) <<skipAtSigns>> store_ref_list SEMICOLON+
+// a variable for the clauses after it in its specification case, with the value of its initializer before the method,
+// such as "old int n = size;"
+old_clause ::= OLD_KEYWORD modifiers? <<parseGhostDeclarator>> SEMICOLON+ {pin=1}
 private pred_or_not ::= NOT_SPECIFIED | java_expr
 
 // class invariants, ghost and model fields, represents clauses and in clauses; a ghost declaration followed by a

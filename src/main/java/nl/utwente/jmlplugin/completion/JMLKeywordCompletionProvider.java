@@ -137,6 +137,7 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
     private static void fillMethodSpecCompletions(@NotNull CompletionResultSet results) {
         addTokens(methodSpecCaseKeywords, results);
         results.addElement(LookupElementBuilder.create(READS.toString()));
+        results.addElement(LookupElementBuilder.create(OLD_KEYWORD.toString()));
         addTokens(also, results);
         addTokens(behaviors, results);
         // a heavyweight specification case usually is public, as in OpenJML's examples

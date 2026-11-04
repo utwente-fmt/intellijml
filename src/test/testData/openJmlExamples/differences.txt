@@ -1,17 +1,9 @@
 Bigint.java:9: plugin | Method could not be resolved, maybe the parameters do not correspond?
-LemmaExample.java:5: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'old'
-LemmaExample.java:6: plugin | Reference cannot be resolved
 LemmaExample.java:10: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'use'
 LemmaExample.java:15: plugin | Method specifications are not allowed in a class body
 LemmaExample.java:16: plugin | Method specifications are not allowed in a class body
 LemmaExample.java:17: plugin | Modifier, at-sign, semicolon, or type name expected after this token, got 'void'
-Polygon.java:11: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'old'
-Polygon.java:13: plugin | Reference cannot be resolved
 Polygon.java:65: plugin | Method specifications are not allowed in a class body
-PolygonMM.java:18: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'old'
-PolygonMM.java:20: plugin | Reference cannot be resolved
-T_Old.java:5: plugin | Class invariant, ghost or model declaration, in clause, in-method specification, method specification, modifiers, represents clause or at-sign expected, got 'old'
-T_Old.java:6: plugin | Reference cannot be resolved
-T_Old.java:7: plugin | Reference cannot be resolved
+T_Old.java:5: plugin | Method could not be resolved, maybe the parameters do not correspond?
 T_Old.java:15: plugin | Method could not be resolved, maybe the parameters do not correspond?
 T_PureMethod3.java:20: OpenJML | Pure methods may not assign to any fields: count in T_PureMethod3.Counter.count()

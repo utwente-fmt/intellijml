@@ -68,7 +68,7 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public void testStartingJMLKeywords() {
         List<String> strings = completeIn("JMLStartingKeywords.java");
 
-        assertSameElements(strings, ContainerUtil.concat(START_KEYWORDS, List.of("reads"), METHOD_MODIFIERS, ALSO, BEHAVIORS));
+        assertSameElements(strings, ContainerUtil.concat(START_KEYWORDS, List.of("reads", "old"), METHOD_MODIFIERS, ALSO, BEHAVIORS));
     }
 
     public void testJMLJavaField() {

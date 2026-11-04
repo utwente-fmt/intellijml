@@ -173,6 +173,13 @@ public final class ErrorMessages {
     public static final String DATAGROUP_NOT_MODEL = "Datagroups in \"in\" and \"maps\" clauses must be model variables";
     public static final String NON_STATIC_IN_STATIC_DATAGROUP = "A non-static variable may not be in a static datagroup";
 
+    // OpenJML's messages for old clauses
+    public static final String OLD_WITHOUT_INITIALIZER = "A old method clause variable must have an initializer";
+
+    public static String javaModifierInOldClause(String modifier) {
+        return "No Java modifiers are allowed in a old clause declaration: " + modifier;
+    }
+
     public static String modelInInterfaceNotStaticOrInstance(String name) {
         return "Model fields in an interface should be explicitly declared either static or instance: " + name;
     }

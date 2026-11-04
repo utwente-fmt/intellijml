@@ -10,6 +10,7 @@ import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import nl.utwente.jmlplugin.psi.*;
 import nl.utwente.jmlplugin.psi.impl.JMLBackslashFunctionExpr;
+import nl.utwente.jmlplugin.psi.impl.JMLGhostDeclarator;
 import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLQVarDecl;
 import nl.utwente.jmlplugin.psi.impl.JMLOldExpr;
@@ -97,6 +98,9 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())
                 && getParentOfType(element, JMLRepresentsClause.class) != null) {
             return checkRepresentsModifier(element, holder);
+        } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())
+                && getParentOfType(element, JMLOldClause.class) instanceof JMLOldClause old) {
+            return checkOldModifier(element, old, holder);
         } else if (JMLTokenSet.allModifiers.contains(element.getNode().getElementType())) {
             CommentPosition modifierPosition = CommentPosition.getModifierPosition(element);
             if (checkModifierAllowedHere(element.getNode().getElementType(), modifierPosition)) {
@@ -346,6 +350,34 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         } else if (doPrevInvariantModifiersContain(element, TokenSet.create(element.getNode().getElementType()))) {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.DUPLICATE_MODIFIER).create();
             return true;
+        }
+        if (message == null) return true;
+        holder.newAnnotation(HighlightSeverity.ERROR, message).create();
+        return false;
+    }
+
+    /**
+     * Checks a modifier of an old clause: as in OpenJML, only nullable or non_null, on a variable that is not of a
+     * primitive type
+     *
+     * @param element a modifier
+     * @param old     the old clause
+     * @param holder  the Annotation holder
+     * @return false if the modifier has an error
+     */
+    private static boolean checkOldModifier(PsiElement element, JMLOldClause old, AnnotationHolder holder) {
+        IElementType type = element.getNode().getElementType();
+        String message = null;
+        if (JMLTokenSet.visibilityModifiers.contains(type) || type == JMLTypes.STATIC) {
+            message = ErrorMessages.javaModifierInOldClause(element.getText());
+        } else if (!JMLTokenSet.nullityModifiers.contains(type)) {
+            message = ErrorMessages.jmlModifierNotAllowedIn("old clause");
+        } else if (doPrevInvariantModifiersContain(element, TokenSet.create(type == JMLTypes.NON_NULL ? JMLTypes.NULLABLE : JMLTypes.NON_NULL))) {
+            message = ErrorMessages.CONFLICTING_NULLITY;
+        } else if (getChildOfType(old, JMLGhostDeclarator.class) instanceof JMLGhostDeclarator declarator
+                && getCommentContext(old) != null
+                && Ghosts.type(declarator, getCommentContext(old)) instanceof PsiPrimitiveType primitive) {
+            message = ErrorMessages.nullityOnPrimitive(primitive);
         }
         if (message == null) return true;
         holder.newAnnotation(HighlightSeverity.ERROR, message).create();

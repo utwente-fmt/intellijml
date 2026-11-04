@@ -153,7 +153,16 @@ public final class Ghosts {
      */
     static @Nullable PsiType type(@NotNull JMLGhostDeclaration declaration, @NotNull PsiElement context) {
         JMLGhostDeclarator declarator = declarator(declaration);
-        String text = declarator == null ? null : declarator.getTypeText();
+        return declarator == null ? null : type(declarator, context);
+    }
+
+    /**
+     * @param declarator the declarator of a ghost or model declaration, or of an old clause
+     * @param context    an element from where the type is resolved
+     * @return the type of the variable, or null if it is not a valid type
+     */
+    static @Nullable PsiType type(@NotNull JMLGhostDeclarator declarator, @NotNull PsiElement context) {
+        String text = declarator.getTypeText();
         if (text == null) return null;
         try {
             return JavaPsiFacade.getElementFactory(context.getProject()).createTypeFromText(

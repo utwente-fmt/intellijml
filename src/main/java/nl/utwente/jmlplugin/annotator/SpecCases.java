@@ -12,6 +12,10 @@ import nl.utwente.jmlplugin.psi.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * The specification cases of methods, which "also" separates. A heavyweight specification case starts with a
  * behavior, such as "public normal_behavior"; a lightweight one has none. A specification in //@ comments can
@@ -55,6 +59,57 @@ final class SpecCases {
             if (startsWithAlso(previousJml)) return null;
         }
         return null;
+    }
+
+    /**
+     * @param element an element of a method specification, such as a clause
+     * @return the old clauses before its clause in its specification case, in order, also in the comments before it
+     */
+    static @NotNull List<JMLOldClause> oldClausesBefore(@NotNull PsiElement element) {
+        // nearest first
+        List<JMLOldClause> clauses = new ArrayList<>();
+        // the child of the method specification that the element is in, and the clauses before it in a specification body
+        PsiElement child = element;
+        while (child != null && !(child.getParent() instanceof JMLMethodSpec)) {
+            if (child instanceof PsiFile) return List.of();
+            if (child.getParent() instanceof JMLSpecBody) addOldClauses(child.getPrevSibling(), clauses);
+            child = child.getParent();
+        }
+        if (child == null) return List.of();
+        boolean started = addOldClauses(child.getPrevSibling(), clauses);
+        JMLMethodJml methodJml = PsiTreeUtil.getParentOfType(child, JMLMethodJml.class);
+        PsiComment comment = JMLAnnotatorUtil.getCommentContext(element);
+        if (!started && comment != null && (methodJml == null || !startsWithAlso(methodJml))) {
+            // the comments before it, nearest first
+            for (PsiComment previous : JMLAnnotatorUtil.collectPreviousComments(comment, false)) {
+                JMLMethodJml previousJml = methodJml(previous);
+                if (previousJml == null) continue;
+                JMLMethodSpec spec = PsiTreeUtil.getChildOfType(previousJml, JMLMethodSpec.class);
+                if (spec != null && addOldClauses(spec.getLastChild(), clauses)) break;
+                if (startsWithAlso(previousJml)) break;
+            }
+        }
+        Collections.reverse(clauses);
+        return clauses;
+    }
+
+    /**
+     * Adds the old clauses at and before an element in a method specification or a specification body, nearest
+     * first, up to the start of the specification case
+     *
+     * @return whether the start of the specification case was found: a behavior or "also"
+     */
+    private static boolean addOldClauses(@Nullable PsiElement element, @NotNull List<JMLOldClause> clauses) {
+        for (PsiElement e = element; e != null; e = e.getPrevSibling()) {
+            if (e instanceof JMLOldClause old) {
+                clauses.add(old);
+            } else if (e instanceof JMLSpecBody body) {
+                addOldClauses(body.getLastChild(), clauses);
+            } else if (e instanceof JMLBehaviorHeader || e.getNode().getElementType() == JMLTypes.ALSO) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

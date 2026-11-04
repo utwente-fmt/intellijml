@@ -236,4 +236,8 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testOldClause() {
+        doTest(true, true);
+    }
+
 }

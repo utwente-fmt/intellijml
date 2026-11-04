@@ -51,6 +51,8 @@ public class JMLTypeAnnotator {
             checkRepresentsClause(represents, holder);
         } else if (element instanceof JMLInClause inClause) {
             checkInClause(inClause, holder);
+        } else if (element instanceof JMLOldClause old) {
+            checkOldClause(old, holder);
         } else if (element instanceof JMLStoreRef && element.getParent() instanceof JMLLoopAssignableClause) {
             checkLoopAssignableVarScope(element, holder);
         } else if (element instanceof JMLReferenceType && (element.getParent() instanceof JMLSignalsClause || element.getParent() instanceof JMLSignalsOnlyClause)) {
@@ -135,6 +137,74 @@ public class JMLTypeAnnotator {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.incompatibleTypes(initializerType, type))
                         .range(initializer).create();
             }
+        }
+    }
+
+    /**
+     * Checks an old clause, such as "old int n = size;", with OpenJML's messages: the type must exist, the variable
+     * needs an initializer that fits the type, and no parameter or earlier old variable of the specification case may
+     * have the same name
+     *
+     * @param old    the old clause
+     * @param holder the Annotation holder
+     */
+    private static void checkOldClause(JMLOldClause old, AnnotationHolder holder) {
+        JMLGhostDeclarator declarator = getChildOfType(old, JMLGhostDeclarator.class);
+        PsiComment comment = getCommentContext(old);
+        String name = declarator == null ? null : declarator.getName();
+        if (name == null || comment == null || !(getJavaContext(old) instanceof PsiMethod method)) return;
+        PsiType type = Ghosts.type(declarator, comment);
+        if (type == null || (type.getDeepComponentType() instanceof PsiClassType classType && classType.resolve() == null)) {
+            PsiElement typeName = declarator.getTypeName();
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.CLASS_REFERENCE_NOT_FOUND)
+                    .range(typeName != null ? typeName : declarator).create();
+            type = null;
+        }
+        boolean duplicate = false;
+        for (PsiParameter parameter : method.getParameterList().getParameters()) {
+            duplicate |= name.equals(parameter.getName());
+        }
+        for (JMLOldClause earlier : SpecCases.oldClausesBefore(old)) {
+            JMLGhostDeclarator earlierDeclarator = getChildOfType(earlier, JMLGhostDeclarator.class);
+            duplicate |= earlierDeclarator != null && name.equals(earlierDeclarator.getName());
+        }
+        if (duplicate) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.alreadyDefined(name, "method", signature(method)))
+                    .range(declarator.getNameIdentifier()).create();
+        }
+        JMLInnerJavaExpr initializer = declarator.getInitializer();
+        if (initializer == null) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.OLD_WITHOUT_INITIALIZER)
+                    .range(declarator.getNameIdentifier()).create();
+            return;
+        }
+        // the initializer can use the parameters, the old variables before it and the ghost fields
+        ExtraVariables extraVars = new ExtraVariables();
+        addParameterVariables(method, extraVars);
+        addOldVariables(old, extraVars);
+        Ghosts.addVisible(old, extraVars);
+        InnerJavaExprResult result = annotateInnerJavaExpr(initializer, holder, extraVars, false, true);
+        PsiType initializerType = result.getExpr() == null ? null : result.getExpr().getType();
+        if (type != null && result.isCorrect() && initializerType != null && !TypeConversionUtil.isAssignable(type, initializerType)) {
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.incompatibleTypes(initializerType, type))
+                    .range(initializer).create();
+        }
+    }
+
+    /**
+     * Adds the variables of the old clauses before an element of a method specification in its specification case to
+     * the extra variables, with their types
+     *
+     * @param element   an element of a method specification, such as a clause
+     * @param extraVars the extra variables
+     */
+    private static void addOldVariables(PsiElement element, ExtraVariables extraVars) {
+        for (JMLOldClause old : SpecCases.oldClausesBefore(element)) {
+            JMLGhostDeclarator declarator = getChildOfType(old, JMLGhostDeclarator.class);
+            PsiComment comment = getCommentContext(old);
+            String name = declarator == null ? null : declarator.getName();
+            PsiType type = name == null || comment == null ? null : Ghosts.type(declarator, comment);
+            if (type != null) extraVars.add(name, type);
         }
     }
 
@@ -739,6 +809,8 @@ public class JMLTypeAnnotator {
             if (context instanceof PsiMethod) {
                 // parameters are not included by the Java resolver, so we store them ourselves
                 addParameterVariables((PsiMethod) context, extraVars);
+                // and the variables of the old clauses before the clause in its specification case
+                addOldVariables(element, extraVars);
             }
             if (element.getParent() instanceof JMLSignalsClause) {
                 // add the exception reference in the signals clause to the variables
@@ -1451,6 +1523,7 @@ public class JMLTypeAnnotator {
         if (getParentOfType(element, JMLEnsuresClause.class) != null) return "ensures";
         if (getParentOfType(element, JMLSignalsClause.class) != null) return "signals";
         if (getParentOfType(element, JMLDivergesClause.class) != null) return "diverges";
+        if (getParentOfType(element, JMLOldClause.class) != null) return "old";
         return null;
     }
 

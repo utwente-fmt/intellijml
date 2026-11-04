@@ -27,6 +27,7 @@ public class JMLElementType extends IElementType {
             entry("REPRESENTS_CLAUSE", "represents clause"),
             entry("IN_CLAUSE", "in clause"),
             entry("READS_CLAUSE", "reads clause"),
+            entry("OLD_CLAUSE", "old clause"),
             entry("IN_METHOD_SPEC", "in-method specification"),
             entry("JAVA_EXPR", "expression"),
             entry("JML_SPECIFICATION", "JML specification"),

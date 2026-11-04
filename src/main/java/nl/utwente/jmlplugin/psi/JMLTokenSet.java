@@ -61,13 +61,13 @@ public class JMLTokenSet {
     // OpenJML: they only end a Java expression after a semicolon, outside parentheses
     public static final TokenSet contextualKeywords = TokenSet.create(DECREASES, DECREASING, GHOST, SET, CHECK, SHOW,
             REACHABLE, UNREACHABLE, HALT, SPLIT, ASSIGNS, DIVERGES, INITIALLY, CONSTRAINT, MODEL, REPRESENTS, IN, READS,
-            ACCESSIBLE);
+            ACCESSIBLE, OLD_KEYWORD);
 
     // the contextual keywords that can also follow a modifier, as in "public ghost int x;" or "public initially x == 0;"
     public static final TokenSet keywordsAfterModifiers = TokenSet.create(GHOST, INITIALLY, CONSTRAINT, MODEL, REPRESENTS);
 
-    // the keywords of a ghost or model declaration, after which the declaration is a Java expression
-    public static final TokenSet declarationKeywords = TokenSet.create(GHOST, MODEL);
+    // the keywords of a ghost or model declaration and of an old clause, after which the declaration is a Java expression
+    public static final TokenSet declarationKeywords = TokenSet.create(GHOST, MODEL, OLD_KEYWORD);
 
     public static final TokenSet javaKeywords = TokenSet.create(THIS, SUPER);
 

@@ -51,6 +51,12 @@
   must follow the declaration of a field and name model fields that are visible enough. As in OpenJML, `//@` inside a
   JML comment continues it, as in `//@ public model int side; //@ in size;`, and `model`, `represents`, `in` and
   `reads` can still be names. Completion offers the new keywords.
+- `old` clauses in method specifications, such as `//@ old int n = size;`, which declare a variable for the clauses
+  after it in the same specification case, with the value of the initializer before the method runs. They are
+  checked as OpenJML does, with its messages: the variable needs an initializer that fits its type, its name may not
+  be that of a parameter or an earlier `old` variable of the specification case, the initializer must be visible
+  enough for the specification case, and only `nullable` and `non_null` are allowed as modifiers. `old` can still be a
+  name.
 - The statements of OpenJML's static checking: `check` (an `assert` that is not assumed afterwards), `show` (expressions
   whose values Verify with OpenJML shows when it cannot verify the method), `reachable`, `unreachable`, `halt` and
   `split`. They are checked as OpenJML does, with its messages: `check` and `split` need a `boolean`, and a `split`

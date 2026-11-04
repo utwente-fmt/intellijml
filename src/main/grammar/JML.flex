@@ -56,6 +56,7 @@ REST=[^@;().,:*\[\]\s]
   "represents"                { return REPRESENTS; }
   "in"                        { return IN; }
   "reads"                     { return READS; }
+  "old"                       { return OLD_KEYWORD; }
   "accessible"                { return ACCESSIBLE; }
   "set"                       { return SET; }
   "check"                     { return CHECK; }
