@@ -233,7 +233,7 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
         List<String> strings = completeIn("CodeBlockKeywords.java");
 
         assertSameElements(strings, "assert", "assume", "maintaining", "loop_invariant", "decreases", "loop_writes",
-                "ghost", "set");
+                "ghost", "set", "check", "show", "reachable", "unreachable", "halt", "split");
     }
 
     public void testAssignableSemicolon() {

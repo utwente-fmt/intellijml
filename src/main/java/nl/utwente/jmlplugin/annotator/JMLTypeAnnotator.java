@@ -17,6 +17,8 @@ import nl.utwente.jmlplugin.psi.impl.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static com.intellij.psi.util.PsiTreeUtil.getChildOfType;
@@ -51,7 +53,10 @@ public class JMLTypeAnnotator {
             checkGhostDeclaration(ghost, holder);
         } else if (element instanceof JMLSetStatement set) {
             checkSetStatement(set, holder);
-        } else if (element instanceof JMLJavaExpr && !(element.getParent() instanceof JMLSetStatement)) {
+        } else if (element instanceof JMLShowStatement show) {
+            checkShowStatement(show, holder);
+        } else if (element instanceof JMLJavaExpr && !(element.getParent() instanceof JMLSetStatement)
+                && !(element.getParent() instanceof JMLShowStatement)) {
             annotateJavaExpr((JMLJavaExpr) element, holder);
         }
     }
@@ -124,6 +129,37 @@ public class JMLTypeAnnotator {
             text.append(parameters[i].getType().getPresentableText());
         }
         return text.append(')').toString();
+    }
+
+    /**
+     * Checks the expressions of a show statement, such as "show i, a.length;", each on its own: they can have any
+     * type
+     *
+     * @param show   the show statement
+     * @param holder the Annotation holder
+     */
+    private static void checkShowStatement(JMLShowStatement show, AnnotationHolder holder) {
+        JMLJavaExpr javaExpr = getChildOfType(show, JMLJavaExpr.class);
+        JMLInnerJavaExpr inner = javaExpr == null ? null : getChildOfType(javaExpr, JMLInnerJavaExpr.class);
+        if (inner == null) return;
+        ExtraVariables extraVars = new ExtraVariables();
+        if (getJavaContext(show) instanceof PsiMethod method) addParameterVariables(method, extraVars);
+        Ghosts.addVisible(show, extraVars);
+        // the commas between the expressions, outside parentheses, brackets and braces
+        List<PsiElement> commas = new ArrayList<>();
+        int depth = 0;
+        for (PsiElement child = inner.getFirstChild(); child != null; child = child.getNextSibling()) {
+            IElementType type = child.getNode().getElementType();
+            if (type == JavaTokenType.LPARENTH || type == JavaTokenType.LBRACKET || type == JavaTokenType.LBRACE) depth++;
+            if (type == JavaTokenType.RPARENTH || type == JavaTokenType.RBRACKET || type == JavaTokenType.RBRACE) depth--;
+            if (depth == 0 && type == JavaTokenType.COMMA) commas.add(child);
+        }
+        commas.add(null);
+        PsiElement previous = null;
+        for (PsiElement comma : commas) {
+            annotateInnerJavaExpr(inner, holder, extraVars, false, true, true, previous, comma);
+            previous = comma;
+        }
     }
 
     /**
@@ -535,11 +571,25 @@ public class JMLTypeAnnotator {
                                                              ExtraVariables extraVars, boolean mustReturnBoolean,
                                                              boolean doTypeChecking, boolean isExpression,
                                                              @Nullable PsiElement skipThrough) {
+        return annotateInnerJavaExpr(element, holder, extraVars, mustReturnBoolean, doTypeChecking, isExpression, skipThrough, null);
+    }
+
+    /**
+     * See {@link #annotateInnerJavaExpr(JMLInnerJavaExpr, AnnotationHolder, ExtraVariables, boolean, boolean, boolean, PsiElement)}
+     *
+     * @param stopAt a child of the element, such as a comma in the list of a show statement: it and the children after
+     *               it are left out, so that only the part before it is checked
+     */
+    @NotNull
+    private static InnerJavaExprResult annotateInnerJavaExpr(JMLInnerJavaExpr element, AnnotationHolder holder,
+                                                             ExtraVariables extraVars, boolean mustReturnBoolean,
+                                                             boolean doTypeChecking, boolean isExpression,
+                                                             @Nullable PsiElement skipThrough, @Nullable PsiElement stopAt) {
         InnerJavaExprResult result = new InnerJavaExprResult(element);
         if (element == null) return result;
         PsiElement currentChild = element.getFirstChild();
         boolean skipping = skipThrough != null;
-        while (currentChild != null) {
+        while (currentChild != null && currentChild != stopAt) {
             if (skipping) {
                 result.addText("", currentChild);
                 skipping = currentChild != skipThrough;

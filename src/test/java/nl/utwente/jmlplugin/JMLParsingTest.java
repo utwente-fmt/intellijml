@@ -87,6 +87,11 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testStatements() {
+        // check, show, reachable, unreachable, halt and split; the last ones need no semicolon, and all are also names
+        doTest(true, true);
+    }
+
     public void testLineComments() {
         // a comment ends at the end of the line, and does not end the expression; // in a string is not a comment
         doTest(true, true);

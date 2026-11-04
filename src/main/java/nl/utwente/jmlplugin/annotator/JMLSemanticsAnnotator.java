@@ -2,6 +2,9 @@ package nl.utwente.jmlplugin.annotator;
 
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
+import com.intellij.lang.injection.InjectedLanguageManager;
+import com.intellij.openapi.util.Pair;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
@@ -45,6 +48,13 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.NO_MODIFIER_BEFORE_SPEC).create();
         } else if (isLoopSpec(element) && checkLoopSpecAboveLoop(element)) {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.LOOP_SPEC_NOT_ABOVE_LOOP).create();
+        } else if (isStatement(element) && isBetweenLoopSpecAndLoop(element)) {
+            PsiElement keyword = statementKeyword(element);
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.notLoopSpecification(keyword.getText()))
+                    .range(keyword).create();
+        } else if (element instanceof JMLSplitStatement && isSplitOutOfPlace(element)) {
+            holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.SPLIT_OUT_OF_PLACE).range(element.getFirstChild()).create();
+            return true;
         } else if (element instanceof JMLSignalsOnlyClause && checkMultipleSignalsOnly((JMLSignalsOnlyClause) element)) {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.MULTIPLE_SIGNALS_ONLY).create();
             return true;
@@ -452,6 +462,78 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
         return loopBelow(element) == null;
     }
 
+    // the keywords of the clauses that specify a loop, as they start a clause in the text of a JML comment
+    private static final String LOOP_SPEC_KEYWORDS = "maintaining|loop_invariant|decreases|decreasing|loop_decreases"
+            + "|loop_writes|loop_modifies|loop_assigns|loop_assignable";
+
+    /**
+     * @return whether the element is a statement in a method body other than a loop specification, such as assert,
+     * set, a ghost declaration or show
+     */
+    private static boolean isStatement(PsiElement element) {
+        return element.getParent() instanceof JMLInMethodSpec && element.getFirstChild() != null && !isLoopSpec(element);
+    }
+
+    /**
+     * @return the keyword of a statement, such as "show", or "ghost" for a ghost declaration
+     */
+    private static PsiElement statementKeyword(PsiElement statement) {
+        if (statement instanceof JMLGhostDeclaration) {
+            for (PsiElement child = statement.getFirstChild(); child != null; child = child.getNextSibling()) {
+                if (child.getNode().getElementType() == JMLTypes.GHOST) return child;
+            }
+        }
+        return statement.getFirstChild();
+    }
+
+    /**
+     * @param statement a statement in a method body, such as show
+     * @return whether it is between the specification of a loop and the loop, where OpenJML only allows loop
+     * specifications, as in "maintaining i >= 0; show i;" right above a loop
+     */
+    private static boolean isBetweenLoopSpecAndLoop(PsiElement statement) {
+        if (loopBelow(statement) == null) return false;
+        for (PsiElement previous = statement.getPrevSibling(); previous != null; previous = previous.getPrevSibling()) {
+            if (isLoopSpec(previous)) return true;
+        }
+        return doPrevCommentsContain(statement, LOOP_SPEC_KEYWORDS, false, false);
+    }
+
+    /**
+     * @param split a split statement
+     * @return whether it is out of place, as OpenJML calls it: not right before an if statement, a switch statement or
+     * a loop, possibly with comments in between, but no other statements
+     */
+    private static boolean isSplitOutOfPlace(PsiElement split) {
+        for (PsiElement next = split.getNextSibling(); next != null; next = next.getNextSibling()) {
+            if (isStatement(next)) return true;
+        }
+        PsiComment comment = getCommentContext(split);
+        if (comment == null) return false;
+        PsiElement next = comment.getNextSibling();
+        while (next instanceof PsiWhiteSpace || (next instanceof PsiComment nextComment && !hasStatement(nextComment))) {
+            next = next.getNextSibling();
+        }
+        return !(next instanceof PsiIfStatement || next instanceof PsiSwitchStatement || next instanceof PsiLoopStatement);
+    }
+
+    /**
+     * @return whether the comment is JML with a statement other than a loop specification
+     */
+    private static boolean hasStatement(PsiComment comment) {
+        List<Pair<PsiElement, TextRange>> injected = InjectedLanguageManager.getInstance(comment.getProject())
+                .getInjectedPsiFiles(comment);
+        if (injected == null) return false;
+        for (Pair<PsiElement, TextRange> file : injected) {
+            for (JMLInMethodSpec spec : findChildrenOfType(file.getFirst(), JMLInMethodSpec.class)) {
+                for (PsiElement child = spec.getFirstChild(); child != null; child = child.getNextSibling()) {
+                    if (isStatement(child)) return true;
+                }
+            }
+        }
+        return false;
+    }
+
 
     /**
      * Checks that a clause with \not_specified is not redundant
@@ -518,6 +600,7 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      */
     private static boolean checkOldExprAllowed(JMLOldExpr element) {
         return getParentOfType(element, JMLEnsuresClause.class, JMLSignalsClause.class, JMLAssumeStatement.class,
-                JMLAssertStatement.class, JMLLoopInvariant.class, JMLLoopVariant.class) == null;
+                JMLAssertStatement.class, JMLLoopInvariant.class, JMLLoopVariant.class, JMLCheckStatement.class,
+                JMLShowStatement.class, JMLSplitStatement.class) == null;
     }
 }

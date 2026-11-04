@@ -52,6 +52,12 @@ REST=[^@;().,:*\[\]\s]
   "loop_invariant"            { return LOOPINVARIANT; }
   "ghost"                     { return GHOST; }
   "set"                       { return SET; }
+  "check"                     { return CHECK; }
+  "show"                      { return SHOW; }
+  "reachable"                 { return REACHABLE; }
+  "unreachable"               { return UNREACHABLE; }
+  "halt"                      { return HALT; }
+  "split"                     { return SPLIT; }
   "decreases"                 { return DECREASES; }
   "decreasing"                { return DECREASING; }
   "loop_decreases"            { return LOOP_DECREASES; }

@@ -40,6 +40,7 @@ public final class ErrorMessages {
     public static final String MULTIPLE_SPEC_VISIBILITY_MODIFIERS = "You cannot have multiple specification visibility modifiers (spec_public or spec_protected)";
     // OpenJML's message for a loop_invariant, decreases or loop_writes clause that is not above a loop
     public static final String LOOP_SPEC_NOT_ABOVE_LOOP = "Loop specifications must immediately precede a loop statement";
+    public static final String SPLIT_OUT_OF_PLACE = "Ignoring out of place split statement";
     public static final String HELPER_NOT_ALLOWED = "The helper modifier is only allowed when the method is private or pure";
     public static final String NOT_SPECIFIED_REDUNDANT = "This clause containing \\not_specified is redundant because you already specified it";
     public static final String STATIC_AND_INSTANCE = "You cannot use both instance and static, choose one";
@@ -117,6 +118,10 @@ public final class ErrorMessages {
     // \not_modified in a clause that does not allow them, such as "a requires clause" (and "a invariant clause")
     public static String notReferenceType(String keyword) {
         return "The argument of " + keyword + " must be of reference type";
+    }
+
+    public static String notLoopSpecification(String keyword) {
+        return "Expected loop specifications while in JML: " + keyword + " is not a loop specification keyword";
     }
 
     public static String notAllowedInClause(String keyword, String clause) {

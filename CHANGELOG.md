@@ -41,6 +41,13 @@
   the same name, `set` can only assign a ghost variable, a ghost field must be visible enough for the specification
   that uses it, and the modifiers must fit a ghost field or a local variable. `ghost` and `set` can still be names.
   Completion offers the ghost variables in expressions.
+- The statements of OpenJML's static checking: `check` (an `assert` that is not assumed afterwards), `show` (expressions
+  whose values Verify with OpenJML shows when it cannot verify the method), `reachable`, `unreachable`, `halt` and
+  `split`. They are checked as OpenJML does, with its messages: `check` and `split` need a `boolean`, and a `split`
+  that is not right before an `if`, `switch` or loop gets a warning. As in OpenJML, their keywords can still be names.
+  Completion offers them in method bodies.
+- A statement between the specification of a loop and the loop, as in `//@ maintaining i >= 0;` followed by
+  `//@ assert i < n;` right above the loop, gives OpenJML's error, as only loop specifications may be there
 - Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in
   `// @` or `/* @`, which makes the comment an ordinary comment instead of JML
 

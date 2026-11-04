@@ -49,8 +49,8 @@ public class JavaReferences {
         //@ assert num >= 5;
 
         // for loop invariants, loop initializer is also reachable
-        //@ loop_invariant i >= 0 && a > 0 && b > 0;
         //@ assert <error descr="Reference cannot be resolved">i</error> >= 0;
+        //@ loop_invariant i >= 0 && a > 0 && b > 0;
         for (int i = 0; i < 10; i++) {
             int x = 9;
         }

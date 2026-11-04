@@ -14,9 +14,6 @@ MyBox.java:23: plugin | Class invariant, ghost declaration, in-method specificat
 MyBox.java:30: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 MyBox.java:31: plugin | The helper modifier is only allowed when the method is private or pure
 MyBox.java:38: plugin | The helper modifier is only allowed when the method is private or pure
-MyBox.java:52: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
-MyBox.java:54: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
-MyBox.java:55: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
 Polygon.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
 Polygon.java:5: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
 Polygon.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
@@ -49,7 +46,7 @@ Polygon.java:65: plugin | Method specifications are not allowed in a class body
 Polygon.java:72: plugin | Reference cannot be resolved
 Polygon.java:73: plugin | Reference cannot be resolved
 Polygon.java:74: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
-Polygon.java:76: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
+Polygon.java:76: plugin | Reference cannot be resolved
 Polygon.java:81: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reads'
 Polygon.java:83: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 Polygon.java:90: plugin | Reference cannot be resolved
@@ -109,7 +106,6 @@ Real.java:9: plugin | Reference cannot be resolved
 Real.java:10: plugin | Reference cannot be resolved
 T_arithmetic5.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'code_java_math'
 T_arithmetic5.java:6: plugin | Unknown keyword \java_math, or a JML keyword that this plugin does not support
-T_assert4.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'check'
 T_BVMult.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'code_java_math'
 T_BVRoundUp.java:8: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'code_java_math'
 T_choose.java:4: plugin | Unknown keyword \choose, or a JML keyword that this plugin does not support
@@ -119,19 +115,12 @@ T_constraint.java:6: plugin | Modifier, at-sign, behavior, exceptional_behavior,
 T_constraint.java:7: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'constraint'
 T_dowhile.java:7: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
 T_Exception1b.java:12: plugin | Reference(s) to one or more exceptions expected, got '\nothing'
-T_Feasibility2.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'reachable'
-T_Feasibility3.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
-T_Feasibility3.java:10: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'unreachable'
 T_foreach.java:6: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
 T_foreach.java:7: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
 T_foreach.java:9: plugin | Unknown keyword \count, or a JML keyword that this plugin does not support
 T_forloop.java:12: plugin | A quantified expression should be inside parentheses, including the keyword
-T_halt2.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'halt'
-T_halt2.java:10: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'halt'
-T_halt3.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'halt'
 T_initially1.java:7: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'initially'
 T_initially2.java:7: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'initially'
-T_LoopBodyError.java:11: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
 T_NonNullArrayInit.java:21: plugin | Modifiers are not allowed here
 T_NonNullArrayInitFullJML.java:18: plugin | Modifiers are not allowed here
 T_NullableList.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'model'
@@ -159,16 +148,10 @@ T_PureMethod3.java:32: plugin | Class invariant, ghost declaration, in-method sp
 T_PureMethod4.java:6: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 T_PureMethod5.java:8: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'spec_pure'
 T_RacExit.java:4: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'diverges'
-T_show2.java:10: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
 T_show2a.java:3: plugin | Unknown keyword \lbl, or a JML keyword that this plugin does not support
 T_show3.java:3: plugin | Class invariants are not allowed above a field, add a newline after the comment
-T_show3.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
 T_show4.java:3: plugin | Class invariants are not allowed above a field, add a newline after the comment
-T_show4.java:8: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
 T_SpecifyingExceptionsNone.java:4: plugin | Reference(s) to one or more exceptions expected, got '\nothing'
-T_split1.java:7: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'split'
-T_split1.java:9: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'split'
-T_split1.java:17: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'show'
 T_Visibility3.java:3: plugin | Class invariant, ghost declaration, in-method specification, method specification, modifiers or at-sign expected, got 'in'
 T_Visibility3.java:5: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'model'
 T_Visibility3.java:6: plugin | Modifier, at-sign, behavior, exceptional_behavior, ghost, invariant, normal_behavior or semicolon expected, got 'represents'

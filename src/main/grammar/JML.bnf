@@ -73,6 +73,12 @@
   name("loop_variant")="decreases clause"
   name("ghost_declaration")="ghost declaration"
   name("set_statement")="set statement"
+  name("check_statement")="check statement"
+  name("show_statement")="show statement"
+  name("reachable_statement")="reachable statement"
+  name("unreachable_statement")="unreachable statement"
+  name("halt_statement")="halt statement"
+  name("split_statement")="split statement"
   name("loop_assignable_clause")="loop_writes clause"
 }
 
@@ -106,6 +112,7 @@ private pred_or_not ::= NOT_SPECIFIED | java_expr
 private class_invariants ::= ((class_invariant | ghost_declaration) AT_SIGN*)+ !in_method_keyword
 private in_method_keyword ::= set | assert | assume | maintaining | LOOPINVARIANT | decreases | decreasing
     | LOOP_DECREASES | LOOP_WRITES | LOOP_MODIFIES | LOOP_ASSIGNS | LOOP_ASSIGNABLE
+    | check | show | reachable | unreachable | halt | split
 class_invariant ::= modifiers? invariant java_expr SEMICOLON+ {pin="java_expr"}
 
 // modifiers for methods and fields
@@ -115,7 +122,8 @@ private java_modifier ::= public | private | protected | static
 
 // specification inside a method
 in_method_spec ::= (AT_SIGN* (loop_invariant | loop_variant | loop_assignable_clause | assert_statement | assume_statement
-    | set_statement | ghost_declaration))+
+    | set_statement | ghost_declaration | check_statement | show_statement | reachable_statement | unreachable_statement
+    | halt_statement | split_statement))+
 loop_invariant ::= (maintaining | LOOPINVARIANT) java_expr SEMICOLON+ {pin="java_expr"}
 loop_variant ::= (decreases | decreasing | LOOP_DECREASES) java_expr SEMICOLON+ {pin="java_expr"}
 loop_assignable_clause ::= (LOOP_WRITES | LOOP_MODIFIES | LOOP_ASSIGNS | LOOP_ASSIGNABLE) <<skipAtSigns>> store_ref_list SEMICOLON+
@@ -124,6 +132,16 @@ assert_statement ::= assert java_expr SEMICOLON+ {pin="java_expr"}
 assume_statement ::= assume java_expr SEMICOLON+ {pin="java_expr"}
 // an assignment to a ghost variable, such as "set count = count + 1;"
 set_statement ::= set java_expr SEMICOLON+ {pin="java_expr"}
+// statements for OpenJML's static checking, with OpenJML's syntax: check is an assert that is not assumed afterwards,
+// show lists expressions whose values OpenJML shows in a counterexample, reachable and unreachable check whether a
+// statement can be reached, halt stops the checking of the rest of the path, and split splits the proof of the if,
+// switch or loop after it; the ones without an expression need no semicolon at the end of the comment
+check_statement ::= check java_expr SEMICOLON+ {pin="java_expr"}
+show_statement ::= show java_expr? SEMICOLON+ {pin=1}
+reachable_statement ::= reachable SEMICOLON*
+unreachable_statement ::= unreachable SEMICOLON*
+halt_statement ::= halt SEMICOLON*
+split_statement ::= split java_expr? SEMICOLON*
 
 // a ghost field or local variable, such as "public ghost int count = 0;", with a type, a name and an optional initializer
 ghost_declaration ::= modifiers? ghost modifiers? <<parseGhostDeclarator>> SEMICOLON+ {pin=2}
