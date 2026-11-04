@@ -36,6 +36,10 @@
         <localInspection language="JAVA" shortName="JMLPureMethod" groupName="JML"
                          displayName="Pure method changes state" enabledByDefault="true" level="WARNING"
                          implementationClass="nl.utwente.jmlplugin.annotator.JMLPureMethodInspection"/>
+        <!-- the body of a method with an assignable clause, which OpenJML only checks when it verifies the method -->
+        <localInspection language="JAVA" shortName="JMLAssignable" groupName="JML"
+                         displayName="Assignment not allowed by the assignable clause" enabledByDefault="true"
+                         level="WARNING" implementationClass="nl.utwente.jmlplugin.annotator.JMLAssignableInspection"/>
         <additionalTextAttributes scheme="Darcula" file="colorSchemes/JMLDarculaColorScheme.xml"/>
         <additionalTextAttributes scheme="Default"
                                   file="colorSchemes/JMLDefaultLightColorScheme.xml"/>

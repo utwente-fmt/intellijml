@@ -129,6 +129,21 @@ public final class ErrorMessages {
                 + ", which is not pure and has no assignable clause, so it has 'assignable \\everything'";
     }
 
+    // the body of a method that assigns what its assignable clause does not allow: OpenJML's static checking reports
+    // these as assignable violations
+    public static String notAssignable(String target) {
+        return "The assignable clause does not allow assigning to " + target;
+    }
+
+    public static String callAssignsEverything(String callee) {
+        return "The assignable clause does not allow calling " + callee
+                + ", which is not pure and has no assignable clause, so it has 'assignable \\everything'";
+    }
+
+    public static String callNotAssignable(String callee, String location) {
+        return "The assignable clause does not allow calling " + callee + ", which assigns " + location;
+    }
+
     // OpenJML's errors for the assignable clauses of pure methods and of constructors
     public static String pureMethodAssignable(String item, String method) {
         return "Pure methods may not assign to any fields: " + item + " in " + method;

@@ -93,6 +93,13 @@
   parameter or of the value of a field, and a call of a method or constructor that is not `pure` and has no
   `assignable` clause. A pure constructor may assign the fields of the new object. A quick fix declares the called
   method `pure`. It is an inspection, *Pure method changes state* in the JML group, which can be turned off.
+- A warning for code that assigns what the `assignable` clause of its method does not list, which OpenJML only reports
+  when it verifies the method: an assignment to a field or array element that existed before the call, such as
+  `total = 0;` with `//@ assignable count;`, and a call of a method that may assign anything (it is not `pure` and has
+  no `assignable` clause) or whose `assignable` clause names a location that this one does not. Wildcards such as
+  `this.*` and `a[*]`, and the data groups of model fields (`//@ in size;`), are taken into account. A quick fix adds
+  the location to the `assignable` clause. It is an inspection, *Assignment not allowed by the assignable clause* in
+  the JML group, which can be turned off.
 - OpenJML's errors for `assignable` clauses that do not fit a pure method or a constructor: a pure method may only
   have `assignable \nothing` ("Pure methods may not assign to any fields"), a constructor may not list the fields of
   the new object, which it may always assign ("Implicit references to 'this' are not permitted in constructor

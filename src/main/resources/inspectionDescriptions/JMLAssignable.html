@@ -1,0 +1,38 @@
+<html>
+<body>
+Reports code that assigns a location that the <code>assignable</code> clause of its method does not list.
+<!-- tooltip end -->
+<p>
+    A method may only change the fields and array elements that existed before it was called if its
+    <code>assignable</code> clause lists them, such as <code>count</code>, <code>next.value</code>,
+    <code>this.*</code> (all fields of the object), <code>values[*]</code> (all elements of the array) or a model field
+    whose data group holds the field (<code>//@ in size;</code>). It may always change its local variables and the
+    objects that it creates itself, and a constructor the fields of the new object. This inspection reports:
+</p>
+<ul>
+    <li>assignments, also with <code>++</code>, <code>--</code> and <code>+=</code>, to a field or array element that
+        the <code>assignable</code> clause does not list;</li>
+    <li>calls of methods that are not pure and have no <code>assignable</code> clause, which may therefore change
+        anything, and of methods whose <code>assignable</code> clause names a location that this method's clause does
+        not list.</li>
+</ul>
+<p>Example:</p>
+<pre><code>
+//@ assignable count;
+public void reset() {
+    count = 0;
+    total = 0;          // the assignable clause does not allow assigning to total
+}
+</code></pre>
+<p>
+    With several specification cases, a location that one of their <code>assignable</code> clauses lists is allowed;
+    a case without an <code>assignable</code> clause allows everything. Methods without a specification are not
+    checked, and pure methods are checked by <em>Pure method changes state</em>. OpenJML's type checking does not
+    check this; Verify with OpenJML reports the same lines as violations of the assignable clause, and also checks each
+    specification case on its own, and calls of the Java library, such as <code>list.add(x)</code>.
+</p>
+<p>
+    Quick fixes add the location to the <code>assignable</code> clause, or declare a called method <code>pure</code>.
+</p>
+</body>
+</html>
