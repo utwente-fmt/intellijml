@@ -24,7 +24,7 @@ public class NullityModifiers {
         /*@ non_null @*/ Object local = new Object();
         //@ nullable
         Object local2 = null;
-        //@ assert (\forall non_null Object o; o == local; o != null);
+        //@ assert (<weak_warning descr="Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression">\forall</weak_warning> non_null Object o; o == local; o != null);
         return local;
     }
 

@@ -306,6 +306,93 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
                 """);
     }
 
+    public void testAddQuantifierBounds() {
+        quickFix("""
+                class A {
+                    //@ requires (\\forall int i; a[i] > 0);
+                    void m(int[] a) {}
+                }
+                """, "Add bounds 0 <= i < a.length", """
+                class A {
+                    //@ requires (\\forall int i; 0 <= i < a.length; a[i] > 0);
+                    void m(int[] a) {}
+                }
+                """);
+    }
+
+    public void testAddQuantifierBoundsToEmptyRange() {
+        quickFix("""
+                class A {
+                    //@ ensures (\\forall int i; ; \\result[i] > 0);
+                    int[] m() { return null; }
+                }
+                """, "Add bounds 0 <= i < \\result.length", """
+                class A {
+                    //@ ensures (\\forall int i; 0 <= i < \\result.length; \\result[i] > 0);
+                    int[] m() { return null; }
+                }
+                """);
+    }
+
+    public void testAddMissingQuantifierBound() {
+        quickFix("""
+                class A {
+                    int[] values;
+                    //@ requires (\\exists int i; 0 <= i; this.values[i] > 0);
+                    void m() {}
+                }
+                """, "Add bounds 0 <= i < this.values.length", """
+                class A {
+                    int[] values;
+                    //@ requires (\\exists int i; 0 <= i && i < this.values.length; this.values[i] > 0);
+                    void m() {}
+                }
+                """);
+    }
+
+    public void testMoveImplicationBoundsToRange() {
+        quickFix("""
+                class A {
+                    //@ requires (\\forall int i; 0 <= i && i < a.length ==> a[i] > 0);
+                    void m(int[] a) {}
+                }
+                """, "Move the bounds of i to the range", """
+                class A {
+                    //@ requires (\\forall int i; 0 <= i && i < a.length; a[i] > 0);
+                    void m(int[] a) {}
+                }
+                """);
+    }
+
+    public void testMoveForallBoundsToRange() {
+        quickFix("""
+                class A {
+                    //@ requires (\\forall int i; a[i] > 0 && 0 <= i && i < a.length);
+                    void m(int[] a) {}
+                }
+                """, "Move the bounds of i to the range", """
+                class A {
+                    //@ requires (\\forall int i; 0 <= i && i < a.length; a[i] > 0);
+                    void m(int[] a) {}
+                }
+                """);
+    }
+
+    public void testMoveExistsBoundsToRange() {
+        quickFix("""
+                class A {
+                    /*@ requires (\\exists int i; 0 <= i && i < a.length
+                      @                     ==> a[i] == 2); @*/
+                    void m(int[] a) {}
+                }
+                """, "Move the bounds of i to the range", """
+                class A {
+                    /*@ requires (\\exists int i; 0 <= i && i < a.length; a[i] == 2); @*/
+                    void m(int[] a) {}
+                }
+                """);
+    }
+
     public void testOptimizeImportsWithoutJml() {
         myFixture.configureByText("A.java", "import java.util.Map;\n\nclass A {\n    // Map is only in a normal comment\n}\n");
         new OptimizeImportsProcessor(getProject(), myFixture.getFile()).run();

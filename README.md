@@ -20,7 +20,10 @@ when a method is called, an `ensures` or `invariant` that does not hold when it 
 test, a violated specification makes the test fail, with the specification in the message; an application
 reports each violation in the Run tool window, with links to the call and to the specification, and goes on.
 (OpenJML's system property `org.jmlspecs.openjml.rac` changes this, for example `-Dorg.jmlspecs.openjml.rac=exception`
-in the VM options of an application to stop at the first violation.)
+in the VM options of an application to stop at the first violation.) When the program runs, OpenJML can only compute
+a quantified expression over one variable of an integral type with a lower and an upper bound, such as
+`(\forall int i; 0 <= i < a.length; a[i] > 0)`; it treats other ones as false, so the editor marks them with a weak
+warning, with quick fixes that add the bounds.
 
 The checks are made by [OpenJML](https://www.openjml.org), which is not included in the plugin: the first
 time, a notification offers to download it (about 220 MB), or choose an existing installation in

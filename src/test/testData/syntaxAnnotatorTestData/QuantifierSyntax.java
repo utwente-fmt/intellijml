@@ -12,7 +12,7 @@ public class QuantifierSyntax {
     //@ ensures (\forall int i<error descr="Range condition or expression expected after this token">;</error>
     //@ ensures (\forall int i; i > 0 && i < <error descr="Right parenthesis or semicolon expected after this token">10</error>
     //@ ensures (\forall int i; i > 0 && i < 10; i+5 >= <error descr="Right parenthesis expected after this token">5</error>
-    //@ ensures (\forall int i;; i+5 >= 5);
+    //@ ensures (<weak_warning descr="Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression">\forall</weak_warning> int i;; i+5 >= 5);
     //@ ensures (\forall int i; i > 0 && i < 10;<error descr="Expression expected, got ')'">)</error>;
     //@ ensures (\forall int i; i > 0 && i < 10);
     //@ ensures (\forall int i;<error descr="Range condition or expression expected, got ')'">)</error>;

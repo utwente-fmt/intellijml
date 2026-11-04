@@ -74,6 +74,16 @@
   - the types `\bigint` and `\real`, which the plugin checks as `long` and `double`
   - a quantified expression without parentheses as a whole clause, such as `//@ assert \forall int i; 0 <= i < n; a[i] > 0;`
   - `non_null` and `nullable` in a cast, such as `(/*@ non_null @*/ String[]) array`
+- Warnings for quantified expressions that do not mean what they seem to:
+  - OpenJML's warning "Runtime assertion checking is not implemented for this type or number of declarations in a
+    quantified expression" (a weak warning), as Run with JML Checks treats such a quantified expression as false (or
+    0 for `\sum`, `\num_of` and `\max`), and so reports violations that are not there. It can only compute a
+    quantified expression over one variable of an integral type with a lower and an upper bound, such as
+    `(\forall int i; 0 <= i < a.length; a[i] > 0)`. Quick fixes add the bounds of an array that the expression
+    indexes, such as `0 <= i < a.length` for `a[i]`, or move the bounds before `==>` to the range.
+  - A `\forall` whose bounds are joined to the expression with `&&`, as in `(\forall int i; 0 <= i && i < n && a[i] > 0)`,
+    which is false, and an `\exists` with `==>` after the bounds, which is true. A quick fix moves the bounds to the
+    range.
 - A statement between the specification of a loop and the loop, as in `//@ maintaining i >= 0;` followed by
   `//@ assert i < n;` right above the loop, gives OpenJML's error, as only loop specifications may be there
 - Quick fixes (Alt+Enter) that insert a missing `;` at the end of a clause, and that remove the whitespace in

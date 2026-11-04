@@ -173,6 +173,25 @@ public final class ErrorMessages {
     public static final String DATAGROUP_NOT_MODEL = "Datagroups in \"in\" and \"maps\" clauses must be model variables";
     public static final String NON_STATIC_IN_STATIC_DATAGROUP = "A non-static variable may not be in a static datagroup";
 
+    // OpenJML's warning for a quantified expression that its runtime checks cannot compute, which they then treat as
+    // false (or 0); the tooltip explains what that means
+    public static final String QUANTIFIER_NOT_EXECUTABLE = "Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression";
+    public static final String QUANTIFIER_NOT_EXECUTABLE_TOOLTIP = "<html>" + QUANTIFIER_NOT_EXECUTABLE + ".<br>"
+            + "Run with JML Checks then uses false instead (or 0 for \\sum, \\num_of and \\max), so it can report a "
+            + "violation that is not there. It can compute a quantified expression over one variable of an integral "
+            + "type, such as int, with a lower and an upper bound in the range, as in "
+            + "(\\forall int i; 0 &lt;= i &lt; a.length; a[i] &gt; 0).</html>";
+
+    public static String forallWithBoundsInExpression(String variable) {
+        return "This \\forall is false: its expression must hold for every " + variable
+                + ", also outside the bounds. Put the bounds in the range, or use ==> after them";
+    }
+
+    public static String existsWithBoundsInExpression(String variable) {
+        return "This \\exists is true: its expression holds for every " + variable
+                + " outside the bounds. Put the bounds in the range, or use && instead of ==>";
+    }
+
     // OpenJML's messages for old clauses
     public static final String OLD_WITHOUT_INITIALIZER = "A old method clause variable must have an initializer";
 

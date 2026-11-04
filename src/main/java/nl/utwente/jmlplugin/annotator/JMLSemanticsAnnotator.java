@@ -11,6 +11,7 @@ import com.intellij.psi.tree.TokenSet;
 import nl.utwente.jmlplugin.psi.*;
 import nl.utwente.jmlplugin.psi.impl.JMLBackslashFunctionExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLGhostDeclarator;
+import nl.utwente.jmlplugin.psi.impl.JMLQuantifiedExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
 import nl.utwente.jmlplugin.psi.impl.JMLQVarDecl;
 import nl.utwente.jmlplugin.psi.impl.JMLOldExpr;
@@ -72,6 +73,10 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.ENSURES_IN_EXCEPTIONAL_BEHAVIOR).range(element.getFirstChild()).create();
         } else if (element instanceof JMLBehaviorHeader behavior && isMoreVisibleThanMethod(behavior)) {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.BEHAVIOR_MORE_VISIBLE).create();
+            return true;
+        } else if (element instanceof JMLQuantifiedExpr quantifier) {
+            // warnings only, so that the expression is still type checked
+            Quantifiers.check(quantifier, holder);
             return true;
         } else if (element.getParent() instanceof JMLQVarDecl) {
             // the nullable or non_null of the variable of a quantifier

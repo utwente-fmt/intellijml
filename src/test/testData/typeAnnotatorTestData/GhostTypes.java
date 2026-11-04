@@ -17,7 +17,7 @@ public class GhostTypes {
 
     //@ ensures count == \old(count) + 1;
     //@ ensures <error descr="An identifier with package visibility may not be used in a ensures clause with public visibility">packageCount</error> == 0;
-    //@ ensures (\forall int count; 0 <= count; count >= 0);
+    //@ ensures (<weak_warning descr="Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression">\forall</weak_warning> int count; 0 <= count; count >= 0);
     public void inc(int p) {
         //@ set count++;
         //@ set count += 2;

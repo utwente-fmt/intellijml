@@ -34,7 +34,7 @@ public class JavaReferences {
     */
 
     // multiple variables in a forall
-    //@ invariant (\forall int x, y; 0 <= x && x < y && y < 100; x + y == 100);
+    //@ invariant (<weak_warning descr="Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression">\forall</weak_warning> int x, y; 0 <= x && x < y && y < 100; x + y == 100);
 
     /*@ (* parameters accessible *)
       @ ensures a > 0;
