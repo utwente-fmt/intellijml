@@ -1,6 +1,5 @@
 package nl.utwente.jmlplugin.esc;
 
-import com.intellij.icons.AllIcons;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.RangeMarker;
@@ -12,10 +11,12 @@ import com.intellij.openapi.editor.markup.RangeHighlighter;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.RegisterToolWindowTask;
+import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.Key;
 import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowAnchor;
+import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
 import com.intellij.ui.ColoredListCellRenderer;
@@ -42,6 +43,8 @@ import java.awt.*;
  */
 public final class EscTraceView extends JPanel implements Disposable {
     static final String ID = "JML Counterexample";
+    // the view that shows the steps now
+    private static final Key<EscTraceView> SHOWN = Key.create("JML_COUNTEREXAMPLE_VIEW");
 
     private final Project project;
     private final EscResults.Trace trace;
@@ -110,23 +113,41 @@ public final class EscTraceView extends JPanel implements Disposable {
      * Shows the steps of the counterexample of a failure in the tool window, and its first step in the editor
      */
     static void show(@NotNull Project project, @NotNull EscResults.Trace trace, @NotNull String failure) {
-        ToolWindowManager manager = ToolWindowManager.getInstance(project);
-        ToolWindow window = manager.getToolWindow(ID);
-        if (window == null) {
-            window = manager.registerToolWindow(RegisterToolWindowTask.closable(ID, AllIcons.Toolwindows.ToolWindowDebugger,
-                    ToolWindowAnchor.BOTTOM));
-        }
         EscTraceView view = new EscTraceView(project, trace, failure);
-        Content content = ContentFactory.getInstance().createContent(view, "", false);
-        content.setDisposer(view);
-        window.getContentManager().removeAllContents(true);
-        window.getContentManager().addContent(content);
-        window.activate(() -> {
-            view.list.requestFocusInWindow();
-            if (view.list.getSelectedIndex() < 0) view.list.setSelectedIndex(0);
-        }, true);
+        // gone with the project, or before with the content of the tool window
+        Disposer.register(EscResults.getInstance(project), view);
+        EscTraceView old = project.getUserData(SHOWN);
+        if (old != null) Disposer.dispose(old);
+        project.putUserData(SHOWN, view);
+        ToolWindow window = ToolWindowManager.getInstance(project).getToolWindow(ID);
+        if (window != null) {
+            Content content = ContentFactory.getInstance().createContent(view, "", false);
+            content.setDisposer(view);
+            window.setAvailable(true);
+            window.getContentManager().removeAllContents(true);
+            window.getContentManager().addContent(content);
+            window.activate(() -> {
+                view.list.requestFocusInWindow();
+                if (view.list.getSelectedIndex() < 0) view.list.setSelectedIndex(0);
+            }, true);
+        }
         // in tests, the tool window does not call back
         if (view.list.getSelectedIndex() < 0) view.list.setSelectedIndex(0);
+    }
+
+    /**
+     * Declares the tool window, which is only there once there is a counterexample to step through
+     */
+    public static final class Factory implements ToolWindowFactory, DumbAware {
+        @Override
+        public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+            // the steps come with Alt+Enter on a failure
+        }
+
+        @Override
+        public boolean shouldBeAvailable(@NotNull Project project) {
+            return false;
+        }
     }
 
     /**
@@ -161,19 +182,15 @@ public final class EscTraceView extends JPanel implements Disposable {
     @Override
     public void dispose() {
         removeHighlighter();
+        if (project.getUserData(SHOWN) == this) project.putUserData(SHOWN, null);
     }
 
     /**
-     * @return the view in the tool window, for tests
+     * @return the view that shows the steps now, for tests
      */
     @TestOnly
     static @Nullable EscTraceView current(@NotNull Project project) {
-        ToolWindow window = ToolWindowManager.getInstance(project).getToolWindow(ID);
-        if (window == null) return null;
-        for (Content content : window.getContentManager().getContents()) {
-            if (content.getComponent() instanceof EscTraceView view) return view;
-        }
-        return null;
+        return project.getUserData(SHOWN);
     }
 
     @TestOnly
