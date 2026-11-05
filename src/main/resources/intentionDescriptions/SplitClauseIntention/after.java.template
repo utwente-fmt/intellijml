@@ -1,0 +1,10 @@
+class Account {
+    private /*@ spec_public @*/ int balance;
+
+    <spot>//@ ensures balance == \old(balance) + amount;
+    //@ ensures \result == balance;</spot>
+    public int deposit(int amount) {
+        balance += amount;
+        return balance;
+    }
+}

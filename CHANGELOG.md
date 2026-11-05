@@ -27,6 +27,11 @@
   Settings | Tools | IntelliJML can switch it off.
 - OpenJML's messages keep the details of the Java compiler's errors, as in "cannot find symbol (symbol: variable
   count, location: class Counter)".
+- Alt+Enter on a clause whose condition is a conjunction, such as `ensures a && b;`, splits it into one clause per
+  part, which means the same: `ensures a; ensures b;`. Verify with OpenJML then says which part it cannot prove. It is
+  also offered on a failure whose clause is elsewhere, such as a postcondition that does not hold at a `return`. For
+  `requires`, `ensures`, invariants, loop invariants, `assert`, `assume` and `check`, not when the parts are joined by
+  something that binds less tightly, as in `a || b && c` or `a && b ==> c`.
 - Quick fixes for what OpenJML cannot prove: a location that the method assigns is added to its `assignable`
   clause, and for a sum, product, negation or division that may not fit in its type, a `requires` clause that
   bounds it is added, such as `//@ requires a + b <= Integer.MAX_VALUE;`, when the operation only uses parameters

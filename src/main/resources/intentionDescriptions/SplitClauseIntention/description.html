@@ -1,0 +1,14 @@
+<html>
+<body>
+Splits a JML clause whose condition is a conjunction, such as <code>ensures a &amp;&amp; b;</code>, into one clause
+per part, which means the same.
+<!-- tooltip end -->
+<p>
+    When OpenJML cannot prove a clause, Verify with OpenJML then says which part it cannot prove. It works for
+    <code>requires</code>, <code>ensures</code>, invariants, loop invariants, <code>assert</code>,
+    <code>assume</code> and <code>check</code>, when the parts are joined by <code>&amp;&amp;</code> only: a
+    condition such as <code>a || b &amp;&amp; c</code> or <code>a &amp;&amp; b ==&gt; c</code> means something else
+    in parts.
+</p>
+</body>
+</html>

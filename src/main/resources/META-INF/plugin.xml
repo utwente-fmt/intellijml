@@ -83,6 +83,12 @@
             <className>nl.utwente.jmlplugin.annotator.AddLoopSpecificationIntention</className>
             <category>JML</category>
         </intentionAction>
+        <!-- Alt+Enter on a JML clause whose condition is a conjunction -->
+        <intentionAction>
+            <language>JML</language>
+            <className>nl.utwente.jmlplugin.annotator.SplitClauseIntention</className>
+            <category>JML</category>
+        </intentionAction>
         <!-- explanations of the JML keywords, on hover and with Ctrl+Q -->
         <lang.documentationProvider language="JML"
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLKeywordDocumentationProvider"/>

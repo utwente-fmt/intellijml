@@ -455,6 +455,18 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         return values;
     }
 
+    public void testSplitThePostconditionFromItsFailure() {
+        // the postcondition that does not hold at the return statement is a conjunction: splitting it makes OpenJML
+        // say which part it cannot prove
+        verifiedMax(MAX);
+        String text = myFixture.getEditor().getDocument().getText();
+        myFixture.getEditor().getCaretModel().moveToOffset(text.indexOf("return max"));
+        myFixture.doHighlighting();
+        myFixture.launchAction(myFixture.findSingleIntention("Split 'ensures' into one clause per part"));
+        assertTrue(myFixture.getEditor().getDocument().getText(), myFixture.getEditor().getDocument().getText().contains(
+                "    //@ ensures \\result >= a;\n    //@ ensures \\result >= b;\n    //@ ensures \\result >= c;\n"));
+    }
+
     public void testValuesInEditor() {
         verifiedMax(MAX);
         // the parameters, from the prover's model, and the values of the trace on the lines it goes through

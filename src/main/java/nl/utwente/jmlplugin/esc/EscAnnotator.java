@@ -16,6 +16,7 @@ import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiManager;
 import nl.utwente.jmlplugin.annotator.AddRequiresFix;
 import nl.utwente.jmlplugin.annotator.AddToAssignableFix;
+import nl.utwente.jmlplugin.annotator.SplitClauseIntention;
 import nl.utwente.jmlplugin.esc.EscMessages.Explanation;
 import nl.utwente.jmlplugin.esc.EscMessages.Role;
 import org.jetbrains.annotations.NotNull;
@@ -133,7 +134,27 @@ public class EscAnnotator extends ExternalAnnotator<List<EscResults.Problem>, Li
             AddRequiresFix fix = AddRequiresFix.forOverflow(file.findElementAt(problem.range().getStartOffset()), detail);
             if (fix != null) fixes.add(fix);
         }
+        // a clause that OpenJML cannot prove, in parts, so that the next verification says which part it cannot prove;
+        // for a precondition, OpenJML already says which part may be false
+        if (!failure.kind().contains("Precondition")) {
+            SplitClauseIntention.Fix fix = splitFix(file, problem, explanation);
+            if (fix != null) fixes.add(fix);
+        }
         return fixes;
+    }
+
+    /**
+     * @return the fix that splits the clause of a failure into its parts, when the clause is at the related place, as
+     * for a postcondition that does not hold at a return statement, or null; on the clause itself, as for an assert,
+     * {@link SplitClauseIntention} offers it
+     */
+    private static @Nullable SplitClauseIntention.Fix splitFix(@NotNull PsiFile file, @NotNull EscResults.Problem problem,
+                                                              @NotNull Explanation explanation) {
+        if (explanation.role() != Role.FAILURE || problem.related() == null || !problem.related().isValid()
+                || !file.getVirtualFile().equals(problem.relatedFile())) {
+            return null;
+        }
+        return SplitClauseIntention.Fix.at(file, problem.related().getStartOffset());
     }
 
     /**
