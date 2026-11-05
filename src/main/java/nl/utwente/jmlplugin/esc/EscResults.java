@@ -85,17 +85,21 @@ public final class EscResults implements Disposable {
      * @param file   the file
      * @param line   the line
      * @param text   the values, such as "count: 281, added: 20819"
-     * @param method the key of the method
-     * @param run    the verification that gave the counterexample, from {@link #newRun}
+     * @param method  the key of the method
+     * @param run     the verification that gave the counterexample, from {@link #newRun}
+     * @param failure the failure that the counterexample is of, or null if it is not known
      */
     public record LineValues(@NotNull VirtualFile file, @NotNull RangeMarker line, @NotNull String text,
-                             @NotNull String method, long run) {
+                             @NotNull String method, long run, @Nullable Problem failure) {
     }
 
     // by the key of the method
     private final Map<String, MethodResult> methods = new ConcurrentHashMap<>();
     private final List<Problem> problems = new CopyOnWriteArrayList<>();
+    // the values of all counterexamples, of which those of one failure of a method are shown
     private final List<LineValues> values = new CopyOnWriteArrayList<>();
+    // the failure whose counterexample is shown, by the key of the method, when it is not the first one
+    private final Map<String, Problem> shownFailures = new ConcurrentHashMap<>();
     // the output of the last verification
     private volatile String output = "";
     private final AtomicLong runs = new AtomicLong();
@@ -148,16 +152,55 @@ public final class EscResults implements Disposable {
             RangeMarker marker = lineValues.line();
             if (marker.getDocument().getLineNumber(marker.getStartOffset()) != line) continue;
             MethodResult method = method(lineValues.method());
-            if (method != null && method.run() == lineValues.run()) return lineValues.text();
+            if (method != null && method.run() == lineValues.run()
+                    && lineValues.failure() == shownFailure(lineValues.method(), lineValues.run())) {
+                return lineValues.text();
+            }
         }
         return null;
     }
 
     /**
-     * @return whether the method has values of a counterexample from the verification
+     * @return the failure of the method whose counterexample is shown: the one chosen with {@link #show}, or else the
+     * first one that has a counterexample
      */
-    boolean hasValues(@NotNull String method, long run) {
-        return values.stream().anyMatch(lineValues -> lineValues.method().equals(method) && lineValues.run() == run);
+    @Nullable Problem shownFailure(@NotNull String method, long run) {
+        Problem shown = shownFailures.get(method);
+        if (shown != null && shown.run() == run) return shown;
+        for (LineValues lineValues : values) {
+            if (lineValues.method().equals(method) && lineValues.run() == run) return lineValues.failure();
+        }
+        return null;
+    }
+
+    /**
+     * @return whether the failure has a counterexample whose values can be shown
+     */
+    public boolean hasValues(@NotNull Problem failure) {
+        return failure.method() != null && hasValues(failure.method(), failure.run(), failure);
+    }
+
+    /**
+     * @param failure a failure, or null for a counterexample whose failure is not known
+     * @return whether the method has values of a counterexample of the failure from the verification
+     */
+    boolean hasValues(@NotNull String method, long run, @Nullable Problem failure) {
+        return values.stream().anyMatch(lineValues -> lineValues.method().equals(method) && lineValues.run() == run
+                && lineValues.failure() == failure);
+    }
+
+    /**
+     * Shows the values of the counterexample of a failure, instead of those of another failure of its method
+     */
+    public void show(@NotNull Problem failure) {
+        if (failure.method() != null) shownFailures.put(failure.method(), failure);
+    }
+
+    /**
+     * @return whether the values of the counterexample of the failure are shown
+     */
+    public boolean isShown(@NotNull Problem failure) {
+        return failure.method() != null && shownFailure(failure.method(), failure.run()) == failure;
     }
 
     void add(@NotNull LineValues lineValues) {
@@ -193,6 +236,7 @@ public final class EscResults implements Disposable {
             if (remove) lineValues.line().dispose();
             return remove;
         });
+        keys.forEach(shownFailures::remove);
     }
 
     void put(@NotNull String key, @NotNull MethodResult result) {
@@ -254,5 +298,6 @@ public final class EscResults implements Disposable {
         methods.clear();
         problems.clear();
         values.clear();
+        shownFailures.clear();
     }
 }

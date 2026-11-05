@@ -18,6 +18,8 @@
   OpenJML's own message, in the tooltip. A failure and the clause it is about link to each other, in the tooltip and
   with Alt+Enter: a postcondition that does not hold at a return statement and the ensures clause, a precondition
   of a called method and the part of it that may be false, an invariant and the method that breaks it.
+- When OpenJML cannot prove several assertions of a method, Alt+Enter on one of them shows the values of its
+  counterexample at the end of the lines, instead of those of the first one.
 - Quick fixes for what OpenJML cannot prove: a location that the method assigns is added to its `assignable`
   clause, and for a sum, product, negation or division that may not fit in its type, a `requires` clause that
   bounds it is added, such as `//@ requires a + b <= Integer.MAX_VALUE;`, when the operation only uses parameters

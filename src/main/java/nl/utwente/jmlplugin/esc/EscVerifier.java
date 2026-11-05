@@ -494,7 +494,8 @@ public final class EscVerifier {
      * Shows the values of a counterexample at the end of the lines of the method, as the debugger does: the values
      * of the parameters, and of the variables, fields and conditions on the lines that the counterexample goes
      * through, also on the lines outside the method that OpenJML reports about, such as an invariant that does not
-     * hold. Only the first counterexample of a method is shown, for the first assertion that OpenJML cannot prove.
+     * hold. OpenJML gives a counterexample for each assertion that it cannot prove, after the messages about it; the
+     * values of the first one of a method are shown, and Alt+Enter on another failure shows its values instead.
      */
     static void placeValues(@NotNull Project project, @NotNull Counterexample counterexample,
                             @NotNull VirtualFile verifiedFile, @NotNull Predicate<String> isVerifiedFile,
@@ -502,7 +503,10 @@ public final class EscVerifier {
         EscResults results = EscResults.getInstance(project);
         String key = EscOutput.key(counterexample.method());
         EscResults.MethodResult method = results.method(key);
-        if (method == null || method.run() != run || results.hasValues(key, run)) return;
+        if (method == null || method.run() != run) return;
+        // the failure that the counterexample is of: the last one so far
+        EscResults.Problem failure = results.lastFailure(key, run);
+        if (results.hasValues(key, run, failure)) return;
         Document document = FileDocumentManager.getInstance().getDocument(verifiedFile);
         if (document == null) return;
         // the lines of the method, and the lines of the problems in its proof
@@ -536,7 +540,7 @@ public final class EscVerifier {
             if (entry.getValue().isEmpty()) continue;
             int line = entry.getKey();
             RangeMarker marker = document.createRangeMarker(document.getLineStartOffset(line), document.getLineEndOffset(line));
-            results.add(new EscResults.LineValues(verifiedFile, marker, EscValues.text(entry.getValue()), key, run));
+            results.add(new EscResults.LineValues(verifiedFile, marker, EscValues.text(entry.getValue()), key, run, failure));
         }
         for (Editor editor : EditorFactory.getInstance().getEditors(document, project)) {
             editor.getContentComponent().repaint();

@@ -1,0 +1,92 @@
+Proving methods in demo.Two
+Starting proof of demo.Two.Two() with prover z3-5.1.0
+Method assertions are validated [0,12 secs]
+Completed proof of demo.Two.Two() with prover z3-5.1.0 - no warnings [0,24 secs]
+Starting proof of demo.Two.both(int,int) with prover z3-5.1.0
+Method assertions are INVALID
+src\demo\Two.java:6: verify: The prover cannot establish an assertion (Assert) in method both
+        //@ assert y > x;
+            ^
+
+TRACE of demo.Two.both(int,int)
+src\demo\Two.java:1: 	requires true; 
+			VALUE: true	 === true
+src\demo\Two.java:5: 	assert Assert x > 0;
+			VALUE: x	 === 1
+			VALUE: 0	 === 0
+			VALUE: x > 0	 === true
+src\demo\Two.java:6: 	assert Assert y > x;
+			VALUE: y	 === 0
+			VALUE: x	 === 1
+			VALUE: y > x	 === false
+src\demo\Two.java:6: Invalid assertion (Assert)
+
+
+COUNTEREXAMPLE
+java.lang.Object_`isalloc___22_0___3 = ((as const (Array REF Bool)) true)
+x_58_58___12 = 1
+`THIS = |`THIS|
+java.lang.Object_`alloc___22_0___4 = (store ((as const (Array REF Int)) (- 2437)) REF!val!4 0)
+_JML__tmp`6 = true
+y_65_65___13 = 0
+__JML_FeasCheck_ = 0
+java.lang.Object_theHashCode_2969_0___5 = ((as const (Array REF Int)) (- 2147474793))
+demo.Two__heap___0_49___15 = 2
+Pre_2_0_49___16 = true
+y_0_0___9 = 0
+`terminationPosition_49_49___11 = 0
+x_0_0___8 = 0
+`THIS = |`THIS|
+`exception_49_49___10 = NULL
+`result_49_49___14 = 0
+java.lang.Object___owner_2072_0___7 = ((as const (Array REF REF)) REF!val!6)
+
+src\demo\Two.java:5: verify: The prover cannot establish an assertion (Assert) in method both
+        //@ assert x > 0;
+            ^
+
+TRACE of demo.Two.both(int,int)
+src\demo\Two.java:1: 	requires true; 
+			VALUE: true	 === true
+src\demo\Two.java:5: 	assert Assert x > 0;
+			VALUE: x	 === 0
+			VALUE: 0	 === 0
+			VALUE: x > 0	 === false
+src\demo\Two.java:5: Invalid assertion (Assert)
+
+
+COUNTEREXAMPLE
+java.lang.Object_`isalloc___22_0___3 = ((as const (Array REF Bool)) true)
+x_58_58___12 = 0
+`THIS = |`THIS|
+java.lang.Object_`alloc___22_0___4 = (store ((as const (Array REF Int)) (- 2437)) REF!val!4 0)
+_JML__tmp`6 = true
+y_65_65___13 = 0
+__JML_FeasCheck_ = 0
+java.lang.Object_theHashCode_2969_0___5 = ((as const (Array REF Int)) (- 2147474793))
+demo.Two__heap___0_49___15 = 2
+Pre_2_0_49___16 = true
+y_0_0___9 = 0
+`terminationPosition_49_49___11 = 0
+x_0_0___8 = 0
+`THIS = |`THIS|
+`exception_49_49___10 = NULL
+`result_49_49___14 = 0
+java.lang.Object___owner_2072_0___7 = ((as const (Array REF REF)) REF!val!6)
+
+Completed proof of demo.Two.both(int,int) with prover z3-5.1.0 - with warnings [3,02 secs]
+Completed proving methods in demo.Two [3,26 secs]
+Summary:
+  Valid:        1
+  Invalid:      1
+  Infeasible:   0
+  Timeout:      0
+  Error:        0
+  Skipped:      0
+ TOTAL METHODS: 2
+ Classes:       0 proved of 1
+ DURATION:          3,4 secs
+
+2 verification failures
+
+exit 6
