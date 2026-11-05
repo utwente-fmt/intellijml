@@ -8,6 +8,7 @@ import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.Presentation;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.util.TextRange;
@@ -485,6 +486,13 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
                 "int max = a;", "max: -1",
                 "if (b > max) max = b", "b > max: true, max: 0",
                 "if (c > max) max = b", "c > max: true, max: 0"), valuesInEditor());
+        // the editor paints them without a read action, as from another thread here
+        int line = myFixture.getEditor().getDocument().getLineNumber(myFixture.getEditor().getDocument().getText().indexOf("int max = a;"));
+        var painted = ApplicationManager.getApplication().executeOnPooledThread(() -> new EscValuesLinePainter()
+                .getLineExtensions(getProject(), myFixture.getFile().getVirtualFile(), line));
+        // waiting dispatches the events of the test thread, which lets the other thread take the read lock
+        assertEquals("max: -1", com.intellij.testFramework.PlatformTestUtil.waitForFuture(painted, 30_000)
+                .iterator().next().getText().trim());
         // editing the method hides them
         Document document = myFixture.getEditor().getDocument();
         WriteCommandAction.runWriteCommandAction(getProject(), () ->

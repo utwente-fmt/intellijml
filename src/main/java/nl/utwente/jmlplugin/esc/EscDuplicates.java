@@ -3,6 +3,7 @@ package nl.utwente.jmlplugin.esc;
 import com.intellij.codeInsight.daemon.DaemonCodeAnalyzer;
 import com.intellij.codeInsight.daemon.impl.HighlightInfo;
 import com.intellij.lang.annotation.HighlightSeverity;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.impl.DocumentMarkupModel;
 import com.intellij.openapi.editor.markup.MarkupModel;
@@ -45,8 +46,12 @@ public final class EscDuplicates implements DaemonCodeAnalyzer.DaemonListener {
             if (!(fileEditor instanceof TextEditor)) continue;
             VirtualFile file = fileEditor.getFile();
             if (file == null || !file.isValid() || !results.hasMessagesOutsideProofs(file)) continue;
-            PsiFile psiFile = PsiManager.getInstance(project).findFile(file);
-            if (psiFile != null && update(psiFile)) DaemonCodeAnalyzer.getInstance(project).restart(psiFile);
+            // the PSI, the documents and the markup, in a read action, as the listener may be called without one
+            PsiFile psiFile = ReadAction.compute(() -> {
+                PsiFile found = PsiManager.getInstance(project).findFile(file);
+                return found != null && update(found) ? found : null;
+            });
+            if (psiFile != null) DaemonCodeAnalyzer.getInstance(project).restart(psiFile);
         }
     }
 
