@@ -320,9 +320,20 @@ public final class AddRequiresFix implements LocalQuickFix {
             PsiElement last = Collections.max(behaviors, byOffset);
             return after(file, document, hostRange(manager, last).getEndOffset(), clause, last);
         }
-        // a line of its own, above the JML of the method, as modifiers such as pure may not come before a clause
+        int lineStart = specificationStart(method, document);
+        return new Insertion(lineStart, indent(document, lineStart) + "//@ " + clause + "\n", null);
+    }
+
+    /**
+     * @return the start of the line where a specification clause goes on a line of its own: above the JML of the
+     * method, as modifiers such as pure may not come before a clause, or else above the declaration, after its
+     * documentation comment
+     */
+    static int specificationStart(@NotNull PsiMethod method, @NotNull Document document) {
         int offset = -1;
-        for (PsiComment comment : comments) {
+        for (PsiComment comment : Frame.jmlComments(method)) {
+            // comments in between modifiers, as in public /*@ pure @*/ int size()
+            if (comment.getParent() instanceof PsiModifierList) continue;
             int start = comment.getTextRange().getStartOffset();
             if (document.getText(new TextRange(document.getLineStartOffset(document.getLineNumber(start)), start)).isBlank()) {
                 offset = start;
@@ -330,8 +341,7 @@ public final class AddRequiresFix implements LocalQuickFix {
             }
         }
         if (offset < 0) offset = declarationStart(method);
-        int lineStart = document.getLineStartOffset(document.getLineNumber(offset));
-        return new Insertion(lineStart, indent(document, lineStart) + "//@ " + clause + "\n", null);
+        return document.getLineStartOffset(document.getLineNumber(offset));
     }
 
     /**
@@ -414,7 +424,10 @@ public final class AddRequiresFix implements LocalQuickFix {
         return start == null ? method.getTextRange().getStartOffset() : start.getTextRange().getStartOffset();
     }
 
-    private static @NotNull String indent(@NotNull Document document, int lineStart) {
+    /**
+     * @return the white space at the start of the line
+     */
+    static @NotNull String indent(@NotNull Document document, int lineStart) {
         String line = document.getText(new TextRange(lineStart, document.getLineEndOffset(document.getLineNumber(lineStart))));
         int end = 0;
         while (end < line.length() && (line.charAt(end) == ' ' || line.charAt(end) == '\t')) end++;

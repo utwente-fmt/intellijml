@@ -71,6 +71,12 @@
         <lang.documentationProvider language="JAVA"
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLDocumentationProvider"
                                     order="first"/>
+        <!-- Alt+Enter on a method without a specification -->
+        <intentionAction>
+            <language>JAVA</language>
+            <className>nl.utwente.jmlplugin.annotator.AddSpecificationIntention</className>
+            <category>JML</category>
+        </intentionAction>
         <!-- explanations of the JML keywords, on hover and with Ctrl+Q -->
         <lang.documentationProvider language="JML"
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLKeywordDocumentationProvider"/>

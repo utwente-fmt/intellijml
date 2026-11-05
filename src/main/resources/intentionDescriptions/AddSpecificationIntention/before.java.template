@@ -1,0 +1,7 @@
+class Counter {
+    private /*@ spec_public @*/ int count;
+
+    public void <spot>add</spot>(int n) {
+        count += n;
+    }
+}

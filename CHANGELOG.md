@@ -26,6 +26,9 @@
   `spec_public`, `\forall`, `==>` and the other keywords mean, with an example in the colours of the editor, the
   other ways to write it (such as `modifies` for `assignable`, and the `_redundantly` forms), and a link to the page
   of the OpenJML tutorial about it.
+- Alt+Enter on a method without a specification adds a skeleton to fill in with Tab: `requires true;`,
+  `ensures true;` and an `assignable` clause with the fields and array elements that the method assigns, also
+  through the methods that it calls (a pure method gets none).
 - Enter in a `/*@ ... @*/` comment starts the new line with an `@` below the one above it, and closes a comment
   that is not closed yet with `@*/`. Enter in the middle of a `//@` comment makes the rest a `//@` comment too.
   This replaces the live templates that Enter expanded after `@` and `;`.

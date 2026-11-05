@@ -97,6 +97,20 @@ final class Frame {
         return new Frame(everything, locations, frameClauses);
     }
 
+    // the start of a heavyweight specification case, such as public normal_behavior
+    private static final Pattern BEHAVIOR = Pattern.compile("(?<![\\w$])(?:normal_|exceptional_)?behaviou?r(?![\\w$])");
+
+    /**
+     * @return whether the method has a specification: a clause, a specification case or "also", rather than only
+     * modifiers such as pure, or no JML at all
+     */
+    static boolean isSpecified(@NotNull PsiMethod method) {
+        StringBuilder text = new StringBuilder();
+        for (PsiComment comment : jmlComments(method)) text.append(JMLAnnotatorUtil.jmlText(comment)).append('\n');
+        String keywords = INFORMAL_OR_STRING.matcher(text).replaceAll(" ");
+        return CLAUSE.matcher(keywords).find() || BEHAVIOR.matcher(keywords).find() || ALSO.matcher(keywords).find();
+    }
+
     /**
      * @return whether the specification of the method has an assignable clause
      */
