@@ -43,6 +43,14 @@
   `spec_public`, `\forall`, `==>` and the other keywords mean, with an example in the colours of the editor, the
   other ways to write it (such as `modifies` for `assignable`, and the `_redundantly` forms), and a link to the page
   of the OpenJML tutorial about it.
+- Renaming a field, method, parameter or local variable renames it in JML too, as in `ensures count == \old(count) + n;`
+  and `assignable this.count, other.count;`, also when renamed in place with Shift+F6. Find Usages shows the uses in
+  JML, grouped as "Usage in JML specification", and Ctrl+click on a name in JML goes to its declaration. Rename, Find
+  Usages and Highlight Usages in File also work with the caret on the name in the JML. The variable of a quantifier,
+  as `i` in `(\forall int i; ...)`, is the quantifier's own and keeps its name.
+- A private field or method, a parameter or a variable that only JML uses, such as a pure method called in an
+  invariant, is no longer greyed out with "Private method 'valid()' is never used" or "Private field 'count' is
+  assigned but never accessed".
 - Alt+Enter on a method without a specification adds a skeleton to fill in with Tab: `requires true;`,
   `ensures true;` and an `assignable` clause with the fields and array elements that the method assigns, also
   through the methods that it calls (a pure method gets none).

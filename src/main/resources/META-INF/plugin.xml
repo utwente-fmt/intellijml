@@ -66,11 +66,20 @@
         <!-- before IntelliJ's own Java import optimizer, which it uses: only one optimizer per language is used -->
         <lang.importOptimizer language="JAVA" implementationClass="nl.utwente.jmlplugin.editor.JMLImportOptimizer"
                               order="first"/>
+        <!-- the names in JML for Find Usages, rename and Go to Declaration -->
+        <referencesSearch implementation="nl.utwente.jmlplugin.editor.JMLReferencesSearcher"/>
+        <methodReferencesSearch implementation="nl.utwente.jmlplugin.editor.JMLReferencesSearcher$Methods"/>
+        <usageTypeProvider implementation="nl.utwente.jmlplugin.editor.JMLUsageTypeProvider"/>
+        <usageTargetProvider implementation="nl.utwente.jmlplugin.editor.JMLUsageTargetProvider"/>
+        <renameHandler implementation="nl.utwente.jmlplugin.editor.JMLRenameHandler"/>
+        <gotoDeclarationHandler implementation="nl.utwente.jmlplugin.editor.JMLGotoDeclarationHandler"/>
         <!-- Ctrl+/ in JML comments out the line of the Java file -->
         <lang.commenter language="JML" implementationClass="nl.utwente.jmlplugin.editor.JMLCommenter"/>
         <multiLangCommenter implementation="nl.utwente.jmlplugin.editor.JMLLineCommentProvider"/>
         <!-- imports that only JML uses are not greyed out as unused -->
         <daemon.highlightInfoFilter implementation="nl.utwente.jmlplugin.editor.JMLUnusedImportFilter"/>
+        <!-- nor fields, methods, parameters and variables that only JML uses -->
+        <implicitUsageProvider implementation="nl.utwente.jmlplugin.editor.JMLImplicitUsageProvider"/>
         <!-- before Java's own handling of Enter in comments -->
         <enterHandlerDelegate implementation="nl.utwente.jmlplugin.editor.JMLEnterHandler" order="first"/>
         <lang.documentationProvider language="JAVA"

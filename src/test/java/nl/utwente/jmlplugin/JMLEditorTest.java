@@ -1,6 +1,8 @@
 package nl.utwente.jmlplugin;
 
 import com.intellij.codeInsight.actions.OptimizeImportsProcessor;
+import com.intellij.codeInsight.daemon.impl.HighlightInfo;
+import com.intellij.codeInspection.deadCode.UnusedDeclarationInspection;
 import com.intellij.codeInspection.unusedImport.UnusedImportInspection;
 import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.injected.editor.EditorWindow;
@@ -47,6 +49,51 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
                 .map(info -> text.substring(info.getStartOffset(), info.getEndOffset())).toList();
         // List and Map are not used anywhere; the others are used in the JML
         assertEquals(List.of("import java.util.List;", "import java.util.Map;"), unused);
+    }
+
+    public void testMembersUsedInJmlAreNotGreyedOut() {
+        myFixture.enableInspections(new UnusedDeclarationInspection(true));
+        myFixture.configureByText("Counter.java", """
+                public class Counter {
+                    private /*@ spec_public @*/ int count;
+                    private /*@ spec_public @*/ int limit = 10;
+                    private int unused;
+
+                    //@ private invariant valid() && count <= limit;
+
+                    //@ ensures count == \\old(count) + 1;
+                    public void add() {
+                        count++;
+                    }
+
+                    private /*@ pure @*/ boolean valid() {
+                        return true;
+                    }
+
+                    private /*@ pure @*/ boolean notUsed() {
+                        return true;
+                    }
+
+                    //@ requires x > 0;
+                    public static int m(int x, int y) {
+                        int total = 0;
+                        //@ maintaining 0 <= total;
+                        for (int i = 0; i < 3; i++) total = 1;
+                        return 0;
+                    }
+
+                    public static void main(String[] args) {
+                        new Counter().add();
+                        m(1, 2);
+                    }
+                }
+                """);
+        List<String> unused = myFixture.doHighlighting().stream()
+                .map(HighlightInfo::getDescription)
+                .filter(description -> description != null && description.matches(".*(never used|never accessed).*")).toList();
+        // count, limit, valid, x and total are used in the JML
+        assertEquals(List.of("Private field 'unused' is never used", "Private method 'notUsed()' is never used",
+                "Parameter 'y' is never used", "Parameter 'args' is never used"), unused);
     }
 
     public void testOptimizeImportsKeepsImportsUsedInJml() {
