@@ -1,5 +1,8 @@
 package nl.utwente.jmlplugin.esc;
 
+import com.intellij.openapi.command.WriteCommandAction;
+import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
@@ -143,6 +146,61 @@ public class JMLEscOpenJmlTest extends JavaCodeInsightFixtureTestCase {
         assertTrue(String.valueOf(values), values != null && values.matches("x: -?\\d+"));
         assertFalse(results.output(), results.output().contains("COUNTEREXAMPLE"));
         assertTrue(results.output(), results.output().contains("TRACE of demo.Account.abs(int)"));
+    }
+
+    public void testCheckOnSave() throws Exception {
+        PsiFile file = myFixture.addFileToProject("demo/Chk.java", """
+                package demo;
+
+                public class Chk {
+                    //@ requires x + true;
+                    public int get(int x) {
+                        return x;
+                    }
+                }
+                """);
+        myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+        // as when the student saves the file after an edit
+        Document document = myFixture.getEditor().getDocument();
+        WriteCommandAction.runWriteCommandAction(getProject(), () -> document.insertString(document.getTextLength(), "\n"));
+        FileDocumentManager.getInstance().saveDocument(document);
+        EscResults results = EscResults.getInstance(getProject());
+        waitFor(() -> results.hasMessagesOutsideProofs(file.getVirtualFile()));
+        List<String> messages = results.problems(file.getVirtualFile()).stream().map(EscResults.Problem::message).toList();
+        assertEquals(List.of("bad operand types for binary operator '+' (first type: int, second type: boolean)"), messages);
+        int offset = results.problems(file.getVirtualFile()).get(0).range().getStartOffset();
+        assertEquals(document.getText().indexOf("+ true"), offset);
+
+        // the plugin reports the error itself, so OpenJML's message is not shown
+        myFixture.doHighlighting();
+        assertFalse(results.isNew(results.problems(file.getVirtualFile()).get(0)));
+
+        // without JML, the messages go away when the file is saved again
+        WriteCommandAction.runWriteCommandAction(getProject(), () ->
+                document.replaceString(document.getText().indexOf("//@"), document.getText().indexOf("//@") + 3, "//"));
+        FileDocumentManager.getInstance().saveDocument(document);
+        waitFor(() -> !results.hasMessagesOutsideProofs(file.getVirtualFile()));
+    }
+
+    public void testNoCheckWhenSwitchedOff() throws Exception {
+        JMLApplicationSettings settings = JMLApplicationSettings.getInstance();
+        settings.CHECK_ON_SAVE = false;
+        try {
+            PsiFile file = myFixture.addFileToProject("demo/Chk.java", "package demo;\n\npublic class Chk {\n" +
+                    "    //@ requires x + true;\n    public int get(int x) { return x; }\n}\n");
+            myFixture.configureFromExistingVirtualFile(file.getVirtualFile());
+            Document document = myFixture.getEditor().getDocument();
+            WriteCommandAction.runWriteCommandAction(getProject(), () -> document.insertString(document.getTextLength(), "\n"));
+            FileDocumentManager.getInstance().saveDocument(document);
+            long until = System.currentTimeMillis() + 3000;
+            while (System.currentTimeMillis() < until) {
+                PlatformTestUtil.dispatchAllEventsInIdeEventQueue();
+                Thread.sleep(50);
+            }
+            assertFalse(EscResults.getInstance(getProject()).hasMessagesOutsideProofs(file.getVirtualFile()));
+        } finally {
+            settings.CHECK_ON_SAVE = true;
+        }
     }
 
     private static void waitFor(BooleanSupplier condition) throws InterruptedException {

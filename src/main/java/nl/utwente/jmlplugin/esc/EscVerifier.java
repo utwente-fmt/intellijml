@@ -306,8 +306,19 @@ public final class EscVerifier {
                                            @NotNull Charset encoding, @Nullable String methodName) {
         // with the values of a counterexample for an assertion that OpenJML cannot prove: the values of subexpressions
         // on the way to it, and the prover's model, for the values of the parameters
-        List<String> arguments = new ArrayList<>(List.of("--esc", "--progress", "--subexpressions", "--counterexample"));
-        if (methodName != null) arguments.add("--method=" + methodName);
+        List<String> mode = new ArrayList<>(List.of("--esc", "--progress", "--subexpressions", "--counterexample"));
+        if (methodName != null) mode.add("--method=" + methodName);
+        return arguments(project, mode, sourceRoots, classPath, file, encoding);
+    }
+
+    /**
+     * @param mode what OpenJML does, such as "--check" or "--esc" with its options
+     * @return the arguments for OpenJML for a file of the project
+     */
+    static @NotNull List<String> arguments(@NotNull Project project, @NotNull List<String> mode,
+                                           @NotNull List<Path> sourceRoots, @NotNull List<String> classPath,
+                                           @NotNull Path file, @NotNull Charset encoding) {
+        List<String> arguments = new ArrayList<>(mode);
         // OpenJML reads options from openjml.properties in the directory it runs in, which for OpenJML on the
         // command line is usually the project
         Path properties = projectProperties(project);

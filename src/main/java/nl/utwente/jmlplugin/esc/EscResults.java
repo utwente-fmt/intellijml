@@ -12,9 +12,11 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -100,6 +102,9 @@ public final class EscResults implements Disposable {
     private final List<LineValues> values = new CopyOnWriteArrayList<>();
     // the failure whose counterexample is shown, by the key of the method, when it is not the first one
     private final Map<String, Problem> shownFailures = new ConcurrentHashMap<>();
+    // the messages outside proofs that are shown, as the plugin and IntelliJ report nothing on their lines; see
+    // EscDuplicates
+    private final Set<Problem> newOutsideProofs = ConcurrentHashMap.newKeySet();
     // the output of the last verification
     private volatile String output = "";
     private final AtomicLong runs = new AtomicLong();
@@ -226,9 +231,12 @@ public final class EscResults implements Disposable {
             if (result != null) result.range().dispose();
         }
         problems.removeIf(problem -> {
-            boolean remove = keys.contains(problem.method())
-                    || problem.method() == null && problem.file().equals(wholeFile);
-            if (remove) problem.dispose();
+            // keys may be an immutable collection, which does not allow asking for null
+            boolean remove = problem.method() != null ? keys.contains(problem.method()) : problem.file().equals(wholeFile);
+            if (remove) {
+                problem.dispose();
+                newOutsideProofs.remove(problem);
+            }
             return remove;
         });
         values.removeIf(lineValues -> {
@@ -237,6 +245,36 @@ public final class EscResults implements Disposable {
             return remove;
         });
         keys.forEach(shownFailures::remove);
+    }
+
+    /**
+     * @return whether OpenJML reported messages outside proofs in the file, such as errors in its JML
+     */
+    boolean hasMessagesOutsideProofs(@NotNull VirtualFile file) {
+        return problems.stream().anyMatch(problem -> problem.method() == null && problem.file().equals(file));
+    }
+
+    /**
+     * @return whether a message outside proofs is shown, as it says something that the plugin and IntelliJ do not
+     */
+    boolean isNew(@NotNull Problem problem) {
+        return newOutsideProofs.contains(problem);
+    }
+
+    /**
+     * Sets which messages outside proofs in a file are shown
+     *
+     * @return whether that changed
+     */
+    boolean setNew(@NotNull VirtualFile file, @NotNull Set<Problem> shown) {
+        Set<Problem> old = new HashSet<>();
+        for (Problem problem : newOutsideProofs) {
+            if (problem.file().equals(file)) old.add(problem);
+        }
+        if (old.equals(shown)) return false;
+        newOutsideProofs.removeAll(old);
+        newOutsideProofs.addAll(shown);
+        return true;
     }
 
     void put(@NotNull String key, @NotNull MethodResult result) {
@@ -299,5 +337,6 @@ public final class EscResults implements Disposable {
         problems.clear();
         values.clear();
         shownFailures.clear();
+        newOutsideProofs.clear();
     }
 }

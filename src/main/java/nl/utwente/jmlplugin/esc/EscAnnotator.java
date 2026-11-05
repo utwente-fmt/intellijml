@@ -47,10 +47,14 @@ public class EscAnnotator extends ExternalAnnotator<List<EscResults.Problem>, Li
 
     @Override
     public void apply(@NotNull PsiFile file, List<EscResults.Problem> problems, @NotNull AnnotationHolder holder) {
+        EscResults results = EscResults.getInstance(file.getProject());
         for (EscResults.Problem problem : problems) {
             if (!problem.range().isValid()) continue;
             TextRange range = problem.range().getTextRange();
             if (range.getEndOffset() > file.getTextLength()) continue;
+            // a message outside proofs, such as an error that OpenJML found in the JML when it checked the file, is
+            // only shown when the plugin and IntelliJ report nothing on its line (see EscDuplicates)
+            if (problem.method() == null && !results.isNew(problem)) continue;
             Explanation explanation = problem.explanation();
             // a place on the same line, such as the declaration of a method that may return null, goes without saying
             String place = isOnSameLine(problem) ? null : place(problem);

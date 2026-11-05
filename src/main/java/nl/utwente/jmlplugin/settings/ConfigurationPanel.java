@@ -23,6 +23,7 @@ import java.nio.file.Path;
 public class ConfigurationPanel extends JPanel {
 
     private TextFieldWithBrowseButton openJmlPath;
+    private JCheckBox checkOnSaveCheckbox;
     private JCheckBox easterEggCheckbox;
 
     public ConfigurationPanel() {
@@ -50,6 +51,13 @@ public class ConfigurationPanel extends JPanel {
         openJmlComment.setComponentStyle(UIUtil.ComponentStyle.SMALL);
         openJmlComment.setFontColor(UIUtil.FontColor.BRIGHTER);
 
+        checkOnSaveCheckbox = new JCheckBox("Check the JML of a file with OpenJML when it is saved");
+        JBLabel checkOnSaveComment = new JBLabel("<html>A safety net for what the plugin does not check itself: " +
+                "OpenJML's errors are shown on the lines where the plugin finds nothing. OpenJML keeps running " +
+                "for ten minutes after it was used, which takes about 500 MB of memory.</html>");
+        checkOnSaveComment.setComponentStyle(UIUtil.ComponentStyle.SMALL);
+        checkOnSaveComment.setFontColor(UIUtil.FontColor.BRIGHTER);
+
         easterEggCheckbox = new JCheckBox("???");
         easterEggCheckbox.setToolTipText("???");
 
@@ -57,6 +65,9 @@ public class ConfigurationPanel extends JPanel {
         add(FormBuilder.createFormBuilder()
                 .addLabeledComponent("OpenJML installation:", openJmlRow)
                 .addComponentToRightColumn(openJmlComment)
+                .addVerticalGap(UIUtil.LARGE_VGAP)
+                .addComponent(checkOnSaveCheckbox)
+                .addComponent(checkOnSaveComment)
                 .addVerticalGap(UIUtil.LARGE_VGAP)
                 .addComponent(easterEggCheckbox)
                 .getPanel(), BorderLayout.NORTH);
@@ -76,6 +87,14 @@ public class ConfigurationPanel extends JPanel {
         } catch (IOException e) {
             Messages.showErrorDialog(this, "OpenJML could not be downloaded: " + e.getMessage(), "Download OpenJML");
         }
+    }
+
+    boolean isCheckOnSaveEnabled() {
+        return checkOnSaveCheckbox.isSelected();
+    }
+
+    void setCheckOnSaveEnabled(boolean enabled) {
+        checkOnSaveCheckbox.setSelected(enabled);
     }
 
     boolean isEasterEggEnabled() {

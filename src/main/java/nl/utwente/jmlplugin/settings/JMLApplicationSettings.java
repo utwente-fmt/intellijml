@@ -17,10 +17,13 @@ public class JMLApplicationSettings implements PersistentStateComponent<JMLAppli
 
     // the folder of the OpenJML installation for Run with JML Checks and Verify with OpenJML, or empty
     public String OPENJML_PATH;
+    // whether OpenJML checks the JML of a Java file when it is saved, if OpenJML is installed
+    public boolean CHECK_ON_SAVE;
     public boolean RAINBOW_MODE;
 
     public JMLApplicationSettings() {
         OPENJML_PATH = "";
+        CHECK_ON_SAVE = true;
         RAINBOW_MODE = false;
     }
 

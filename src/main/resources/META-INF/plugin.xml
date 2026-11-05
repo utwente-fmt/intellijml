@@ -88,6 +88,18 @@
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLKeywordDocumentationProvider"/>
     </extensions>
 
+    <projectListeners>
+        <!-- decides which of OpenJML's messages outside proofs are shown, when the highlighting of a file is done -->
+        <listener class="nl.utwente.jmlplugin.esc.EscDuplicates"
+                  topic="com.intellij.codeInsight.daemon.DaemonCodeAnalyzer$DaemonListener"/>
+    </projectListeners>
+
+    <applicationListeners>
+        <!-- checks the JML of a Java file with OpenJML when it is saved -->
+        <listener class="nl.utwente.jmlplugin.esc.OpenJmlCheckOnSave"
+                  topic="com.intellij.openapi.fileEditor.FileDocumentManagerListener"/>
+    </applicationListeners>
+
     <actions>
         <group id="IntelliJML.Verify">
             <separator/>

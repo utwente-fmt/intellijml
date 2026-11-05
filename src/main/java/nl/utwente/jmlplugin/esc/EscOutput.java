@@ -97,6 +97,8 @@ public final class EscOutput {
     private static final Pattern COMPLETED = Pattern.compile("Completed proof of (.+) with prover \\S+ - (.+?)(?: \\[[^]]*])?\\s*");
     private static final Pattern DIAGNOSTIC = Pattern.compile("(.+?\\.(?:java|jml)):(\\d+): (verify|error|warning|note): (.*)");
     private static final Pattern CARET = Pattern.compile("[ \\t]*\\^\\s*");
+    // a detail of an error after its caret, as javac writes it, such as "  symbol:   variable count"
+    private static final Pattern DETAIL = Pattern.compile("  ([a-z][\\w ]*):\\s+(\\S.*)");
     private static final String TRACE = "TRACE of ";
     private static final String MODEL = "COUNTEREXAMPLE";
     private static final Pattern STEP = Pattern.compile("(.+?\\.(?:java|jml)):(\\d+): \\t(.*)");
@@ -114,6 +116,9 @@ public final class EscOutput {
     // the diagnostic whose source line and caret may follow
     private Diagnostic pending;
     private int linesAfterPending;
+    // the diagnostic after its caret, whose details may follow, and those details
+    private Diagnostic located;
+    private final List<String> details = new ArrayList<>();
     private Block block = Block.NONE;
     // the counterexample that is being read, or null
     private List<Step> trace;
@@ -127,6 +132,14 @@ public final class EscOutput {
      * Reads a line of the output
      */
     public void line(@NotNull String line) {
+        if (located != null) {
+            Matcher detail = DETAIL.matcher(line);
+            if (detail.matches()) {
+                details.add(detail.group(1) + ": " + detail.group(2).trim());
+                return;
+            }
+            reportLocated();
+        }
         if (block != Block.NONE && readCounterexample(line)) return;
         if (line.startsWith(TRACE) || line.equals(MODEL)) {
             // the trace comes first, and the model may follow it
@@ -145,8 +158,9 @@ public final class EscOutput {
             if (caret.matches()) {
                 Diagnostic diagnostic = pending;
                 pending = null;
-                listener.diagnostic(new Diagnostic(diagnostic.file(), diagnostic.line(), line.indexOf('^'),
-                        diagnostic.kind(), diagnostic.message(), diagnostic.method()));
+                // reported after its details, if any
+                located = new Diagnostic(diagnostic.file(), diagnostic.line(), line.indexOf('^'), diagnostic.kind(),
+                        diagnostic.message(), diagnostic.method());
                 return;
             }
             // the source line comes before the caret
@@ -208,6 +222,7 @@ public final class EscOutput {
      * after the last line
      */
     public void flush() {
+        if (located != null) reportLocated();
         if (pending != null) {
             Diagnostic diagnostic = pending;
             pending = null;
@@ -220,6 +235,20 @@ public final class EscOutput {
             if (method != null) listener.counterexample(new Counterexample(method, steps, declarations));
             declarations = null;
         }
+    }
+
+    /**
+     * Reports the diagnostic after its caret, with its details, as in "cannot find symbol (symbol: variable count,
+     * location: class Counter)"
+     */
+    private void reportLocated() {
+        Diagnostic diagnostic = located;
+        located = null;
+        String message = details.isEmpty() ? diagnostic.message()
+                : diagnostic.message() + " (" + String.join(", ", details) + ")";
+        details.clear();
+        listener.diagnostic(new Diagnostic(diagnostic.file(), diagnostic.line(), diagnostic.column(), diagnostic.kind(),
+                message, diagnostic.method()));
     }
 
     private static boolean isReport(@NotNull String line) {
