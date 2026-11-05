@@ -70,6 +70,7 @@
         <referencesSearch implementation="nl.utwente.jmlplugin.editor.JMLReferencesSearcher"/>
         <methodReferencesSearch implementation="nl.utwente.jmlplugin.editor.JMLReferencesSearcher$Methods"/>
         <usageTypeProvider implementation="nl.utwente.jmlplugin.editor.JMLUsageTypeProvider"/>
+        <useScopeEnlarger implementation="nl.utwente.jmlplugin.editor.JMLUseScopeEnlarger"/>
         <usageTargetProvider implementation="nl.utwente.jmlplugin.editor.JMLUsageTargetProvider"/>
         <renameHandler implementation="nl.utwente.jmlplugin.editor.JMLRenameHandler"/>
         <gotoDeclarationHandler implementation="nl.utwente.jmlplugin.editor.JMLGotoDeclarationHandler"/>

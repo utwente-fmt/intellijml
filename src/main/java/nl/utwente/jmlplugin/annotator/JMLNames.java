@@ -56,7 +56,7 @@ public final class JMLNames {
      * @return the field, variable or method it refers to, or null if it is none, or JML declares it
      */
     public static @Nullable PsiElement resolve(@NotNull PsiElement name) {
-        if (!isName(name)) return null;
+        if (!isName(name) || !isInJmlComment(name)) return null;
         String text;
         if (name instanceof PsiIdentifier identifier) {
             if (isDeclaredInJml(identifier)) return null;
@@ -91,6 +91,17 @@ public final class JMLNames {
             return index >= 0 && index < parameters.length ? parameters[index] : null;
         }
         return resolved;
+    }
+
+    /**
+     * @return whether the element is in a comment that OpenJML reads as JML, "//@" or "/*@", and not in one with
+     * whitespace before the @, such as "/* @", which the plugin only reads to warn about the whitespace
+     */
+    private static boolean isInJmlComment(@NotNull PsiElement element) {
+        PsiLanguageInjectionHost host = InjectedLanguageManager.getInstance(element.getProject()).getInjectionHost(element);
+        if (host == null) return false;
+        String text = host.getText();
+        return text.length() > 2 && text.charAt(2) == '@';
     }
 
     /**

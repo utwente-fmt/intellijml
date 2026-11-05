@@ -19,7 +19,7 @@ import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.doLinkedCommentsCo
  * </ul>
  * spec_public and spec_protected make a field or method public or protected for specifications.
  */
-class SpecVisibility {
+public class SpecVisibility {
 
     /**
      * A field or method that is used where it is not allowed, with the error message and a quick fix if there is one
@@ -31,7 +31,7 @@ class SpecVisibility {
      * @param member a field or method
      * @return its visibility for specifications, as in PsiUtil.getAccessLevel, taking spec_public and spec_protected into account
      */
-    static int specAccessLevel(@NotNull PsiMember member) {
+    public static int specAccessLevel(@NotNull PsiMember member) {
         if (doLinkedCommentsContain(member, "spec_public", false) || hasAnnotation(member, "SpecPublic")) {
             return PsiUtil.ACCESS_LEVEL_PUBLIC;
         }

@@ -138,6 +138,19 @@ public class JMLRenameTest extends LightJavaCodeInsightFixtureTestCase {
         assertEquals(text.replace("int i;\n", "int k;\n").replace("&& i > 0", "&& k > 0"), text());
     }
 
+    public void testCommentWithWhitespaceIsNotJml() {
+        // "/* @" is an ordinary comment for OpenJML; the plugin only warns about the whitespace
+        String text = """
+                class A {
+                    /* @ requires n > 0; */
+                    void m(int n) {}
+                }
+                """;
+        myFixture.configureByText("A.java", text.replace("int n", "int <caret>n"));
+        myFixture.renameElementAtCaret("k");
+        assertEquals(text.replace("int n", "int k"), text());
+    }
+
     public void testRenameLocalVariableInLoopInvariant() {
         String text = """
                 class A {

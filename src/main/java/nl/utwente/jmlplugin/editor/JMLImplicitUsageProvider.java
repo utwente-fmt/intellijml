@@ -43,39 +43,47 @@ public class JMLImplicitUsageProvider implements ImplicitUsageProvider {
     private static boolean isUsedInJml(@NotNull PsiElement element) {
         if (!(element instanceof PsiNamedElement named) || named.getName() == null) return false;
         if (!(element.getContainingFile() instanceof PsiJavaFile file) || file instanceof PsiCompiledElement) return false;
-        List<PsiElement> names = namesInJml(file).get(named.getName());
-        if (names == null) return false;
-        for (PsiElement name : names) {
-            if (name.isValid() && element.equals(JMLNames.resolve(name))) return true;
+        String text = named.getName();
+        if (!namesInJml(file).contains(text)) return false;
+        // the JML as it is now: IntelliJ may have made the JML files again since the names were collected
+        for (PsiFile injected : jmlFiles(file)) {
+            for (PsiElement name : PsiTreeUtil.collectElements(injected, name -> JMLNames.isName(name) && text.equals(name.getText()))) {
+                if (element.equals(JMLNames.resolve(name))) return true;
+            }
         }
         return false;
     }
 
     /**
-     * @return the names in the JML of the file that may refer to Java code, by their text; once per change of the file
+     * @return the texts of the names in the JML of the file that may refer to Java code; once per change of the file
      */
-    private static @NotNull Map<String, List<PsiElement>> namesInJml(@NotNull PsiJavaFile file) {
+    private static @NotNull Set<String> namesInJml(@NotNull PsiJavaFile file) {
         return CachedValuesManager.getCachedValue(file, () -> {
-            InjectedLanguageManager manager = InjectedLanguageManager.getInstance(file.getProject());
-            // a specification over several comments is one JML file for all of them
-            Set<PsiFile> jml = new LinkedHashSet<>();
-            for (PsiComment comment : PsiTreeUtil.findChildrenOfType(file, PsiComment.class)) {
-                String text = comment.getText();
-                if (!(comment instanceof PsiLanguageInjectionHost host) || !text.startsWith("//@") && !text.startsWith("/*@")) {
-                    continue;
-                }
-                manager.enumerate(host, (injected, places) -> {
-                    if (injected instanceof JMLFile) jml.add(injected);
-                });
+            Set<String> names = new HashSet<>();
+            for (PsiFile injected : jmlFiles(file)) {
+                for (PsiElement name : PsiTreeUtil.collectElements(injected, JMLNames::isName)) names.add(name.getText());
             }
-            Map<String, List<PsiElement>> names = new HashMap<>();
-            for (PsiFile injected : jml) {
-                for (PsiElement name : PsiTreeUtil.collectElements(injected, JMLNames::isName)) {
-                    names.computeIfAbsent(name.getText(), key -> new ArrayList<>()).add(name);
-                }
-            }
-            // the names only depend on the text of the file; what they refer to is found when asked
+            // only texts, no PSI: the JML files can be made again without a change of the file
             return CachedValueProvider.Result.create(names, file);
         });
+    }
+
+    /**
+     * @return the JML files injected in the comments of the file, once each, as a specification over several comments
+     * is one JML file for all of them
+     */
+    private static @NotNull Set<PsiFile> jmlFiles(@NotNull PsiJavaFile file) {
+        InjectedLanguageManager manager = InjectedLanguageManager.getInstance(file.getProject());
+        Set<PsiFile> jml = new LinkedHashSet<>();
+        for (PsiComment comment : PsiTreeUtil.findChildrenOfType(file, PsiComment.class)) {
+            String text = comment.getText();
+            if (!(comment instanceof PsiLanguageInjectionHost host) || !text.startsWith("//@") && !text.startsWith("/*@")) {
+                continue;
+            }
+            manager.enumerate(host, (injected, places) -> {
+                if (injected instanceof JMLFile) jml.add(injected);
+            });
+        }
+        return jml;
     }
 }
