@@ -71,16 +71,18 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
             return Promises.resolvedPromise(null);
         }
         FileDocumentManager.getInstance().saveAllDocuments();
-        // what OpenJML would crash on
-        if (!RacLimitations.checkCanCompile(project, modules(environment))) return Promises.resolvedPromise(null);
 
         AsyncPromise<RunContentDescriptor> promise = new AsyncPromise<>();
         new Task.Backgroundable(project, "Compiling with JML checks", true) {
             private ProcessOutput output;
             private ExecutionException error;
+            // what OpenJML would crash on, which stops the run
+            private List<RacLimitations.Place> unsupported = List.of();
 
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
+                unsupported = RacLimitations.find(project, ReadAction.compute(() -> modules(environment)));
+                if (!unsupported.isEmpty()) return;
                 try {
                     output = compile(environment, javaState, installation, indicator);
                 } catch (ExecutionException e) {
@@ -90,7 +92,10 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
 
             @Override
             public void onSuccess() {
-                if (error != null) {
+                if (!unsupported.isEmpty()) {
+                    RacLimitations.notify(project, unsupported);
+                    promise.setResult(null);
+                } else if (error != null) {
                     promise.setError(error);
                 } else if (output.isCancelled()) {
                     promise.setResult(null);

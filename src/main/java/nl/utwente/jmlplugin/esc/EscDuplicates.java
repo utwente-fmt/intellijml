@@ -46,12 +46,12 @@ public final class EscDuplicates implements DaemonCodeAnalyzer.DaemonListener {
             if (!(fileEditor instanceof TextEditor)) continue;
             VirtualFile file = fileEditor.getFile();
             if (file == null || !file.isValid() || !results.hasMessagesOutsideProofs(file)) continue;
-            // the PSI, the documents and the markup, in a read action, as the listener may be called without one
-            PsiFile psiFile = ReadAction.compute(() -> {
-                PsiFile found = PsiManager.getInstance(project).findFile(file);
-                return found != null && update(found) ? found : null;
+            // the daemon calls this on the EDT with the write-intent lock, so reading is allowed; the read action makes
+            // that explicit for the PSI, the documents and the markup, and for the restart, which reads the document
+            ReadAction.run(() -> {
+                PsiFile psiFile = PsiManager.getInstance(project).findFile(file);
+                if (psiFile != null && update(psiFile)) DaemonCodeAnalyzer.getInstance(project).restart(psiFile);
             });
-            if (psiFile != null) DaemonCodeAnalyzer.getInstance(project).restart(psiFile);
         }
     }
 

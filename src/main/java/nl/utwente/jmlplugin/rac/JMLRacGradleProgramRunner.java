@@ -15,6 +15,7 @@ import com.intellij.openapi.externalSystem.util.ExternalSystemApiUtil;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.module.Module;
 import com.intellij.openapi.module.ModuleManager;
+import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.util.UserDataHolder;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.openapi.util.io.FileUtil;
@@ -66,8 +67,14 @@ public class JMLRacGradleProgramRunner extends AsyncProgramRunner<RunnerSettings
         List<Module> modules = gradleModules(configuration);
         JMLRacProgramRunner.checkLanguageLevel(modules);
         FileDocumentManager.getInstance().saveAllDocuments();
-        // what OpenJML would crash on
-        if (!RacLimitations.checkCanCompile(environment.getProject(), modules)) return Promises.resolvedPromise(null);
+        // what OpenJML would crash on, found in the background, as it reads the sources
+        List<RacLimitations.Place> unsupported = ProgressManager.getInstance().runProcessWithProgressSynchronously(
+                () -> RacLimitations.find(environment.getProject(), modules), "Checking the JML for " + JMLRacExecutor.TEXT,
+                true, environment.getProject());
+        if (!unsupported.isEmpty()) {
+            RacLimitations.notify(environment.getProject(), unsupported);
+            return Promises.resolvedPromise(null);
+        }
 
         // the state is made for this run, with a copy of the data of the configuration, and gives its data to Gradle
         // when it starts the tasks; an init script that is already there is kept

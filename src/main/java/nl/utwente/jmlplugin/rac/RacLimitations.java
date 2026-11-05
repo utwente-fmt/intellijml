@@ -90,15 +90,18 @@ public final class RacLimitations {
     }
 
     /**
-     * Tells when the program cannot be compiled with run time checks, with links to the places
-     *
      * @param modules the modules whose sources OpenJML compiles
-     * @return whether it can be
+     * @return what OpenJML cannot compile run time checks for in them; call it in the background, as it reads all
+     * their sources that mention loop_
      */
-    public static boolean checkCanCompile(@NotNull Project project, @NotNull Collection<Module> modules) {
-        List<Place> places = ReadAction.compute(() ->
-                loopFramesOfForLoops(project, OpenJmlCompiler.collectSourceFiles(modules)));
-        if (places.isEmpty()) return true;
+    public static @NotNull List<Place> find(@NotNull Project project, @NotNull Collection<Module> modules) {
+        return ReadAction.compute(() -> loopFramesOfForLoops(project, OpenJmlCompiler.collectSourceFiles(modules)));
+    }
+
+    /**
+     * Tells that the program cannot be compiled with run time checks, with links to the places
+     */
+    public static void notify(@NotNull Project project, @NotNull List<Place> places) {
         Notification notification = NotificationGroupManager.getInstance().getNotificationGroup(OpenJmlNotifications.GROUP)
                 .createNotification(JMLRacExecutor.TEXT + " cannot compile the program", message(places), NotificationType.ERROR);
         for (Place place : places.subList(0, Math.min(places.size(), 3))) {
@@ -106,7 +109,6 @@ public final class RacLimitations {
                     () -> new OpenFileDescriptor(project, place.file(), place.offset()).navigate(true)));
         }
         notification.notify(project);
-        return false;
     }
 
     static @NotNull String message(@NotNull List<Place> places) {

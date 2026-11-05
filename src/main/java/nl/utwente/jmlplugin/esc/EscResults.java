@@ -3,7 +3,9 @@ package nl.utwente.jmlplugin.esc;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.components.Service;
+import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.RangeMarker;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import nl.utwente.jmlplugin.esc.EscOutput.Status;
@@ -44,7 +46,15 @@ public final class EscResults implements Disposable {
          * @return whether the method is the same as when it was verified
          */
         public boolean isCurrent() {
-            return range.isValid() && range.getDocument().getText(range.getTextRange()).equals(text);
+            return range.isValid() && isCurrent(range.getDocument());
+        }
+
+        /**
+         * @param document the document of the method, given when there is no read action to get it from the range
+         */
+        boolean isCurrent(@NotNull Document document) {
+            return range.isValid() && range.getEndOffset() <= document.getTextLength()
+                    && document.getText(range.getTextRange()).equals(text);
         }
 
         @NotNull MethodResult with(@NotNull Status status, @NotNull String result) {
@@ -152,12 +162,27 @@ public final class EscResults implements Disposable {
      * is verified again since
      */
     public @Nullable String values(@NotNull VirtualFile file, int line) {
+        Document document = FileDocumentManager.getInstance().getDocument(file);
+        return document == null ? null : values(document, file, line);
+    }
+
+    /**
+     * The values on a line, without a read action, as the editor paints them
+     *
+     * @param document the document of the file, which the range markers of the values are in
+     * @param line     a line of the file, starting at 0
+     * @return the values of the counterexample on the line, or null if there are none, or the method has changed or
+     * is verified again since
+     */
+    public @Nullable String values(@NotNull Document document, @NotNull VirtualFile file, int line) {
         for (LineValues lineValues : values) {
             if (!lineValues.file().equals(file) || !lineValues.line().isValid()) continue;
             RangeMarker marker = lineValues.line();
-            if (marker.getDocument().getLineNumber(marker.getStartOffset()) != line) continue;
-            MethodResult method = method(lineValues.method());
-            if (method != null && method.run() == lineValues.run()
+            if (marker.getStartOffset() > document.getTextLength() || document.getLineNumber(marker.getStartOffset()) != line) {
+                continue;
+            }
+            MethodResult method = methods.get(lineValues.method());
+            if (method != null && method.isCurrent(document) && method.run() == lineValues.run()
                     && lineValues.failure() == shownFailure(lineValues.method(), lineValues.run())) {
                 return lineValues.text();
             }

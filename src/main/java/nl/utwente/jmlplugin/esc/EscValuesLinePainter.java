@@ -1,9 +1,10 @@
 package nl.utwente.jmlplugin.esc;
 
-import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.EditorLinePainter;
 import com.intellij.openapi.editor.LineExtensionInfo;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.xdebugger.ui.DebuggerColors;
@@ -22,8 +23,11 @@ public class EscValuesLinePainter extends EditorLinePainter {
     @Override
     public @Nullable Collection<LineExtensionInfo> getLineExtensions(@NotNull Project project, @NotNull VirtualFile file,
                                                                      int lineNumber) {
-        // the editor paints without a read action, which the range markers of the values need for their document
-        String values = ReadAction.compute(() -> EscResults.getInstance(project).values(file, lineNumber));
+        // the editor paints without a read action, which RangeMarker.getDocument() needs, and waiting for one could
+        // stop the painting while a background write runs; the document of the editor is read as the editor reads it
+        Document document = FileDocumentManager.getInstance().getCachedDocument(file);
+        if (document == null) return null;
+        String values = EscResults.getInstance(project).values(document, file, lineNumber);
         if (values == null) return null;
         return List.of(new LineExtensionInfo("    " + values,
                 EditorColorsManager.getInstance().getGlobalScheme().getAttributes(DebuggerColors.INLINED_VALUES)));
