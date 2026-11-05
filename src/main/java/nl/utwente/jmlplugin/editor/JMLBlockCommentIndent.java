@@ -9,10 +9,12 @@ import com.intellij.psi.codeStyle.CodeStyleSettings;
 import com.intellij.psi.codeStyle.CommonCodeStyleSettings;
 import com.intellij.psi.impl.source.codeStyle.PostFormatProcessor;
 import com.intellij.psi.impl.source.codeStyle.PreFormatProcessor;
+import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -28,8 +30,19 @@ import java.util.List;
  * the comment by as much as the first line moved.
  */
 public final class JMLBlockCommentIndent {
-    private static final Key<Integer> COLUMN = Key.create("JML_BLOCK_COMMENT_COLUMN");
-    private static final Key<String> TEXT = Key.create("JML_BLOCK_COMMENT_TEXT");
+    /**
+     * A JML block comment before formatting
+     */
+    private record Noted(@NotNull PsiComment comment, int column, @NotNull String text) {
+    }
+
+    /**
+     * The comments noted before a formatting, which can be of several ranges, at a modification count of the PSI
+     */
+    private record Run(long modificationCount, @NotNull List<Noted> noted) {
+    }
+
+    private static final Key<Run> RUN = Key.create("JML_BLOCK_COMMENT_RUN");
 
     private JMLBlockCommentIndent() {
     }
@@ -39,11 +52,19 @@ public final class JMLBlockCommentIndent {
         public @NotNull TextRange process(@NotNull ASTNode element, @NotNull TextRange range) {
             PsiElement psi = element.getPsi();
             if (psi == null || !(psi.getContainingFile() instanceof PsiJavaFile file)) return range;
+            List<PsiComment> comments = blockComments(psi, range);
+            if (comments.isEmpty()) return range;
+            // the notes of a formatting whose After did not run are old
+            long count = PsiModificationTracker.getInstance(file.getProject()).getModificationCount();
+            Run run = file.getUserData(RUN);
+            if (run == null || run.modificationCount() != count) {
+                run = new Run(count, new ArrayList<>());
+                file.putUserData(RUN, run);
+            }
             int tabSize = indentOptions(file).TAB_SIZE;
-            for (PsiComment comment : blockComments(psi, range)) {
+            for (PsiComment comment : comments) {
                 int column = startColumn(comment, tabSize);
-                comment.putUserData(COLUMN, column < 0 ? null : column);
-                comment.putUserData(TEXT, column < 0 ? null : comment.getText());
+                if (column >= 0) run.noted().add(new Noted(comment, column, comment.getText()));
             }
             return range;
         }
@@ -57,24 +78,22 @@ public final class JMLBlockCommentIndent {
     public static class After implements PostFormatProcessor {
         @Override
         public @NotNull PsiElement processElement(@NotNull PsiElement source, @NotNull CodeStyleSettings settings) {
-            if (source instanceof PsiComment) {
-                // replaced by a new comment, which is the element now
-                TextRange range = source.getTextRange();
-                PsiFile file = source.getContainingFile();
-                shift(file, range);
+            PsiFile file = source.getContainingFile();
+            if (file == null) return source;
+            TextRange range = source.getTextRange();
+            shift(file, range);
+            // a comment is replaced by a new one, which is the element now
+            if (source instanceof PsiComment && !source.isValid()) {
                 PsiElement now = file.findElementAt(range.getStartOffset());
                 return now instanceof PsiComment ? now : source;
             }
-            shift(source, source.getTextRange());
             return source;
         }
 
         @Override
         public @NotNull TextRange processText(@NotNull PsiFile source, @NotNull TextRange rangeToReformat,
                                               @NotNull CodeStyleSettings settings) {
-            int change = shift(source, rangeToReformat);
-            return new TextRange(rangeToReformat.getStartOffset(), Math.max(rangeToReformat.getStartOffset(),
-                    rangeToReformat.getEndOffset() + change));
+            return shift(source, rangeToReformat);
         }
 
         @Override
@@ -83,27 +102,37 @@ public final class JMLBlockCommentIndent {
         }
 
         /**
-         * @return how many characters the text of the range got longer
+         * Moves the lines of the comments noted before the formatting, of all its ranges
+         *
+         * @return the range, as it is after the changes
          */
-        private static int shift(@NotNull PsiElement root, @NotNull TextRange range) {
-            if (!(root.getContainingFile() instanceof PsiJavaFile file)) return 0;
+        private static @NotNull TextRange shift(@NotNull PsiFile file, @NotNull TextRange range) {
+            Run run = file.getUserData(RUN);
+            file.putUserData(RUN, null);
+            if (run == null || !(file instanceof PsiJavaFile)) return range;
             CommonCodeStyleSettings.IndentOptions options = indentOptions(file);
-            int change = 0;
-            for (PsiComment comment : blockComments(root, range)) {
-                Integer before = comment.getUserData(COLUMN);
-                String textBefore = comment.getUserData(TEXT);
-                comment.putUserData(COLUMN, null);
-                comment.putUserData(TEXT, null);
+            List<Noted> noted = new ArrayList<>(run.noted());
+            // from the end of the file, so that the offsets of the others stay as they were
+            noted.removeIf(note -> !note.comment().isValid());
+            noted.sort(Comparator.comparingInt((Noted note) -> note.comment().getTextRange().getStartOffset()).reversed());
+            int startShift = 0;
+            int endShift = 0;
+            for (Noted note : noted) {
+                PsiComment comment = note.comment();
                 // only a comment that the formatter moved, but did not change
-                if (before == null || !comment.getText().equals(textBefore)) continue;
+                if (!comment.isValid() || !comment.getText().equals(note.text())) continue;
                 int after = startColumn(comment, options.TAB_SIZE);
-                if (after < 0 || after == before) continue;
-                String shifted = shiftLines(comment.getText(), after - before, options);
+                if (after < 0 || after == note.column()) continue;
+                String shifted = shiftLines(comment.getText(), after - note.column(), options);
                 if (shifted.equals(comment.getText())) continue;
-                change += shifted.length() - comment.getTextLength();
+                int change = shifted.length() - comment.getTextLength();
+                TextRange where = comment.getTextRange();
                 ElementManipulators.handleContentChange(comment, TextRange.from(0, comment.getTextLength()), shifted);
+                if (where.getEndOffset() <= range.getStartOffset()) startShift += change;
+                else if (where.getStartOffset() < range.getEndOffset()) endShift += change;
             }
-            return change;
+            int start = range.getStartOffset() + startShift;
+            return new TextRange(start, Math.max(start, range.getEndOffset() + startShift + endShift));
         }
     }
 

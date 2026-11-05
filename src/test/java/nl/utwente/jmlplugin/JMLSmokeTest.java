@@ -111,10 +111,12 @@ public class JMLSmokeTest extends LightJavaCodeInsightFixtureTestCase {
                     problems.add(source + ": " + name.getText() + " resolves to " + named.getName());
                 }
                 // Find Usages only looks where Java (and spec_public) allows it, not in the JML of other classes for a
-                // private method, which is an error there
+                // private method, which is an error there; the JML of a parameter or variable is in its file, also the
+                // specification of a loop above the loop
                 PsiElement host = manager.getInjectionHost(name);
-                if (target.getContainingFile() == file && host != null
-                        && PsiSearchScopeUtil.isInScope(PsiSearchHelper.getInstance(getProject()).getUseScope(target), host)) {
+                boolean local = target instanceof PsiParameter || target instanceof PsiLocalVariable;
+                if (target.getContainingFile() == file && host != null && (local
+                        || PsiSearchScopeUtil.isInScope(PsiSearchHelper.getInstance(getProject()).getUseScope(target), host))) {
                     uses.merge(target, 1, Integer::sum);
                 }
             }

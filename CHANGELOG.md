@@ -47,8 +47,11 @@
   `spec_public`, `\forall`, `==>` and the other keywords mean, with an example in the colours of the editor, the
   other ways to write it (such as `modifies` for `assignable`, and the `_redundantly` forms), and a link to the page
   of the OpenJML tutorial about it.
-- Renaming a field, method, parameter or local variable renames it in JML too, as in `ensures count == \old(count) + n;`
-  and `assignable this.count, other.count;`, also when renamed in place with Shift+F6. Find Usages shows the uses in
+- Renaming a field, method, parameter, local variable or class renames it in JML too, as in
+  `ensures count == \old(count) + n;`, `assignable this.count, other.count;`, `\result.count`, the variable of a loop
+  in its loop invariant, `o instanceof Counter` and `signals_only CounterException;`, also when renamed in place with
+  Shift+F6. As Java's rename does, a field is qualified where a parameter or variable would hide it after the rename,
+  as `this.balance` for a field renamed to `balance` in the specification of a constructor with a parameter `balance`. Find Usages shows the uses in
   JML, grouped as "Usage in JML specification", and Ctrl+click on a name in JML goes to its declaration. Rename, Find
   Usages and Highlight Usages in File also work with the caret on the name in the JML. A private field or method that
   is `spec_public` or `spec_protected` is also found in the specifications of other classes. The variable of a

@@ -138,6 +138,160 @@ public class JMLRenameTest extends LightJavaCodeInsightFixtureTestCase {
         assertEquals(text.replace("int i;\n", "int k;\n").replace("&& i > 0", "&& k > 0"), text());
     }
 
+    public void testRenameInContinuedClause() {
+        // one clause over two comments is one JML specification
+        String text = """
+                class A {
+                    //@ requires amount > 0 &&
+                    //@          amount < 100;
+                    void add(int amount) {
+                    }
+                }
+                """;
+        myFixture.configureByText("A.java", text.replace("int amount", "int amo<caret>unt"));
+        myFixture.renameElementAtCaret("delta");
+        assertEquals(text.replace("amount", "delta"), text());
+        // and from the second line
+        myFixture.configureByText("A.java", text.replace("amount < 100", "amo<caret>unt < 100"));
+        myFixture.renameElementAtCaretUsingHandler("delta");
+        assertEquals(text.replace("amount", "delta"), text());
+    }
+
+    private static final String LOOP = """
+            class A {
+                int i;
+
+                int sum(int[] a) {
+                    int s = 0;
+                    //@ maintaining 0 <= i && i <= a.length;
+                    for (int i = 0; i < a.length; i++) s += a[i];
+                    return s + this.i;
+                }
+            }
+            """;
+
+    public void testRenameLoopVariable() {
+        myFixture.configureByText("A.java", LOOP.replace("for (int i", "for (int <caret>i"));
+        myFixture.renameElementAtCaret("k");
+        assertEquals(LOOP.replace("0 <= i && i <= a.length", "0 <= k && k <= a.length")
+                .replace("for (int i = 0; i < a.length; i++) s += a[i];", "for (int k = 0; k < a.length; k++) s += a[k];"), text());
+    }
+
+    public void testRenameFieldBesideLoopVariable() {
+        // the i of the loop invariant is the variable of the loop
+        myFixture.configureByText("A.java", LOOP.replace("int i;", "int <caret>i;"));
+        myFixture.renameElementAtCaret("count");
+        assertEquals(LOOP.replace("int i;", "int count;").replace("this.i", "this.count"), text());
+    }
+
+    public void testRenameFieldToNameOfParameter() {
+        // as Java does, the field is qualified, so that the parameter does not take its place
+        myFixture.configureByText("Account.java", """
+                class Account {
+                    int ba<caret>l;
+
+                    //@ ensures bal == balance;
+                    Account(int balance) {
+                        bal = balance;
+                    }
+                }
+                """);
+        myFixture.renameElementAtCaret("balance");
+        assertEquals("""
+                class Account {
+                    int balance;
+
+                    //@ ensures this.balance == balance;
+                    Account(int balance) {
+                        this.balance = balance;
+                    }
+                }
+                """, text());
+    }
+
+    public void testRenameParameterToNameOfField() {
+        // the other way round: the field that the parameter would hide is qualified, also in another clause
+        myFixture.configureByText("Account.java", """
+                class Account {
+                    int balance;
+
+                    //@ ensures balance == b;
+                    //@ assignable balance;
+                    Account(int <caret>b) {
+                        balance = b;
+                    }
+                }
+                """);
+        myFixture.renameElementAtCaret("balance");
+        assertEquals("""
+                class Account {
+                    int balance;
+
+                    //@ ensures this.balance == balance;
+                    //@ assignable this.balance;
+                    Account(int balance) {
+                        this.balance = balance;
+                    }
+                }
+                """, text());
+    }
+
+    public void testRenameFieldAfterResultAndQuantifierVariable() {
+        String text = """
+                class Node {
+                    int value;
+
+                    //@ ensures \\result.value == 0;
+                    static Node make() {
+                        return new Node();
+                    }
+
+                    //@ requires (\\forall Node n; n != null; n.value >= 0);
+                    void m() {
+                    }
+                }
+                """;
+        myFixture.configureByText("Node.java", text.replace("int value;", "int val<caret>ue;"));
+        myFixture.renameElementAtCaret("data");
+        assertEquals(text.replace("value", "data"), text());
+    }
+
+    private static final String CLASSES = """
+            class Counter {
+                static final int MAX = 10;
+                int count;
+
+                //@ requires o instanceof Counter && ((Counter) o).count < Counter.MAX;
+                //@ ensures \\result.count == 0;
+                //@ signals_only CounterException;
+                //@ signals (CounterException e) count < 0;
+                static Counter create(Object o) throws CounterException {
+                    return new Counter();
+                }
+
+                //@ ensures !\\result.equals(new Counter());
+                Counter copy() {
+                    return this;
+                }
+            }
+
+            class CounterException extends Exception {
+            }
+            """;
+
+    public void testRenameClass() {
+        myFixture.configureByText("Counter.java", CLASSES.replace("class Counter {", "class Coun<caret>ter {"));
+        myFixture.renameElementAtCaret("Tally");
+        // CounterException is another name
+        assertEquals(CLASSES.replaceAll("\\bCounter\\b", "Tally"), text());
+    }
+
+    public void testRenameExceptionInSignals() {
+        myFixture.configureByText("Counter.java", CLASSES.replace("class CounterException", "class Counter<caret>Exception"));
+        myFixture.renameElementAtCaret("CountError");
+        assertEquals(CLASSES.replace("CounterException", "CountError"), text());
+    }
+
     public void testCommentWithWhitespaceIsNotJml() {
         // "/* @" is an ordinary comment for OpenJML; the plugin only warns about the whitespace
         String text = """

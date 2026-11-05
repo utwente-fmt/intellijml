@@ -561,7 +561,7 @@ public final class EscVerifier {
             steps.add(traceStep(document, line, traceCode(step.text()), EscValues.text(stepValues)));
         }
         // and last where it fails
-        if (!steps.isEmpty() && failure != null && failure.range().isValid()) {
+        if (!steps.isEmpty() && failure != null && failure.range().isValid() && failure.file().equals(verifiedFile)) {
             Matcher kind = FAILURE_KIND.matcher(failure.message());
             steps.add(traceStep(document, document.getLineNumber(failure.range().getStartOffset()),
                     "fails: " + (kind.find() ? kind.group(1) : "this does not hold"), ""));

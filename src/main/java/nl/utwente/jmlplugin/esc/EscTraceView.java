@@ -45,6 +45,7 @@ public final class EscTraceView extends JPanel implements Disposable {
     static final String ID = "JML Counterexample";
     // the view that shows the steps now
     private static final Key<EscTraceView> SHOWN = Key.create("JML_COUNTEREXAMPLE_VIEW");
+    private static final String HINT = "Up and Down go through the steps; the values are those after the step. Enter goes to the line.";
 
     private final Project project;
     private final EscResults.Trace trace;
@@ -90,7 +91,7 @@ public final class EscTraceView extends JPanel implements Disposable {
         header.setBorder(JBUI.Borders.empty(4, 6));
         status.setBorder(JBUI.Borders.empty(2, 6, 4, 6));
         status.setForeground(JBUI.CurrentTheme.ContextHelp.FOREGROUND);
-        status.setText("Up and Down go through the steps; the values are those after the step. Enter goes to the line.");
+        status.setText(HINT);
         add(header, BorderLayout.NORTH);
         add(ScrollPaneFactory.createScrollPane(list), BorderLayout.CENTER);
         add(status, BorderLayout.SOUTH);
@@ -158,10 +159,14 @@ public final class EscTraceView extends JPanel implements Disposable {
     private void showSelected(boolean focus) {
         removeHighlighter();
         EscResults.TraceStep step = list.getSelectedValue();
-        if (step == null || !step.line().isValid()) return;
-        if (!EscResults.getInstance(project).isCurrent(trace)) {
-            status.setText("The method has changed since it was verified: the steps may no longer fit the code.");
+        if (step == null) return;
+        if (!step.line().isValid()) {
+            // the results of the method are gone, as it was verified again
+            status.setText("The method was verified again: Alt+Enter on what OpenJML cannot prove shows its new steps.");
+            return;
         }
+        status.setText(EscResults.getInstance(project).isCurrent(trace) ? HINT
+                : "The method has changed since it was verified: the steps may no longer fit the code.");
         int offset = step.line().getStartOffset();
         Editor editor = FileEditorManager.getInstance(project).openTextEditor(new OpenFileDescriptor(project, trace.file(), offset), focus);
         if (editor == null) return;
