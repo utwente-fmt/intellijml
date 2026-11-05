@@ -29,6 +29,12 @@ import static com.intellij.psi.util.PsiTreeUtil.getParentOfType;
  * Does some general checking of the generated PSI Tree
  */
 public class JMLAnnotator extends HighlightErrorFilter implements Annotator {
+
+    // the severities of the annotations that only colour the JML, below any problem; constants, as the platform keeps
+    // the severities that it sees (the empty names are those of 1.x, which the platform does not show anywhere)
+    static final HighlightSeverity BACKGROUND = new HighlightSeverity("", 0);
+    static final HighlightSeverity COLOUR = new HighlightSeverity("", 1);
+
     @Override
     public void annotate(@NotNull PsiElement element, @NotNull AnnotationHolder holder) {
         // don't do any checking on whitespace or comments
@@ -40,7 +46,7 @@ public class JMLAnnotator extends HighlightErrorFilter implements Annotator {
             TextAttributes textAttributes = new TextAttributes();
             textAttributes.setBackgroundColor(
                     EditorColorsManager.getInstance().getSchemeForCurrentUITheme().getDefaultBackground());
-            holder.newSilentAnnotation(new HighlightSeverity("", 0)).enforcedTextAttributes(textAttributes).create();
+            holder.newSilentAnnotation(BACKGROUND).enforcedTextAttributes(textAttributes).create();
         }
 
         // get the JML tree root
@@ -64,7 +70,7 @@ public class JMLAnnotator extends HighlightErrorFilter implements Annotator {
                 TextAttributes textAttributes = new TextAttributes();
                 textAttributes.setForegroundColor(EditorColorsManager.getInstance().getSchemeForCurrentUITheme()
                         .getAttributes(DefaultLanguageHighlighterColors.BLOCK_COMMENT).getForegroundColor());
-                holder.newSilentAnnotation(new HighlightSeverity("", 1)).enforcedTextAttributes(textAttributes).create();
+                holder.newSilentAnnotation(COLOUR).enforcedTextAttributes(textAttributes).create();
             }
             // if the element itself is the first @-sign, then add a weak warning
             if (element.getNode().getElementType() == JMLTypes.AT_SIGN && jmlRoot.getFirstChild().equals(element)) {

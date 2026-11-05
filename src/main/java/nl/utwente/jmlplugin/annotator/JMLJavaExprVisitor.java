@@ -329,9 +329,8 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
                     if (dimExpr.getType() == null) {
                         // should not happen, but just in case
                         annotateError(dimExpr, ErrorMessages.TYPE_UNKNOWN);
-                    }
-                    if (!dimExpr.getType().getCanonicalText().equals("java.lang.Integer") && !TypeConversionUtil.isIntegerNumber(dimExpr.getType().getPresentableText())) {
-//                    if (!TypeConversionUtil.areTypesConvertible(dimExpr.getType(), PsiTypes.intType())) {
+                    } else if (!dimExpr.getType().getCanonicalText().equals("java.lang.Integer")
+                            && !TypeConversionUtil.isIntegerNumber(dimExpr.getType().getPresentableText())) {
                         annotateError(dimExpr, ErrorMessages.ARRAY_DIM_NO_INT);
                     }
                 }

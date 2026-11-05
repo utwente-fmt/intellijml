@@ -18,6 +18,7 @@ import org.jetbrains.annotations.Nls;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -39,7 +40,10 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
             // search for the JML comment
             boolean jmlFound = false;
             StringBuilder resultBuilder = new StringBuilder(original == null ? "" : original);
-            List<PsiElement> children = new ArrayList<>();
+            // the JML above the method that OpenJML also takes as its specification, as above its documentation
+            // comment or with a blank line in between, in the order of the file
+            List<PsiElement> children = new ArrayList<>(JMLAnnotatorUtil.commentsAbove(element));
+            Collections.reverse(children);
             for (PsiElement child : element.getChildren()) {
                 // comments between modifiers, such as in public /*@ pure @*/ static int size(), are in the modifier list
                 if (child instanceof PsiModifierList) children.addAll(Arrays.asList(child.getChildren()));

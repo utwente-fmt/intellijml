@@ -58,8 +58,7 @@ public class JMLSyntaxAnnotator {
                 TextAttributes textAttributes = new TextAttributes();
                 textAttributes.setForegroundColor(EditorColorsManager.getInstance().getSchemeForCurrentUITheme()
                         .getAttributes(DefaultLanguageHighlighterColors.BLOCK_COMMENT).getForegroundColor());
-                holder.newSilentAnnotation(
-                        new HighlightSeverity("", 1))
+                holder.newSilentAnnotation(JMLAnnotator.COLOUR)
                         .enforcedTextAttributes(textAttributes)
                         .create();
             }

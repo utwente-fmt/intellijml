@@ -140,7 +140,9 @@ of the generated types, which appear in syntax errors, are in `JMLElementType` a
 No setup is needed: the tests use a mock JDK 21 that the IntelliJ test framework downloads from Maven
 the first time (about 6 MB, into `~/.m2`). The test classes are in `src/test/java`, and the files they
 open are in `src/test/testData` (these are not compiled, so they may contain broken Java). The build
-fails if any test is skipped, because that happens when a test run is interrupted part-way.
+fails if any test is skipped, because that happens when a test run is interrupted part-way. Only test classes whose
+name contains `JML` and ends with `Test` run (`include("**/*JML*Test.class")` in `build.gradle.kts`), so name a new
+test class like that, or it never runs.
 
 `JMLRacOpenJmlTest` and `JMLEscOpenJmlTest` run programs with JML checks and verify methods with a real
 OpenJML, so they only run when you give an installation: `./gradlew test -PopenJml=<folder of the OpenJML installation>`.

@@ -668,7 +668,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
     private static boolean checkMultipleSpecVisibilityModifiers(PsiElement element, CommentPosition position) {
         if (!JMLTokenSet.specVisibilityModifiers.contains(element.getNode().getElementType()))
             return false; // element is not a modifier we are checking for
-        return doPrevCommentsContain(element, "spec_protectedspec_public".replace(element.getText().trim(), ""), false, true);
+        String other = element.getNode().getElementType() == JMLTypes.SPEC_PUBLIC ? "spec_protected" : "spec_public";
+        return doPrevCommentsContain(element, other, false, true);
     }
 
     /**

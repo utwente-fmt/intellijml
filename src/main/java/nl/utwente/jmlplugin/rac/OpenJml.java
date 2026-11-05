@@ -9,10 +9,12 @@ import nl.utwente.jmlplugin.settings.JMLApplicationSettings;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.stream.Stream;
 
 /**
  * An installation of OpenJML (https://www.openjml.org), which compiles Java code with run time checks of its JML
@@ -20,7 +22,9 @@ import java.util.Collection;
  * user sets its location in the settings, or downloads it with {@link OpenJmlInstaller}.
  */
 public final class OpenJml {
-    // the version that OpenJmlInstaller downloads, and that the plugin is tested with
+    // the version that OpenJmlInstaller downloads, and that the plugin is tested with. The plugin reads OpenJML's
+    // output and messages as this version writes them (EscOutput, EscMessages, EscValues, the RAC console filter): for
+    // a new version, record the test fixtures again (escTestData) and run the tests with -PopenJml
     public static final String VERSION = "21.0.29";
 
     // the system property that tells the run time checks what to do with a violated specification: by default they
@@ -50,6 +54,43 @@ public final class OpenJml {
      */
     public static boolean isInstallation(@NotNull Path directory) {
         return Files.isRegularFile(launcher(directory)) && Files.isRegularFile(runtimeLibrary(directory));
+    }
+
+    /**
+     * @param installation a folder that should contain OpenJML
+     * @return the first file or folder of OpenJML that is not there, such as "jdk/bin/java", of those that the plugin
+     * uses: its scripts and run time library, its Java, the library and specifications that Verify needs and the
+     * provers; null if they are all there
+     */
+    public static @Nullable String missing(@NotNull Path installation) {
+        if (!Files.isRegularFile(launcher(installation))) return launcher(installation).getFileName().toString();
+        if (!Files.isRegularFile(runtimeLibrary(installation))) return runtimeLibrary(installation).getFileName().toString();
+        Path java = java(installation);
+        if (!Files.isRegularFile(java)) return "jdk/bin/" + java.getFileName();
+        if (!Files.isRegularFile(installation.resolve("libs").resolve("jSMTLIB.jar"))) return "libs/jSMTLIB.jar";
+        if (!Files.isDirectory(installation.resolve("specs"))) return "specs";
+        if (solvers(installation) == null) return "Solvers-... (the provers)";
+        return null;
+    }
+
+    /**
+     * @return OpenJML's Java, which runs OpenJML and the programs with run time checks
+     */
+    public static @NotNull Path java(@NotNull Path installation) {
+        return jdk(installation).resolve("bin").resolve(SystemInfo.isWindows ? "java.exe" : "java");
+    }
+
+    /**
+     * @return the folder with the provers, such as Solvers-windows: a release has one, for its operating system; null
+     * if there is none
+     */
+    public static @Nullable Path solvers(@NotNull Path installation) {
+        try (Stream<Path> files = Files.list(installation)) {
+            return files.filter(file -> file.getFileName().toString().startsWith("Solvers-") && Files.isDirectory(file))
+                    .findFirst().orElse(null);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     /**

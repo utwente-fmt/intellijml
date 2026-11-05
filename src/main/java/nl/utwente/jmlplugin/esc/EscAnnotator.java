@@ -5,6 +5,7 @@ import com.intellij.codeInspection.LocalQuickFix;
 import com.intellij.codeInspection.ProblemDescriptor;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.lang.annotation.AnnotationBuilder;
+import com.intellij.lang.annotation.ProblemGroup;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.ExternalAnnotator;
 import com.intellij.openapi.editor.RangeMarker;
@@ -47,6 +48,11 @@ public class EscAnnotator extends ExternalAnnotator<List<EscResults.Problem>, Li
         return problems;
     }
 
+    /**
+     * Marks the messages of OpenJML, so that {@link EscDuplicates} can tell them from those of the plugin and IntelliJ
+     */
+    static final ProblemGroup OPENJML = () -> "OpenJML";
+
     @Override
     public void apply(@NotNull PsiFile file, List<EscResults.Problem> problems, @NotNull AnnotationHolder holder) {
         EscResults results = EscResults.getInstance(file.getProject());
@@ -85,7 +91,8 @@ public class EscAnnotator extends ExternalAnnotator<List<EscResults.Problem>, Li
             String tooltip = EscMessages.tooltip(message, explanation == null ? null : EscMessages.hint(explanation),
                     links.stream().map(link -> new EscMessages.Link(link.href(), link.text())).toList(),
                     plain == null ? null : "OpenJML: " + problem.message());
-            AnnotationBuilder builder = holder.newAnnotation(problem.severity(), message).range(range).tooltip(tooltip);
+            AnnotationBuilder builder = holder.newAnnotation(problem.severity(), message).range(range).tooltip(tooltip)
+                    .problemGroup(OPENJML);
             for (GoTo link : links) builder = builder.withFix(new EscGoToFix(link.text(), link.file(), link.place()));
             // another failure of the method has its values shown at the end of the lines
             if (explanation != null && explanation.role() == Role.FAILURE) {

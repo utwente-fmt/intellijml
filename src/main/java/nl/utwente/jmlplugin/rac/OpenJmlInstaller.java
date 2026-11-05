@@ -60,7 +60,8 @@ public final class OpenJmlInstaller {
      */
     public static @NotNull Path install(@NotNull ProgressIndicator indicator) throws IOException {
         Path installation = installationDirectory();
-        if (OpenJml.isInstallation(installation)) return installation;
+        // also again after a download that was not unpacked completely
+        if (OpenJml.missing(installation) == null) return installation;
 
         String asset = assetName();
         Path zip = installation.resolveSibling(asset);
@@ -78,8 +79,10 @@ public final class OpenJmlInstaller {
         } finally {
             Files.deleteIfExists(zip);
         }
-        if (!OpenJml.isInstallation(installation)) {
-            throw new IOException("The download from GitHub does not contain OpenJML: " + installation);
+        String missing = OpenJml.missing(installation);
+        if (missing != null) {
+            throw new IOException("The download from GitHub does not contain OpenJML " + OpenJml.VERSION + " (no " + missing
+                    + "): " + installation);
         }
         return installation;
     }

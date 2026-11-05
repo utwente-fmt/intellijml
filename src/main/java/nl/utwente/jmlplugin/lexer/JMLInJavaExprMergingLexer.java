@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Top level parser for JML. Merges JML inside Java expressions. Merges the \keywords from JML into a single token, because otherwise
+ * Lexer for the Java expressions in JML: merges the JML in them. Merges the \keywords from JML into a single token, because otherwise
  * JML views it as \ + keyword instead of \keyword. Also merges JML operators such as ==> and <==>
  */
 

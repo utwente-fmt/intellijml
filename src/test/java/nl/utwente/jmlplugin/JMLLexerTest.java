@@ -39,6 +39,27 @@ public class JMLLexerTest extends BasePlatformTestCase {
         }
     }
 
+    public void testRestartInAllTestData() throws java.io.IOException {
+        // the JML of every comment in the test data, as the injection gives it to the lexer: without // or /* */
+        java.util.regex.Pattern jml = java.util.regex.Pattern.compile("//(@[^\\n]*)|/\\*(@.*?)\\*/", java.util.regex.Pattern.DOTALL);
+        int count = 0;
+        List<java.nio.file.Path> files;
+        try (java.util.stream.Stream<java.nio.file.Path> walk = java.nio.file.Files.walk(java.nio.file.Path.of("src/test/testData"))) {
+            files = walk.filter(path -> path.toString().endsWith(".java")).sorted().toList();
+        }
+        for (java.nio.file.Path file : files) {
+            // without the markup of the highlighting tests
+            String text = java.nio.file.Files.readString(file)
+                    .replaceAll("</?(error|warning|weak_warning|info|EOLError|caret|selection)(\\s+descr=\"[^\"]*\")?\\s*/?>", "");
+            java.util.regex.Matcher comment = jml.matcher(text);
+            while (comment.find()) {
+                checkCorrectRestart(comment.group(1) != null ? comment.group(1) : comment.group(2));
+                count++;
+            }
+        }
+        assertTrue("only " + count + " JML comments", count > 500);
+    }
+
     public void testRestartInMethodSpecification() {
         checkCorrectRestart("@ requires x > 0 && y != null;\n@ ensures \\result == x;\n@ assignable \\nothing;");
     }

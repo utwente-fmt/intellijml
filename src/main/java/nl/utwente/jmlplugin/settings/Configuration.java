@@ -50,20 +50,24 @@ public class Configuration extends BaseConfigurable {
     @Override
     public void apply() throws ConfigurationException {
         String openJmlPath = panel.getOpenJmlPath();
-        if (!openJmlPath.isEmpty() && !isOpenJmlInstallation(openJmlPath)) {
-            throw new ConfigurationException("This folder does not contain OpenJML: it should contain " +
-                    "openjml and jmlruntime.jar", "OpenJML Installation");
+        String missing = openJmlPath.isEmpty() ? null : missingFromInstallation(openJmlPath);
+        if (missing != null) {
+            throw new ConfigurationException("This folder does not contain OpenJML " + OpenJml.VERSION + ": it has no "
+                    + missing + ". Choose the folder that contains openjml, jmlruntime.jar and jdk.", "OpenJML Installation");
         }
         settings.OPENJML_PATH = openJmlPath;
         settings.CHECK_ON_SAVE = panel.isCheckOnSaveEnabled();
         settings.RAINBOW_MODE = panel.isEasterEggEnabled();
     }
 
-    private static boolean isOpenJmlInstallation(String path) {
+    /**
+     * @return what the folder lacks of an OpenJML installation, or null if it is one
+     */
+    private static String missingFromInstallation(String path) {
         try {
-            return OpenJml.isInstallation(Path.of(path));
+            return OpenJml.missing(Path.of(path.trim()));
         } catch (InvalidPathException e) {
-            return false;
+            return "OpenJML (it is no folder)";
         }
     }
 

@@ -28,16 +28,16 @@ public class JMLJavaParser extends GeneratedParserUtilBase {
      * used to check for rules in the form of \tokentype( java_expr )
      */
     private static final IElementType parenthesesAroundJava = new IElementType("parentheses around java", JMLLanguage.INSTANCE);
-    /**
-     * pretend token that is expected when a quantifier is not surrounded by parentheses, so that the syntax annotator
-     * can recognize the error message. Created once, as every IElementType is registered globally and the
-     * number of element types is limited
-     */
     // the operators after which a quantified expression can be without parentheses, as in "a && \forall int i; ..."
     private static final com.intellij.psi.tree.TokenSet OPERATORS_BEFORE_QUANTIFIER = com.intellij.psi.tree.TokenSet.create(
             JavaTokenType.ANDAND, JavaTokenType.OROR, JavaTokenType.AND, JavaTokenType.OR, JavaTokenType.XOR,
             JavaTokenType.EXCL, JavaTokenType.EQEQ, JavaTokenType.NE, JavaTokenType.QUEST, JavaTokenType.COLON,
             JMLTypes.LOGICAL_IMPL, JMLTypes.LOGICAL_EQ, JMLTypes.LOGICAL_IMPL_REV, JMLTypes.LOGICAL_NOT_EQ);
+    /**
+     * pretend token that is expected when a quantifier is not surrounded by parentheses, so that the syntax annotator
+     * can recognize the error message. Created once, as every IElementType is registered globally and the
+     * number of element types is limited
+     */
     private static final IElementType noLParenBeforeQuantifier = new IElementType("NO_LPAREN_BEFORE_QUANTIFIER", JMLLanguage.INSTANCE);
 
     static {

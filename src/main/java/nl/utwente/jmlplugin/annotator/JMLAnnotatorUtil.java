@@ -42,8 +42,6 @@ public class JMLAnnotatorUtil {
                 .collect(Collectors.joining("|", "(", ")"));
     }
 
-    // the keyword of a ghost declaration
-
     // whitespace with at most one line break
     private static final Pattern AT_MOST_ONE_NEWLINE = Pattern.compile("[ \t ]*(\n|\r\n)?[ \t ]*");
 
@@ -371,12 +369,6 @@ public class JMLAnnotatorUtil {
     }
 
     /**
-     * @param comments comments, of which only the JML comments are searched
-     * @param regex    the regex that should be matched, such as the name of a modifier
-     * @return whether the regex matches in one of the comments, as a whole word after an at-sign, a semicolon or a
-     * modifier, such as a modifier
-     */
-    /**
      * @param comments comments of Java code
      * @param types    types of JML tokens, such as modifiers
      * @return the tokens of these types in the JML of the comments, by where they are in the Java file: only JML, not
@@ -397,6 +389,12 @@ public class JMLAnnotatorUtil {
         return tokens;
     }
 
+    /**
+     * @param comments comments, of which only the JML comments are searched
+     * @param regex    the regex that should be matched, such as the name of a modifier
+     * @return whether the regex matches in one of the comments, as a whole word after an at-sign, a semicolon or a
+     * modifier, such as a modifier
+     */
     public static boolean commentsContain(@NotNull List<PsiComment> comments, String regex) {
         return countTextMatchesAcrossComments(new ArrayList<>(comments), regex, 1) >= 1;
     }

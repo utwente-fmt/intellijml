@@ -7,7 +7,6 @@ import com.intellij.openapi.components.Service;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
-import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.concurrency.AppExecutorUtil;
 import nl.utwente.jmlplugin.rac.OpenJml;
 import org.jetbrains.annotations.NotNull;
@@ -15,7 +14,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +21,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 /**
  * Keeps OpenJML running in a separate process ({@link OpenJmlWorker}) between verifications, as starting it takes a
@@ -127,6 +124,12 @@ public final class OpenJmlWorkerService implements Disposable {
     }
 
     private void start(@NotNull Path installation) throws IOException {
+        // an installation of another version, or one that was not unpacked completely, fails here with a clear message
+        String missing = OpenJml.missing(installation);
+        if (missing != null) {
+            throw new IOException("The OpenJML installation in " + installation + " has no " + missing
+                    + ": choose OpenJML " + OpenJml.VERSION + " in Settings | Tools | IntelliJML");
+        }
         String workerClassPath = PathManager.getJarPathForClass(OpenJmlWorker.class);
         if (workerClassPath == null) throw new IOException("Could not find the classes of the plugin to run OpenJML with");
         ProcessBuilder builder = new ProcessBuilder(command(installation, workerClassPath))
@@ -144,7 +147,7 @@ public final class OpenJmlWorkerService implements Disposable {
      * @return the command that starts {@link OpenJmlWorker} on OpenJML's Java, as OpenJML's own scripts do
      */
     static @NotNull List<String> command(@NotNull Path installation, @NotNull String workerClassPath) {
-        Path java = OpenJml.jdk(installation).resolve("bin").resolve(SystemInfo.isWindows ? "java.exe" : "java");
+        Path java = OpenJml.java(installation);
         List<String> command = new ArrayList<>(List.of(java.toString(),
                 "--patch-module=jdk.compiler=" + installation.resolve("libs").resolve("jSMTLIB.jar"),
                 "--add-modules", "jdk.compiler,java.base"));
@@ -161,21 +164,9 @@ public final class OpenJmlWorkerService implements Disposable {
         java.util.Map<String, String> environment = new java.util.HashMap<>();
         environment.put("OPENJML_INSTALL", installation.toString());
         environment.put("OPENJML_SPECS", installation.resolve("specs").toString());
-        Path solvers = solvers(installation);
+        Path solvers = OpenJml.solvers(installation);
         if (solvers != null) environment.put("SMT_SOLVER_DIR", solvers.toString());
         return environment;
-    }
-
-    /**
-     * @return the folder with the provers, such as Solvers-windows: a release has one, for its operating system
-     */
-    private static @Nullable Path solvers(@NotNull Path installation) {
-        try (Stream<Path> files = Files.list(installation)) {
-            return files.filter(file -> file.getFileName().toString().startsWith("Solvers-") && Files.isDirectory(file))
-                    .findFirst().orElse(null);
-        } catch (IOException e) {
-            return null;
-        }
     }
 
     private void stopIfIdle() {

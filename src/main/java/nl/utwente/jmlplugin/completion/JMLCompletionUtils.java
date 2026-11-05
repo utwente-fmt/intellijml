@@ -6,7 +6,6 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.psi.*;
-import com.intellij.psi.impl.PsiImplUtil;
 import com.intellij.psi.tree.TokenSet;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiUtil;
@@ -169,7 +168,7 @@ public class JMLCompletionUtils {
                 .withTypeText(returnType)
                 .withIcon(method.getIcon(0))
                 .withTailText(method.getParameterList().getText())
-                .withStrikeoutness(PsiImplUtil.isDeprecated(method))
+                .withStrikeoutness(method.isDeprecated())
                 .withInsertHandler((context, item) -> {
                     final Editor editor = context.getEditor();
                     context.setAddCompletionChar(false);

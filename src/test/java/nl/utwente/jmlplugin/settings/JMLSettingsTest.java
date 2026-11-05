@@ -40,6 +40,21 @@ public class JMLSettingsTest extends BasePlatformTestCase {
         Path installation = Files.createTempDirectory("openjml");
         Files.writeString(OpenJml.launcher(installation), "");
         Files.writeString(OpenJml.runtimeLibrary(installation), "");
+        // without its Java, an installation is not complete, and the message says what is missing
+        panel.setOpenJmlPath(installation.toString());
+        try {
+            configuration.apply();
+            fail("an installation without its Java");
+        } catch (ConfigurationException incomplete) {
+            assertTrue(incomplete.getMessage(), incomplete.getMessage().contains("jdk/bin/java"));
+        }
+        Files.createDirectories(OpenJml.java(installation).getParent());
+        Files.writeString(OpenJml.java(installation), "");
+        Files.createDirectories(installation.resolve("libs"));
+        Files.writeString(installation.resolve("libs").resolve("jSMTLIB.jar"), "");
+        Files.createDirectories(installation.resolve("specs"));
+        Files.createDirectories(installation.resolve("Solvers-test"));
+        assertNull(OpenJml.missing(installation));
 
         panel.setOpenJmlPath(installation.toString());
         assertTrue(configuration.isModified());

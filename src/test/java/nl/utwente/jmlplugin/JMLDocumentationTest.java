@@ -55,6 +55,14 @@ public class JMLDocumentationTest extends LightJavaCodeInsightFixtureTestCase {
         assertTrue(shown, shown.contains("ensures \\result == 2 * x;"));
     }
 
+    public void testSpecificationAboveDocumentationIsShown() {
+        // OpenJML also takes the JML above the documentation comment, and after a blank line, as the specification
+        String shown = shownText(documentationOf("class A {\n    //@ requires x > 0;\n\n    /** Doubles a number. */\n" +
+                "    //@ ensures \\result == 2 * x;\n    int twice(int x) { return 2 * x; }\n}"));
+        assertTrue(shown, shown.contains("requires x"));
+        assertTrue(shown, shown.indexOf("requires x") < shown.indexOf("ensures"));
+    }
+
     public void testOperatorsAreEscaped() {
         // < and & are HTML syntax, so they have to be escaped to be shown
         String doc = documentationOf("class A {\n    //@ requires a < b && b > 0;\n    void m(int a, int b) {}\n}");

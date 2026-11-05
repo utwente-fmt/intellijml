@@ -90,8 +90,8 @@ public final class EscDuplicates implements DaemonCodeAnalyzer.DaemonListener {
         for (RangeHighlighter highlighter : markup.getAllHighlighters()) {
             if (highlighter.getEndOffset() < start || highlighter.getStartOffset() > end) continue;
             HighlightInfo info = HighlightInfo.fromRangeHighlighter(highlighter);
-            // the messages of EscAnnotator start with "OpenJML"
-            if (info == null || info.getDescription() == null || info.getDescription().startsWith("OpenJML")) continue;
+            // not the messages of OpenJML itself
+            if (info == null || info.getDescription() == null || info.getProblemGroup() == EscAnnotator.OPENJML) continue;
             if (info.getSeverity().compareTo(HighlightSeverity.ERROR) >= 0) return true;
             if (info.getSeverity().compareTo(HighlightSeverity.WARNING) >= 0 && isInJml(file, info.getStartOffset())) {
                 return true;

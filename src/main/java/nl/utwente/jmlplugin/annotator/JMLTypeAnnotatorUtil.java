@@ -23,7 +23,8 @@ import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.getCommentContext;
 import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.getJavaContext;
 
 /**
- * Util class for JMLTypeAnnotator, deals with java expressions in text from and extra variables
+ * Helpers for JMLTypeAnnotator: Java expressions made from the text of JML, with the variables that JML adds, such
+ * as the parameters of the method for its specification
  */
 class JMLTypeAnnotatorUtil {
     /**

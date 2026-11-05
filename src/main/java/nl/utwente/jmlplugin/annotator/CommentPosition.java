@@ -167,12 +167,6 @@ public enum CommentPosition {
     }
 
     /**
-     * Checks that the given invariant is on the correct position in the Java file
-     *
-     * @param invariant the class invariant to check
-     * @return true if it is on the correct position
-     */
-    /**
      * @return whether the comment is in the type of a cast, as in a cast to a non_null array type
      */
     private static boolean isInCast(PsiComment comment) {
@@ -182,6 +176,12 @@ public enum CommentPosition {
                 || comment.getTextRange().getEndOffset() <= cast.getOperand().getTextRange().getStartOffset());
     }
 
+    /**
+     * Checks that the given invariant is on the correct position in the Java file
+     *
+     * @param invariant the class invariant to check
+     * @return true if it is on the correct position
+     */
     public static boolean isInvariantOnCorrectPosition(JMLClassInvariant invariant) {
         return invariantClass(invariant) != null;
     }
