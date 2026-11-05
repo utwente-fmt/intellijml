@@ -17,6 +17,7 @@ import com.intellij.openapi.wm.RegisterToolWindowTask;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowAnchor;
 import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener;
 import com.intellij.ui.ColoredListCellRenderer;
 import com.intellij.ui.ScrollPaneFactory;
 import com.intellij.ui.SimpleTextAttributes;
@@ -90,6 +91,14 @@ public final class EscTraceView extends JPanel implements Disposable {
         add(header, BorderLayout.NORTH);
         add(ScrollPaneFactory.createScrollPane(list), BorderLayout.CENTER);
         add(status, BorderLayout.SOUTH);
+        // a hidden tool window leaves no marked line behind in the editor
+        project.getMessageBus().connect(this).subscribe(ToolWindowManagerListener.TOPIC, new ToolWindowManagerListener() {
+            @Override
+            public void stateChanged(@NotNull ToolWindowManager manager) {
+                ToolWindow window = manager.getToolWindow(ID);
+                if (window == null || !window.isVisible()) removeHighlighter();
+            }
+        });
     }
 
     private static @NotNull SimpleTextAttributes valueAttributes() {
