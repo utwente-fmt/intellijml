@@ -63,8 +63,11 @@ public class JMLRacGradleProgramRunner extends AsyncProgramRunner<RunnerSettings
             OpenJmlNotifications.notInstalled(environment.getProject(), JMLRacExecutor.TEXT, JMLRacExecutor.PURPOSE);
             return Promises.resolvedPromise(null);
         }
-        JMLRacProgramRunner.checkLanguageLevel(gradleModules(configuration));
+        List<Module> modules = gradleModules(configuration);
+        JMLRacProgramRunner.checkLanguageLevel(modules);
         FileDocumentManager.getInstance().saveAllDocuments();
+        // what OpenJML would crash on
+        if (!RacLimitations.checkCanCompile(environment.getProject(), modules)) return Promises.resolvedPromise(null);
 
         // the state is made for this run, with a copy of the data of the configuration, and gives its data to Gradle
         // when it starts the tasks; an init script that is already there is kept

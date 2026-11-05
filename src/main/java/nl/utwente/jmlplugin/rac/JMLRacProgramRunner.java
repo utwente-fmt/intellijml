@@ -71,6 +71,8 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
             return Promises.resolvedPromise(null);
         }
         FileDocumentManager.getInstance().saveAllDocuments();
+        // what OpenJML would crash on
+        if (!RacLimitations.checkCanCompile(project, modules(environment))) return Promises.resolvedPromise(null);
 
         AsyncPromise<RunContentDescriptor> promise = new AsyncPromise<>();
         new Task.Backgroundable(project, "Compiling with JML checks", true) {
@@ -129,9 +131,7 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
         Project project = environment.getProject();
         JavaParameters parameters = ReadAction.compute(state::getJavaParameters);
 
-        Module module = ((JavaRunConfigurationBase) environment.getRunProfile()).getConfigurationModule().getModule();
-        Collection<Module> modules = ReadAction.compute(() -> OpenJmlCompiler.withDependencies(
-                module != null ? List.of(module) : List.of(ModuleManager.getInstance(project).getModules())));
+        Collection<Module> modules = ReadAction.compute(() -> modules(environment));
         checkLanguageLevel(modules);
         List<Path> sources = ReadAction.compute(() -> OpenJmlCompiler.collectSources(modules));
         if (sources.isEmpty()) throw new ExecutionException("There are no Java source files to compile with JML checks");
@@ -148,6 +148,17 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
             addChecks(parameters, classes, installation, environment.getRunProfile() instanceof JavaTestConfigurationBase);
         }
         return output;
+    }
+
+    /**
+     * @return the modules whose sources are compiled with JML checks: the module of the run configuration and the
+     * modules it depends on, or all modules if it has none
+     */
+    private static @NotNull Collection<Module> modules(@NotNull ExecutionEnvironment environment) {
+        Module module = environment.getRunProfile() instanceof JavaRunConfigurationBase configuration
+                ? configuration.getConfigurationModule().getModule() : null;
+        return OpenJmlCompiler.withDependencies(module != null ? List.of(module)
+                : List.of(ModuleManager.getInstance(environment.getProject()).getModules()));
     }
 
     /**

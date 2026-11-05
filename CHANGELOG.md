@@ -191,6 +191,10 @@
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- Run with JML Checks failed with OpenJML's "An internal JML error occurred" on a `loop_writes` clause of a `for`
+  loop that declares its index, as in `for (int i = 0; ...)`, which OpenJML 21.0.29 cannot compile run time checks
+  for. It now says so before OpenJML starts, with links to the loops and how to change them: declare the index before
+  the loop, or leave the clause out.
 - JML separated from its method or field by a blank line, as in `//@ ensures \result > 0;` followed by a blank line and
   the method, gave "Method specifications are not allowed in a class body", and modifiers such as `//@ pure` did not
   apply. As in OpenJML, the JML belongs to the method or field below it; a specification with no method below it gives

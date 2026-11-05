@@ -55,7 +55,14 @@ public final class OpenJmlCompiler {
      * @return the Java files, without module-info.java, as the checked classes are put on the class path
      */
     public static @NotNull List<Path> collectSources(@NotNull Collection<Module> modules) {
-        List<Path> sources = new ArrayList<>();
+        return collectSourceFiles(modules).stream().map(VirtualFile::toNioPath).toList();
+    }
+
+    /**
+     * @return the files of {@link #collectSources}
+     */
+    public static @NotNull List<VirtualFile> collectSourceFiles(@NotNull Collection<Module> modules) {
+        List<VirtualFile> sources = new ArrayList<>();
         for (Module module : modules) {
             ModuleRootManager roots = ModuleRootManager.getInstance(module);
             ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(module.getProject());
@@ -66,7 +73,7 @@ public final class OpenJmlCompiler {
                         if (fileIndex.isExcluded(file)) return false;
                         if (!file.isDirectory() && "java".equals(file.getExtension())
                                 && !"module-info.java".equals(file.getName()) && file.isInLocalFileSystem()) {
-                            sources.add(file.toNioPath());
+                            sources.add(file);
                         }
                         return true;
                     }
