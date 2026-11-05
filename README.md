@@ -84,7 +84,10 @@ and the clause it is about link to each other, in the tooltip and with Alt+Enter
 - for a sum, product or other operation that may overflow, a `requires` clause that bounds it;
 - for a postcondition that does not hold at a `return`, splitting it into its parts, or asserting it before the
   `return`, to move the assert up and find the statement that makes it false;
-- when OpenJML cannot prove several assertions of a method, showing the values of another one's counterexample.
+- when OpenJML cannot prove several assertions of a method, showing the values of another one's counterexample;
+- stepping through the counterexample, as with a debugger: the tool window "JML Counterexample" lists the
+  statements it goes through with the values after each one, also each time round a loop, and Up and Down mark
+  their line in the editor.
 
 When a Java file with JML is saved, OpenJML also checks its JML in the background, as a safety net for what the
 plugin does not check itself: an error that only OpenJML finds is shown as "OpenJML: ..." on its line. This can be

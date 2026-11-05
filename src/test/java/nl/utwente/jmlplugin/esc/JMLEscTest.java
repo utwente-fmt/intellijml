@@ -11,6 +11,8 @@ import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.command.WriteCommandAction;
 import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiMethod;
 import com.intellij.psi.util.PsiTreeUtil;
@@ -498,6 +500,40 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         WriteCommandAction.runWriteCommandAction(getProject(), () ->
                 document.insertString(document.getText().indexOf("return max"), "max++; "));
         assertEquals(Map.of(), valuesInEditor());
+    }
+
+    public void testStepThroughTheCounterexample() {
+        verifiedMax(MAX);
+        String text = myFixture.getEditor().getDocument().getText();
+        myFixture.getEditor().getCaretModel().moveToOffset(text.indexOf("return max"));
+        myFixture.doHighlighting();
+        myFixture.launchAction(myFixture.findSingleIntention("Step through this counterexample"));
+        EscTraceView view = EscTraceView.current(getProject());
+        assertNotNull(view);
+        List<String> steps = new ArrayList<>();
+        for (int i = 0; i < view.stepCount(); i++) steps.add(view.renderedStep(i));
+        // the values at each step, also those that a later step on the same line changes
+        assertEquals(List.of(
+                "start | a: -1, b: 0, c: '\\u0001'",
+                "int max = a | max: -1",
+                "if (b > max) ... | b > max: true",
+                "max = b | max: 0",
+                "if (c > max) ... | c > max: true",
+                "max = b | max: 0",
+                "return max;",
+                "ensures \\result >= a && \\result >= b && \\result >= c;",
+                "fails: Postcondition"), steps);
+        // a step shows its line in the editor
+        view.select(4);
+        Editor editor = FileEditorManager.getInstance(getProject()).getSelectedTextEditor();
+        assertNotNull(editor);
+        Document document = editor.getDocument();
+        assertEquals(document.getLineNumber(text.indexOf("if (c > max)")), document.getLineNumber(editor.getCaretModel().getOffset()));
+        // editing the method: the steps no longer fit, and are no longer offered
+        WriteCommandAction.runWriteCommandAction(getProject(), () ->
+                document.insertString(document.getText().indexOf("return max"), "max++; "));
+        myFixture.getEditor().getCaretModel().moveToOffset(document.getText().indexOf("return max"));
+        assertEmpty(myFixture.filterAvailableIntentions("Step through this counterexample"));
     }
 
     public void testValuesWithCrLf() {

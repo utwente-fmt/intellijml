@@ -20,6 +20,10 @@
   of a called method and the part of it that may be false, an invariant and the method that breaks it.
 - When OpenJML cannot prove several assertions of a method, Alt+Enter on one of them shows the values of its
   counterexample at the end of the lines, instead of those of the first one.
+- Alt+Enter "Step through this counterexample" on what OpenJML cannot prove lists the steps of its counterexample in
+  the tool window "JML Counterexample", as a debugger would go through them: the values of the parameters, then each
+  statement and clause with the values after it, such as `max = b` with `max: 0`, also each time round a loop, and
+  last the place where it fails. Up and Down go through the steps and mark their line in the editor.
 - When a Java file with JML is saved, OpenJML checks its JML in the background (its type checker, in the process
   that Verify uses), as a safety net for what the plugin does not check itself: an error that OpenJML finds on a line
   where the plugin reports nothing is shown as "OpenJML: ...". OpenJML's messages on lines where the plugin already

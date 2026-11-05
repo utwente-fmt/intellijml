@@ -88,7 +88,9 @@ public class EscAnnotator extends ExternalAnnotator<List<EscResults.Problem>, Li
             AnnotationBuilder builder = holder.newAnnotation(problem.severity(), message).range(range).tooltip(tooltip);
             for (GoTo link : links) builder = builder.withFix(new EscGoToFix(link.text(), link.file(), link.place()));
             // another failure of the method has its values shown at the end of the lines
-            if (explanation != null && explanation.role() == Role.FAILURE) builder = builder.withFix(new EscShowValuesFix(problem));
+            if (explanation != null && explanation.role() == Role.FAILURE) {
+                builder = builder.withFix(new EscShowValuesFix(problem)).withFix(new EscStepFix(problem, message));
+            }
             PsiElement element = file.findElementAt(range.getStartOffset());
             if (explanation != null && element != null) {
                 for (LocalQuickFix fix : fixes(file, problem, explanation)) {

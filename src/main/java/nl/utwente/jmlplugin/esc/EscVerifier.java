@@ -51,6 +51,8 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Verifies methods with OpenJML's extended static checking (ESC): OpenJML tries to prove that the methods meet their
@@ -532,20 +534,40 @@ public final class EscVerifier {
             }
         }
         Map<Integer, Map<String, String>> values = new TreeMap<>();
+        // the steps of the counterexample in order, starting with the values of the parameters
+        List<EscResults.TraceStep> steps = new ArrayList<>();
+        Map<String, String> start = new LinkedHashMap<>();
+        int startLine = -1;
         for (Parameter parameter : parameters.getOrDefault(key, List.of())) {
             String value = counterexample.declarations().get(parameter.position());
             String shown = value == null ? null : EscValues.value(value, parameter.type());
             int offset = snapshot.offset(parameter.line(), parameter.column());
             if (shown == null || offset < 0) continue;
             values.computeIfAbsent(document.getLineNumber(offset), line -> new LinkedHashMap<>()).put(parameter.name(), shown);
+            start.put(parameter.name(), shown);
+            if (startLine < 0) startLine = document.getLineNumber(offset);
         }
+        if (startLine >= 0) steps.add(traceStep(document, startLine, "start", EscValues.text(start)));
         Map<String, Boolean> sameFile = new HashMap<>();
         for (Step step : counterexample.trace()) {
             if (!sameFile.computeIfAbsent(step.file(), isVerifiedFile::test)) continue;
             int offset = snapshot.offset(step.line(), -1);
             if (offset < 0) continue;
             int line = document.getLineNumber(offset);
-            if (lines.contains(line)) EscValues.add(values.computeIfAbsent(line, l -> new LinkedHashMap<>()), step);
+            if (!lines.contains(line)) continue;
+            EscValues.add(values.computeIfAbsent(line, l -> new LinkedHashMap<>()), step);
+            Map<String, String> stepValues = new LinkedHashMap<>();
+            EscValues.add(stepValues, step);
+            steps.add(traceStep(document, line, traceCode(step.text()), EscValues.text(stepValues)));
+        }
+        // and last where it fails
+        if (!steps.isEmpty() && failure != null && failure.range().isValid()) {
+            Matcher kind = FAILURE_KIND.matcher(failure.message());
+            steps.add(traceStep(document, document.getLineNumber(failure.range().getStartOffset()),
+                    "fails: " + (kind.find() ? kind.group(1) : "this does not hold"), ""));
+        }
+        if (!steps.isEmpty()) {
+            results.add(new EscResults.Trace(verifiedFile, key, run, failure, List.copyOf(steps)));
         }
         for (Map.Entry<Integer, Map<String, String>> entry : values.entrySet()) {
             if (entry.getValue().isEmpty()) continue;
@@ -556,6 +578,25 @@ public final class EscVerifier {
         for (Editor editor : EditorFactory.getInstance().getEditors(document, project)) {
             editor.getContentComponent().repaint();
         }
+    }
+
+    private static @NotNull EscResults.TraceStep traceStep(@NotNull Document document, int line, @NotNull String code,
+                                                           @NotNull String values) {
+        RangeMarker marker = document.createRangeMarker(document.getLineStartOffset(line), document.getLineEndOffset(line));
+        return new EscResults.TraceStep(marker, code, values);
+    }
+
+    // the label that OpenJML puts after assert, as in "assert Assert x > 0;"
+    private static final Pattern ASSERT_LABEL = Pattern.compile("^(assert|assume) [A-Z][A-Za-z]* ");
+    // the kind of assertion in a message, as Postcondition in "cannot establish an assertion (Postcondition: ...)"
+    private static final Pattern FAILURE_KIND = Pattern.compile("\\(([A-Za-z]+)[:)]");
+
+    /**
+     * @return the statement or clause of a step of a trace as OpenJML writes it, readable: "assert x > 0;" for
+     * "assert Assert x > 0;"
+     */
+    static @NotNull String traceCode(@NotNull String text) {
+        return ASSERT_LABEL.matcher(text.trim()).replaceFirst("$1 ");
     }
 
     /**

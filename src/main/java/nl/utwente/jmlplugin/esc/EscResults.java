@@ -105,8 +105,33 @@ public final class EscResults implements Disposable {
                              @NotNull String method, long run, @Nullable Problem failure) {
     }
 
+    /**
+     * A step of the counterexample of a failure, in the order the counterexample goes: a statement or clause, with
+     * the values at that point
+     *
+     * @param line   the line of the step
+     * @param code   the statement or clause, as OpenJML writes it, such as "max = b" or "if (c > max) ..."
+     * @param values the values, such as "max: 0", or ""
+     */
+    public record TraceStep(@NotNull RangeMarker line, @NotNull String code, @NotNull String values) {
+    }
+
+    /**
+     * The steps of the counterexample of a failure, to step through them as with a debugger
+     *
+     * @param failure the failure that the counterexample is of, or null if it is not known
+     */
+    public record Trace(@NotNull VirtualFile file, @NotNull String method, long run, @Nullable Problem failure,
+                        @NotNull List<TraceStep> steps) {
+        void dispose() {
+            steps.forEach(step -> step.line().dispose());
+        }
+    }
+
     // by the key of the method
     private final Map<String, MethodResult> methods = new ConcurrentHashMap<>();
+    // the traces of all counterexamples
+    private final List<Trace> traces = new CopyOnWriteArrayList<>();
     private final List<Problem> problems = new CopyOnWriteArrayList<>();
     // the values of all counterexamples, of which those of one failure of a method are shown
     private final List<LineValues> values = new CopyOnWriteArrayList<>();
@@ -237,6 +262,32 @@ public final class EscResults implements Disposable {
         values.add(lineValues);
     }
 
+    void add(@NotNull Trace trace) {
+        traces.add(trace);
+    }
+
+    /**
+     * @return the steps of the counterexample of the failure, or null if there are none, or its method has changed or
+     * is verified again since
+     */
+    public @Nullable Trace trace(@NotNull Problem failure) {
+        if (failure.method() == null) return null;
+        MethodResult method = method(failure.method());
+        if (method == null || method.run() != failure.run()) return null;
+        for (Trace trace : traces) {
+            if (trace.failure() == failure && !trace.steps().isEmpty()) return trace;
+        }
+        return null;
+    }
+
+    /**
+     * @return whether the steps of the counterexample are still those of the method as it is now
+     */
+    public boolean isCurrent(@NotNull Trace trace) {
+        MethodResult method = method(trace.method());
+        return method != null && method.run() == trace.run();
+    }
+
     /**
      * @return whether any method of the file is being verified
      */
@@ -267,6 +318,11 @@ public final class EscResults implements Disposable {
         values.removeIf(lineValues -> {
             boolean remove = keys.contains(lineValues.method());
             if (remove) lineValues.line().dispose();
+            return remove;
+        });
+        traces.removeIf(trace -> {
+            boolean remove = keys.contains(trace.method());
+            if (remove) trace.dispose();
             return remove;
         });
         keys.forEach(shownFailures::remove);
@@ -358,9 +414,11 @@ public final class EscResults implements Disposable {
         methods.values().forEach(result -> result.range().dispose());
         problems.forEach(Problem::dispose);
         values.forEach(lineValues -> lineValues.line().dispose());
+        traces.forEach(Trace::dispose);
         methods.clear();
         problems.clear();
         values.clear();
+        traces.clear();
         shownFailures.clear();
         newOutsideProofs.clear();
     }
