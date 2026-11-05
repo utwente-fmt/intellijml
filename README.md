@@ -27,9 +27,10 @@ and completes keywords, names and `\forall`-style quantifiers. To help write spe
   OpenJML says which part it cannot prove.
 - **Rename** (Shift+F6) a field, method, parameter, variable or class, and its uses in JML are renamed too; **Find
   Usages** (Alt+F7) shows them, and **Ctrl+click** on a name in JML goes to its declaration. This also works with
-  the caret on the name in the JML.
+  the caret on the name in the JML, where the other uses of the name are highlighted, as in the code, hovering
+  over it, or Ctrl+Q, shows its documentation, and Ctrl+P in a call shows the parameters of the method.
 - **Ctrl+/** on a `//@` line comments the line out, and back. **Reformat Code** keeps the `@`s of a
-  `/*@ ... @*/` comment under each other.
+  `/*@ ... @*/` comment under each other. A **folded** specification shows its first clause.
 - **Optimize Imports** keeps the imports that only JML uses, and they are not greyed out as unused, nor are fields,
   methods and parameters that only JML uses.
 

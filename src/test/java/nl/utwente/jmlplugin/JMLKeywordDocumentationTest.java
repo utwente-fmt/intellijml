@@ -186,6 +186,39 @@ public class JMLKeywordDocumentationTest extends LightJavaCodeInsightFixtureTest
         assertFalse(shown, shown.contains("Precondition"));
     }
 
+    private static final String NAMES = """
+            class A {
+                /** How many there are. */
+                int count;
+                //@ requires %s
+                void m(int x) {}
+                /** Whether y is fine. */
+                //@ requires y >= 0;
+                //@ pure
+                boolean fine(int y) { return true; }
+            }
+            """;
+
+    public void testNameInJml() {
+        // the documentation of a field, as on its name in the Java code
+        String shown = shownText(keywordDoc(NAMES.formatted("co<caret>unt > 0;")));
+        assertTrue(shown, shown.contains("How many there are."));
+        // with the caret right after the name too
+        shown = shownText(keywordDoc(NAMES.formatted("count<caret> > 0;")));
+        assertTrue(shown, shown.contains("How many there are."));
+        // of a method, with its JML
+        shown = shownText(keywordDoc(NAMES.formatted("fi<caret>ne(x);")));
+        assertTrue(shown, shown.contains("Whether y is fine."));
+        assertTrue(shown, shown.contains("requires y >= 0;"));
+        // of a parameter
+        shown = shownText(keywordDoc(NAMES.formatted("<caret>x > 0;")));
+        assertTrue(shown, shown.contains("int x"));
+        // not of a keyword's documentation
+        assertFalse(shown, shown.contains("Precondition"));
+        // a quantifier variable is JML's own, and has no documentation
+        assertNull(docAtCaret(NAMES.formatted("(\\forall int i; 0 <= i < x; <caret>i >= 0);")));
+    }
+
     public void testEveryKeywordHasDocumentation() {
         // the Java modifiers keep their meaning; \into is only in maps clauses, which the plugin does not support
         TokenSet keywords = TokenSet.andNot(TokenSet.orSet(JMLTokenSet.allClauseKeywords, JMLTokenSet.backslashKeywords,

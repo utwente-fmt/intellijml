@@ -72,10 +72,23 @@
         <usageTypeProvider implementation="nl.utwente.jmlplugin.editor.JMLUsageTypeProvider"/>
         <useScopeEnlarger implementation="nl.utwente.jmlplugin.editor.JMLUseScopeEnlarger"/>
         <usageTargetProvider implementation="nl.utwente.jmlplugin.editor.JMLUsageTargetProvider"/>
+        <!-- the other uses of a name in JML, with the caret on it and with Ctrl+Shift+F7 -->
+        <highlightUsagesHandlerFactory implementation="nl.utwente.jmlplugin.editor.JMLHighlightUsagesHandlerFactory"/>
+        <!-- a use in JML reads, also when Java highlights it or Find Usages groups it -->
+        <readWriteAccessDetector implementation="nl.utwente.jmlplugin.editor.JMLReadWriteAccessDetector"
+                                 order="first, before kotlin"/>
+        <lang.braceMatcher language="JML" implementationClass="nl.utwente.jmlplugin.editor.JMLBraceMatcher"/>
+        <!-- Ctrl+P in a call of a method in JML -->
+        <codeInsight.parameterInfo language="JML" implementationClass="nl.utwente.jmlplugin.editor.JMLParameterInfoHandler"/>
+        <!-- folded JML specifications show their first clause, not Java's "//..." for comments -->
+        <lang.foldingBuilder language="JAVA" implementationClass="nl.utwente.jmlplugin.editor.JMLFoldingBuilder" order="first"/>
+        <lang.quoteHandler language="JML" implementationClass="nl.utwente.jmlplugin.editor.JMLQuoteHandler"/>
         <!-- the steps of a counterexample of Verify; only there once there is one to step through -->
         <toolWindow id="JML Counterexample" anchor="bottom" icon="AllIcons.Toolwindows.ToolWindowDebugger"
                     factoryClass="nl.utwente.jmlplugin.esc.EscTraceView$Factory" doNotActivateOnStart="true"/>
         <renameHandler implementation="nl.utwente.jmlplugin.editor.JMLRenameHandler"/>
+        <!-- a parameter or variable renamed to the name of a field that JML uses: the field qualified there -->
+        <refactoring.elementListenerProvider implementation="nl.utwente.jmlplugin.editor.JMLRenameListenerProvider"/>
         <gotoDeclarationHandler implementation="nl.utwente.jmlplugin.editor.JMLGotoDeclarationHandler"/>
         <!-- Ctrl+/ in JML comments out the line of the Java file -->
         <lang.commenter language="JML" implementationClass="nl.utwente.jmlplugin.editor.JMLCommenter"/>
@@ -119,6 +132,9 @@
         <!-- decides which of OpenJML's messages outside proofs are shown, when the highlighting of a file is done -->
         <listener class="nl.utwente.jmlplugin.esc.EscDuplicates"
                   topic="com.intellij.codeInsight.daemon.DaemonCodeAnalyzer$DaemonListener"/>
+        <!-- in-place rename of a parameter or variable to the name of a field that JML uses -->
+        <listener class="nl.utwente.jmlplugin.editor.JMLRenameListenerProvider$Events"
+                  topic="com.intellij.refactoring.listeners.RefactoringEventListener"/>
     </projectListeners>
 
     <applicationListeners>

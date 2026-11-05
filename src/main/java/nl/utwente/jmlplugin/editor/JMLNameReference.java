@@ -102,14 +102,7 @@ public final class JMLNameReference implements PsiReference {
         if (own == null) return element;
         replacements.add(own);
         replacements.addAll(captured(element, newName, manager, document));
-        replacements.sort(Comparator.comparingInt((Replacement replacement) -> replacement.range().getStartOffset()).reversed());
-        int end = Integer.MAX_VALUE;
-        for (Replacement replacement : replacements) {
-            // the same name twice
-            if (replacement.range().getEndOffset() > end) continue;
-            document.replaceString(replacement.range().getStartOffset(), replacement.range().getEndOffset(), replacement.text());
-            end = replacement.range().getStartOffset();
-        }
+        apply(replacements, document);
         documents.commitDocument(document);
         PsiElement now = pointer.getElement();
         return now != null ? now : element;
@@ -118,15 +111,29 @@ public final class JMLNameReference implements PsiReference {
     /**
      * A change of the text of the Java file
      */
-    private record Replacement(@NotNull TextRange range, @NotNull String text) {
+    record Replacement(@NotNull TextRange range, @NotNull String text) {
+    }
+
+    /**
+     * Makes the changes in the document, from the end, so that each range is still right; a name twice only once
+     */
+    static void apply(@NotNull List<Replacement> replacements, @NotNull Document document) {
+        List<Replacement> sorted = new ArrayList<>(replacements);
+        sorted.sort(Comparator.comparingInt((Replacement replacement) -> replacement.range().getStartOffset()).reversed());
+        int end = Integer.MAX_VALUE;
+        for (Replacement replacement : sorted) {
+            if (replacement.range().getEndOffset() > end) continue;
+            document.replaceString(replacement.range().getStartOffset(), replacement.range().getEndOffset(), replacement.text());
+            end = replacement.range().getStartOffset();
+        }
     }
 
     /**
      * @return the change that replaces the name with the text, in the comment that it is in (a JML specification can
      * be in several comments), or null if the name is not where it should be
      */
-    private static @Nullable Replacement replacement(@NotNull PsiElement name, @NotNull String text,
-                                                     @NotNull InjectedLanguageManager manager, @NotNull Document document) {
+    static @Nullable Replacement replacement(@NotNull PsiElement name, @NotNull String text,
+                                             @NotNull InjectedLanguageManager manager, @NotNull Document document) {
         TextRange range = manager.injectedToHost(name, name.getTextRange());
         if (range.getEndOffset() > document.getTextLength() || !name.getText().equals(document.getText(range))) return null;
         return new Replacement(range, text);
@@ -134,16 +141,17 @@ public final class JMLNameReference implements PsiReference {
 
     /**
      * @return "this." or the name of the class and a dot, if a field renamed to the name would be taken for another
-     * variable where the name is; "" otherwise
+     * variable where the name is, of Java or of JML, as a quantifier variable; "" otherwise
      */
     private @NotNull String qualifier(@NotNull PsiElement name, @NotNull String newName) {
         if (!(target instanceof PsiField field) || JMLNames.isQualified(name)) return "";
+        if (JMLNames.isDeclaredInJml(name, newName)) return qualifier(field);
         PsiElement other = JMLNames.resolveExpression(newName, name);
         if (other == null || other.equals(target)) return "";
         return qualifier(field);
     }
 
-    private static @NotNull String qualifier(@NotNull PsiField field) {
+    static @NotNull String qualifier(@NotNull PsiField field) {
         PsiClass owner = field.getContainingClass();
         if (!field.hasModifierProperty(PsiModifier.STATIC)) return "this.";
         return owner == null || owner.getName() == null ? "" : owner.getName() + ".";
@@ -155,21 +163,37 @@ public final class JMLNameReference implements PsiReference {
      */
     private @NotNull List<Replacement> captured(@NotNull PsiElement name, @NotNull String newName,
                                                 @NotNull InjectedLanguageManager manager, @NotNull Document document) {
-        PsiElement scope = target instanceof PsiParameter parameter ? parameter.getDeclarationScope()
-                : target instanceof PsiLocalVariable ? PsiTreeUtil.getParentOfType(target, PsiCodeBlock.class) : null;
+        PsiElement scope = scope(target);
         if (scope == null) return List.of();
         List<Replacement> replacements = new ArrayList<>();
         for (PsiFile jml : JMLNames.jmlFiles(manager.getTopLevelFile(name))) {
             for (PsiElement other : PsiTreeUtil.collectElements(jml, element -> JMLNames.isName(element)
                     && newName.equals(element.getText()) && !JMLNames.isQualified(element))) {
-                if (!(JMLNames.resolve(other) instanceof PsiField field) || field.equals(target)) continue;
-                PsiLanguageInjectionHost host = manager.getInjectionHost(other);
-                PsiElement context = JMLAnnotatorUtil.getJavaContext(other);
-                if (host == null || !PsiTreeUtil.isAncestor(scope, host, false) && context != scope) continue;
+                if (!inScope(other, scope, manager) || !(JMLNames.resolve(other) instanceof PsiField field) || field.equals(target)) {
+                    continue;
+                }
                 Replacement replacement = replacement(other, qualifier(field) + newName, manager, document);
                 if (replacement != null) replacements.add(replacement);
             }
         }
         return replacements;
+    }
+
+    /**
+     * @return where a parameter or local variable can be used: its method, lambda or catch block, or the block it is
+     * declared in; null for other elements
+     */
+    static @Nullable PsiElement scope(@NotNull PsiElement variable) {
+        return variable instanceof PsiParameter parameter ? parameter.getDeclarationScope()
+                : variable instanceof PsiLocalVariable ? PsiTreeUtil.getParentOfType(variable, PsiCodeBlock.class) : null;
+    }
+
+    /**
+     * @return whether the name in JML is where the scope of a variable is: in a comment in it, or in the specification
+     * of the method
+     */
+    static boolean inScope(@NotNull PsiElement name, @NotNull PsiElement scope, @NotNull InjectedLanguageManager manager) {
+        PsiLanguageInjectionHost host = manager.getInjectionHost(name);
+        return host != null && (PsiTreeUtil.isAncestor(scope, host, false) || JMLAnnotatorUtil.getJavaContext(name) == scope);
     }
 }

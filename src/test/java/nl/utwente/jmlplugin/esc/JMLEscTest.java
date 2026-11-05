@@ -697,4 +697,15 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         assertEquals(List.of("-cp", "plugin.jar", OpenJmlWorker.class.getName()), command.subList(command.size() - 3, command.size()));
         assertEquals(installation.resolve("specs").toString(), OpenJmlWorkerService.environment(installation).get("OPENJML_SPECS"));
     }
+
+    public void testTraceCode() {
+        // OpenJML's label after assert and assume is left out
+        assertEquals("assert x > 0;", EscVerifier.traceCode("assert Assert x > 0;"));
+        assertEquals("assume y > x;", EscVerifier.traceCode("  assume Assume y > x;"));
+        // a name in capitals is no label
+        assertEquals("assert MAX > x;", EscVerifier.traceCode("assert MAX > x;"));
+        assertEquals("assert Math.abs(x) > 0;", EscVerifier.traceCode("assert Math.abs(x) > 0;"));
+        assertEquals("assert MAX >= x;", EscVerifier.traceCode("assert Assert MAX >= x;"));
+        assertEquals("x = 1;", EscVerifier.traceCode("x = 1;"));
+    }
 }

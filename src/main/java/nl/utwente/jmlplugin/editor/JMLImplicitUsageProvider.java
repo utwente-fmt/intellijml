@@ -4,12 +4,13 @@ import com.intellij.codeInsight.daemon.ImplicitUsageProvider;
 import com.intellij.psi.*;
 import com.intellij.psi.util.CachedValueProvider;
 import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.psi.util.PsiTreeUtil;
 import nl.utwente.jmlplugin.annotator.JMLNames;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Tells IntelliJ that a field, method, parameter or variable that the JML of its file uses is used, so that it is not
@@ -43,29 +44,26 @@ public class JMLImplicitUsageProvider implements ImplicitUsageProvider {
     private static boolean isUsedInJml(@NotNull PsiElement element, boolean read) {
         if (!(element instanceof PsiNamedElement named) || named.getName() == null) return false;
         if (!(element.getContainingFile() instanceof PsiJavaFile file) || file instanceof PsiCompiledElement) return false;
-        String text = named.getName();
-        if (!namesInJml(file).contains(text)) return false;
-        // the JML as it is now: IntelliJ may have made the JML files again since the names were collected
-        for (PsiFile injected : JMLNames.jmlFiles(file)) {
-            for (PsiElement name : PsiTreeUtil.collectElements(injected, name -> JMLNames.isName(name) && text.equals(name.getText()))) {
-                if (read && JMLNames.isLocation(name)) continue;
-                if (element.equals(JMLNames.resolve(name))) return true;
-            }
-        }
-        return false;
+        Boolean reads = usedInJml(file).get(element);
+        return reads != null && (!read || reads);
     }
 
     /**
-     * @return the texts of the names in the JML of the file that may refer to Java code; once per change of the file
+     * @return what the names in the JML of the file refer to, with whether one of them reads it (and is not only a
+     * location of an assignable clause); once per change of the code, not for every member that the check asks about
      */
-    private static @NotNull Set<String> namesInJml(@NotNull PsiJavaFile file) {
+    private static @NotNull Map<PsiElement, Boolean> usedInJml(@NotNull PsiJavaFile file) {
         return CachedValuesManager.getCachedValue(file, () -> {
-            Set<String> names = new HashSet<>();
+            Map<PsiElement, Boolean> used = new HashMap<>();
             for (PsiFile injected : JMLNames.jmlFiles(file)) {
-                for (PsiElement name : PsiTreeUtil.collectElements(injected, JMLNames::isName)) names.add(name.getText());
+                for (PsiElement name : PsiTreeUtil.collectElements(injected, JMLNames::isName)) {
+                    PsiElement target = JMLNames.resolve(name);
+                    if (target != null) used.merge(target, !JMLNames.isLocation(name), Boolean::logicalOr);
+                }
             }
-            // only texts, no PSI: the JML files can be made again without a change of the file
-            return CachedValueProvider.Result.create(names, file);
+            // only the Java code that the names refer to, which stays until the code changes, not the names themselves:
+            // IntelliJ can make the JML files again without a change
+            return CachedValueProvider.Result.create(used, PsiModificationTracker.getInstance(file.getProject()));
         });
     }
 }

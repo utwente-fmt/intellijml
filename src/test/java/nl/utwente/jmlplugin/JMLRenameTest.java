@@ -1,11 +1,20 @@
 package nl.utwente.jmlplugin;
 
+import com.intellij.codeInsight.daemon.impl.HighlightInfoType;
+import com.intellij.codeInsight.daemon.impl.IdentifierHighlightingComputer;
+import com.intellij.codeInsight.daemon.impl.IdentifierHighlightingResult;
+import com.intellij.codeInsight.daemon.impl.IdentifierOccurrence;
 import com.intellij.codeInsight.navigation.actions.GotoDeclarationAction;
 import com.intellij.lang.injection.InjectedLanguageManager;
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.ReadAction;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.markup.RangeHighlighter;
+import com.intellij.openapi.util.ProperTextRange;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.source.tree.injected.InjectedLanguageEditorUtil;
 import com.intellij.refactoring.rename.inplace.MemberInplaceRenameHandler;
+import com.intellij.refactoring.rename.inplace.VariableInplaceRenameHandler;
 import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.CodeInsightTestUtil;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
@@ -16,7 +25,10 @@ import nl.utwente.jmlplugin.editor.JMLUsageTargetProvider;
 import nl.utwente.jmlplugin.psi.JMLFile;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.TreeSet;
 
 /**
  * Tests rename, Find Usages and Go to Declaration for the names of fields, parameters, variables and methods in JML
@@ -81,6 +93,13 @@ public class JMLRenameTest extends LightJavaCodeInsightFixtureTestCase {
         myFixture.configureByText("Counter.java", COUNTER.replace("int count;", "int co<caret>unt;"));
         CodeInsightTestUtil.doInlineRename(new MemberInplaceRenameHandler(), "total", myFixture);
         assertEquals(COUNTER.replace("count", "total"), text());
+    }
+
+    public void testRenameParameterInPlace() {
+        // Shift+F6 in the editor renames a parameter in place, with its uses in JML
+        myFixture.configureByText("Counter.java", COUNTER.replace("int amount)", "int amo<caret>unt)"));
+        CodeInsightTestUtil.doInlineRename(new VariableInplaceRenameHandler(), "delta", myFixture);
+        assertEquals(COUNTER.replace("amount", "delta"), text());
     }
 
     public void testRenameFromJml() {
@@ -236,6 +255,128 @@ public class JMLRenameTest extends LightJavaCodeInsightFixtureTestCase {
                 """, text());
     }
 
+    private static final String ACCOUNT = """
+            class Account {
+                int balance;
+
+                //@ ensures balance >= 0;
+                Account(int b) {
+                    balance = b;
+                    int k = b;
+                    //@ assert balance == k;
+                }
+            }
+            """;
+
+    private static final String ACCOUNT_RENAMED = """
+            class Account {
+                int balance;
+
+                //@ ensures this.balance >= 0;
+                Account(int balance) {
+                    this.balance = balance;
+                    int k = balance;
+                    //@ assert this.balance == k;
+                }
+            }
+            """;
+
+    public void testRenameParameterNotInJmlToNameOfField() {
+        // the JML does not mention the parameter, but the field it would hide is qualified all the same
+        myFixture.configureByText("Account.java", ACCOUNT.replace("int b)", "int <caret>b)"));
+        myFixture.renameElementAtCaret("balance");
+        assertEquals(ACCOUNT_RENAMED, text());
+    }
+
+    public void testRenameParameterInPlaceToNameOfField() {
+        myFixture.configureByText("Account.java", ACCOUNT.replace("int b)", "int <caret>b)"));
+        CodeInsightTestUtil.doInlineRename(new VariableInplaceRenameHandler(), "balance", myFixture);
+        assertEquals(ACCOUNT_RENAMED, text());
+    }
+
+    public void testRenameLocalVariableToNameOfField() {
+        myFixture.configureByText("Account.java", ACCOUNT.replace("int k = b;", "int <caret>k = b;"));
+        myFixture.renameElementAtCaret("balance");
+        // Java qualifies the field in the code too, also before the variable
+        assertEquals(ACCOUNT.replace("int k = b;", "int balance = b;").replace("assert balance == k;", "assert this.balance == balance;")
+                .replace("        balance = b;", "        this.balance = b;"), text());
+    }
+
+    public void testRenameFieldToNameOfQuantifierVariable() {
+        // the variable of the quantifier would take the place of the field
+        String text = """
+                class A {
+                    int count;
+                    int[] a;
+                    //@ ensures (\\forall int i; 0 <= i && i < a.length; a[i] <= count);
+                    //@ old int size = a.length;
+                    //@ ensures size == count;
+                    void m() {}
+                }
+                """;
+        myFixture.configureByText("A.java", text.replace("int count;", "int <caret>count;"));
+        myFixture.renameElementAtCaret("i");
+        assertEquals(text.replace("int count;", "int i;").replace("a[i] <= count", "a[i] <= this.i").replace("size == count", "size == i"), text());
+        // and of an old variable in another comment of the specification (also in the clause above it, which is more
+        // than needed, but keeps the meaning)
+        myFixture.configureByText("A.java", text.replace("int count;", "int <caret>count;"));
+        myFixture.renameElementAtCaret("size");
+        assertEquals(text.replace("int count;", "int size;").replace("a[i] <= count", "a[i] <= this.size").replace("size == count", "size == this.size"), text());
+    }
+
+    public void testOldVariableInAnotherCommentIsNotTheField() {
+        // the size of the ensures clause is the old variable, not the field
+        String text = """
+                class A {
+                    int size;
+                    //@ old int size = this.size;
+                    //@ ensures \\result == size;
+                    int m() { return size; }
+                }
+                """;
+        myFixture.configureByText("A.java", text.replace("int size;", "int <caret>size;"));
+        myFixture.renameElementAtCaret("count");
+        assertEquals(text.replace("int size;", "int count;").replace("this.size", "this.count").replace("return size", "return count"), text());
+    }
+
+    public void testJmlInBlockSeesDeclarationsBeforeIt() {
+        // the n of the assert is the field, as the local variable is declared after it; that of the loop invariant too,
+        // not the n that the body of the loop declares
+        String text = """
+                class A {
+                    int n;
+                    void m() {
+                        //@ assert n >= 0;
+                        //@ loop_invariant 0 <= i && n >= 0;
+                        for (int i = 0; i < 3; i++) {
+                            int n = i;
+                        }
+                        int n = 5;
+                    }
+                }
+                """;
+        myFixture.configureByText("A.java", text.replace("int n;", "int <caret>n;"));
+        myFixture.renameElementAtCaret("size");
+        assertEquals(text.replace("int n;", "int size;").replace("assert n", "assert size").replace("&& n", "&& size"), text());
+    }
+
+    public void testRenameMemberOfNewObject() {
+        String text = """
+                class Counter {
+                    int count;
+                    int get() { return count; }
+                    //@ ensures \\result == new Counter().count + new Counter().get();
+                    int m() { return 0; }
+                }
+                """;
+        myFixture.configureByText("Counter.java", text.replace("int count;", "int <caret>count;"));
+        myFixture.renameElementAtCaret("total");
+        assertEquals(text.replace("count", "total"), text());
+        myFixture.configureByText("Counter.java", text.replace("int get()", "int <caret>get()"));
+        myFixture.renameElementAtCaret("value");
+        assertEquals(text.replace("get()", "value()"), text());
+    }
+
     public void testRenameFieldAfterResultAndQuantifierVariable() {
         String text = """
                 class Node {
@@ -364,5 +505,88 @@ public class JMLRenameTest extends LightJavaCodeInsightFixtureTestCase {
         assertEquals(counter().findMethodsByName("add", false)[0].getParameterList().getParameters()[0], targets[0]);
         // a keyword is no name
         assertEquals(0, GotoDeclarationAction.findAllTargetElements(getProject(), editor, COUNTER.indexOf("ensures") + 2).length);
+    }
+    private static final String HIGHLIGHT = """
+            class A {
+                int count;
+                //@ requires count > 0;
+                //@ assignable count;
+                void m(int x) {
+                    count = x;
+                }
+                //@ ensures \\result == count + x;
+                int n(int x) { return count; }
+            }
+            """;
+
+    /**
+     * @return where the uses that identifier highlighting marks start, with "w" after a write
+     */
+    private List<String> underCaret(String text) throws Exception {
+        // what IntelliJ computes for the editor of the Java file with the caret in the JML, in the background, as in
+        // the IDE (the test fixture would take the editor of the JML, and does not show it)
+        myFixture.configureByText("A.java", text.replace("<caret>", ""));
+        Editor editor = InjectedLanguageEditorUtil.getTopLevelEditor(myFixture.getEditor());
+        int offset = text.indexOf("<caret>");
+        editor.getCaretModel().moveToOffset(offset);
+        PsiFile file = PsiDocumentManager.getInstance(getProject()).getPsiFile(editor.getDocument());
+        assertNotNull(file);
+        IdentifierHighlightingResult result = ApplicationManager.getApplication().executeOnPooledThread(() -> ReadAction.compute(() ->
+                new IdentifierHighlightingComputer(file, editor, new ProperTextRange(0, editor.getDocument().getTextLength()), offset)
+                        .computeRanges())).get();
+        List<String> found = new ArrayList<>();
+        for (IdentifierOccurrence occurrence : result.occurrences()) {
+            String write = occurrence.highlightInfoType() == HighlightInfoType.ELEMENT_UNDER_CARET_WRITE ? "w" : "";
+            found.add(occurrence.range().getStartOffset() + write);
+        }
+        return found.stream().sorted().toList();
+    }
+
+    /**
+     * @return where the word starts in the text, at each place, with "w" after those of the given places
+     */
+    private static List<String> places(String text, String word, int... writes) {
+        List<String> places = new ArrayList<>();
+        int n = 0;
+        for (int at = text.indexOf(word); at >= 0; at = text.indexOf(word, at + 1), n++) {
+            if (at > 0 && Character.isJavaIdentifierPart(text.charAt(at - 1))
+                    || at + word.length() < text.length() && Character.isJavaIdentifierPart(text.charAt(at + word.length()))) {
+                continue;
+            }
+            boolean write = false;
+            for (int w : writes) write |= w == n;
+            places.add(at + (write ? "w" : ""));
+        }
+        return places.stream().sorted().toList();
+    }
+
+    public void testHighlightUsagesUnderCaret() throws Exception {
+        // the caret on a field in JML: all its uses, in the code (the assignment is a write) and in JML
+        List<String> count = places(HIGHLIGHT, "count", 3);
+        assertEquals(6, count.size());
+        assertEquals(count, underCaret(HIGHLIGHT.replace("requires count", "requires co<caret>unt")));
+        // on the field in the code, as Java does, with its uses in JML
+        assertEquals(count, underCaret(HIGHLIGHT.replace("int count;", "int <caret>count;")));
+        // a parameter: only that of its own method
+        String n = HIGHLIGHT.replace("count + x", "count + <caret>x");
+        int parameter = HIGHLIGHT.indexOf("int n(int x)") + "int n(int ".length();
+        assertEquals(List.of(String.valueOf(parameter), String.valueOf(HIGHLIGHT.indexOf("count + x") + "count + ".length())).stream().sorted().toList(),
+                underCaret(n));
+        // not on a keyword
+        assertEmpty(underCaret(HIGHLIGHT.replace("requires count", "requ<caret>ires count")));
+    }
+
+    public void testHighlightUsagesInFileFromJml() {
+        // Ctrl+Shift+F7 on a name in JML
+        myFixture.configureByText("A.java", HIGHLIGHT.replace("assignable count", "assignable co<caret>unt"));
+        myFixture.performEditorAction("HighlightUsagesInFile");
+        Editor editor = InjectedLanguageEditorUtil.getTopLevelEditor(myFixture.getEditor());
+        TreeSet<String> highlighted = new TreeSet<>();
+        for (RangeHighlighter highlighter : editor.getMarkupModel().getAllHighlighters()) {
+            if (HIGHLIGHT.substring(highlighter.getStartOffset(), highlighter.getEndOffset()).equals("count")) {
+                highlighted.add(String.valueOf(highlighter.getStartOffset()));
+            }
+        }
+        assertEquals(places(HIGHLIGHT, "count"), List.copyOf(highlighted));
     }
 }

@@ -102,18 +102,23 @@ public final class JMLBlockCommentIndent {
         }
 
         /**
-         * Moves the lines of the comments noted before the formatting, of all its ranges
+         * Moves the lines of the comments in the range that were noted before the formatting; those of other ranges
+         * are moved when their range is processed, so that the platform's offsets of those ranges stay right
          *
          * @return the range, as it is after the changes
          */
         private static @NotNull TextRange shift(@NotNull PsiFile file, @NotNull TextRange range) {
             Run run = file.getUserData(RUN);
-            file.putUserData(RUN, null);
             if (run == null || !(file instanceof PsiJavaFile)) return range;
+            List<Noted> noted = new ArrayList<>();
+            List<Noted> later = new ArrayList<>();
+            for (Noted note : run.noted()) {
+                if (!note.comment().isValid()) continue;
+                (note.comment().getTextRange().intersects(range) ? noted : later).add(note);
+            }
+            file.putUserData(RUN, later.isEmpty() ? null : new Run(run.modificationCount(), later));
             CommonCodeStyleSettings.IndentOptions options = indentOptions(file);
-            List<Noted> noted = new ArrayList<>(run.noted());
             // from the end of the file, so that the offsets of the others stay as they were
-            noted.removeIf(note -> !note.comment().isValid());
             noted.sort(Comparator.comparingInt((Noted note) -> note.comment().getTextRange().getStartOffset()).reversed());
             int startShift = 0;
             int endShift = 0;
@@ -164,9 +169,7 @@ public final class JMLBlockCommentIndent {
         int newline = space.lastIndexOf('\n');
         if (newline < 0 && PsiTreeUtil.prevLeaf(before) != null) return -1;
         int column = 0;
-        for (int i = newline + 1; i < space.length(); i++) {
-            column = space.charAt(i) == '\t' ? (column / tabSize + 1) * tabSize : column + 1;
-        }
+        for (int i = newline + 1; i < space.length(); i++) column = next(column, space.charAt(i), tabSize);
         return column;
     }
 
@@ -181,7 +184,7 @@ public final class JMLBlockCommentIndent {
             int end = 0;
             int column = 0;
             while (end < line.length() && (line.charAt(end) == ' ' || line.charAt(end) == '\t')) {
-                column = line.charAt(end) == '\t' ? (column / options.TAB_SIZE + 1) * options.TAB_SIZE : column + 1;
+                column = next(column, line.charAt(end), options.TAB_SIZE);
                 end++;
             }
             shifted.append('\n');
@@ -193,6 +196,14 @@ public final class JMLBlockCommentIndent {
             shifted.append(indent(Math.max(0, column + shift), options)).append(line, end, line.length());
         }
         return shifted.toString();
+    }
+
+    /**
+     * @return the column after the character: a tab goes to the next tab stop (a tab size of 0 or less counts as 1)
+     */
+    private static int next(int column, char c, int tabSize) {
+        int size = Math.max(1, tabSize);
+        return c == '\t' ? (column / size + 1) * size : column + 1;
     }
 
     private static @NotNull String indent(int columns, @NotNull CommonCodeStyleSettings.IndentOptions options) {

@@ -502,4 +502,113 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
         new OptimizeImportsProcessor(getProject(), myFixture.getFile()).run();
         assertFalse(myFixture.getEditor().getDocument().getText().contains("import"));
     }
+
+    private void typed(String line, char c, String after) {
+        String before = "class A {\n    //@ " + line + "\n    void m(String s) throws Exception {}\n}\n";
+        myFixture.configureByText("A.java", before);
+        myFixture.type(c);
+        Editor editor = myFixture.getEditor() instanceof EditorWindow window ? window.getDelegate() : myFixture.getEditor();
+        String text = editor.getDocument().getText();
+        int caret = editor.getCaretModel().getOffset();
+        assertEquals(before.replace(line, after), text.substring(0, caret) + "<caret>" + text.substring(caret));
+    }
+
+    public void testTypingInJml() {
+        // the parentheses and brackets of Java expressions, as Java does
+        typed("requires s.equals<caret>", '(', "requires s.equals(<caret>)");
+        typed("requires s.equals(s<caret>);", ')', "requires s.equals(s)<caret>;");
+        // a string in JML is Java's
+        typed("requires s.equals(<caret>);", '"', "requires s.equals(\"<caret>\");");
+        typed("requires s.equals(\"a<caret>\");", '"', "requires s.equals(\"a\"<caret>);");
+        // the parentheses of JML itself
+        typed("signals <caret>", '(', "signals (<caret>)");
+        typed("signals (Exception e<caret>) true;", ')', "signals (Exception e)<caret> true;");
+        // not before a name, as in Java
+        typed("signals <caret>Exception e) true;", '(', "signals (<caret>Exception e) true;");
+    }
+
+    private static final String CALLS = """
+            class A {
+                //@ requires %s
+                void m(int x) {}
+                //@ pure
+                boolean between(int low, int high) { return low <= high; }
+                //@ pure
+                boolean between(int low, int high, int step) { return low <= high; }
+            }
+            """;
+
+    /**
+     * @return the methods that parameter info shows with the caret in the clause, and the current parameter
+     */
+    private Object[] parameterInfo(String clause, int current) {
+        myFixture.configureByText("A.java", CALLS.formatted(clause));
+        nl.utwente.jmlplugin.editor.JMLParameterInfoHandler handler = new nl.utwente.jmlplugin.editor.JMLParameterInfoHandler();
+        var create = new com.intellij.testFramework.utils.parameterInfo.MockCreateParameterInfoContext(myFixture.getEditor(), myFixture.getFile());
+        com.intellij.psi.PsiElement open = handler.findElementForParameterInfo(create);
+        if (open == null) return null;
+        var update = new com.intellij.testFramework.utils.parameterInfo.MockUpdateParameterInfoContext(myFixture.getEditor(),
+                myFixture.getFile(), create.getItemsToShow());
+        handler.updateParameterInfo(open, update);
+        assertEquals(clause, current, update.getCurrentParameter());
+        return create.getItemsToShow();
+    }
+
+    public void testParameterInfoInJml() {
+        // Ctrl+P in a call: both methods of the name, with the parameter of the caret
+        Object[] methods = parameterInfo("between(x, <caret>3);", 1);
+        assertNotNull(methods);
+        assertEquals(2, methods.length);
+        var ui = new com.intellij.testFramework.utils.parameterInfo.MockParameterInfoUIContext<>(myFixture.getFile());
+        ui.setCurrentParameterIndex(1);
+        new nl.utwente.jmlplugin.editor.JMLParameterInfoHandler().updateUI((com.intellij.psi.PsiMethod) methods[0], ui);
+        assertEquals("int low, int high", ui.getText());
+        assertEquals("int high", ui.getText().substring(ui.getHighlightStart(), ui.getHighlightEnd()));
+        // the first argument, with a call in it, and a call that is not closed yet, as when typing it
+        assertNotNull(parameterInfo("between(<caret>x + Math.abs(x), 3);", 0));
+        assertNotNull(parameterInfo("between(x, Math.max(x, 1), <caret>", 2));
+        // not in parentheses that are no call
+        assertNull(parameterInfo("(x > <caret>0);", 0));
+    }
+
+    public void testFoldingSpecifications() {
+        myFixture.configureByText("A.java", """
+                class A {
+                    /*@ requires x > 0;
+                      @ ensures \\result > 0;
+                      @*/
+                    int m(int x) { return x; }
+                    //@ requires y > 0;
+                    //@ ensures \\result == y;
+                    int n(int y) { return y; }
+                    //@ pure
+                    int k() { return 0; }
+                    /*@ pure @*/ int j() { return 0; }
+                }
+                """);
+        String folded = ((com.intellij.testFramework.fixtures.impl.CodeInsightTestFixtureImpl) myFixture).getFoldingDescription(false, false);
+        // a block comment folds to its first clause, and two //@ lines together, instead of Java's /*...*/ and //...
+        assertTrue(folded, folded.contains("<fold text='/*@ requires x > 0; ... @*/'>/*@ requires x > 0;"));
+        assertTrue(folded, folded.contains("<fold text='//@ requires y > 0; ...'>//@ requires y > 0;\n    //@ ensures \\result == y;</fold>"));
+        // a single line is left to Java
+        assertFalse(folded, folded.contains("<fold text='//@ pure"));
+        assertFalse(folded, folded.contains("<fold text='/*@ pure"));
+    }
+
+    public void testMatchingParenthesesInJml() {
+        for (String line : List.of("signals <caret>(Exception e) s == null;", "requires s.equals<caret>(s);",
+                "requires <caret>(\\forall int i; 0 <= i < 3; i >= 0);")) {
+            myFixture.configureByText("A.java", "class A {\n    //@ " + line + "\n    void m(String s) throws Exception {}\n}\n");
+            Editor injected = com.intellij.psi.impl.source.tree.injected.InjectedLanguageUtil
+                    .getEditorForInjectedLanguageNoCommit(myFixture.getEditor(), myFixture.getFile());
+            assertTrue(line, injected instanceof EditorWindow);
+            String text = injected.getDocument().getText();
+            int open = injected.getCaretModel().getOffset();
+            assertEquals(line, '(', text.charAt(open));
+            // the ) that closes it: the first one after the last ( before it, here
+            int close = text.indexOf(')', text.lastIndexOf('(', text.indexOf(')')));
+            assertEquals(line, close, com.intellij.codeInsight.highlighting.BraceMatchingUtil.getMatchedBraceOffset(injected, true,
+                    ((EditorWindow) injected).getInjectedFile()));
+        }
+    }
 }

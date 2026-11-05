@@ -3,6 +3,9 @@ package nl.utwente.jmlplugin.annotator;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiUtil;
 import com.intellij.psi.util.PsiUtilCore;
@@ -16,7 +19,10 @@ import nl.utwente.jmlplugin.psi.impl.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -99,7 +105,8 @@ public final class JMLNames {
             return text == null ? null : resolveExpression(text, name);
         }
         PsiIdentifier identifier = (PsiIdentifier) name;
-        if (isDeclaredInJml(identifier)) return null;
+        // a qualified name, as size in "old int size = this.size;", is a member, not a variable of JML
+        if (!isQualified(identifier) && isDeclaredInJml(identifier)) return null;
         PsiElement start = qualifiedStart(identifier);
         if (start == null) return null;
         // the class of "new Counter()"
@@ -130,7 +137,16 @@ public final class JMLNames {
             expression = JMLTypeAnnotatorUtil.createExpressionWithParameters(text, method, method.getContainingClass());
         } else {
             PsiLoopStatement loop = JMLAnnotatorUtil.loopBelow(name);
-            if (loop != null && loop.getBody() != null) context = loop.getBody();
+            if (loop != null && loop.getBody() != null) {
+                // the specification of a loop sees the variables that the loop declares, not those of its body
+                PsiStatement body = loop.getBody();
+                PsiElement brace = body instanceof PsiBlockStatement block ? block.getCodeBlock().getLBrace() : null;
+                context = brace != null ? brace : body;
+            } else if (context instanceof PsiCodeBlock) {
+                // JML in a block, as an assert, sees the declarations before it, as Java code there would
+                PsiLanguageInjectionHost host = InjectedLanguageManager.getInstance(name.getProject()).getInjectionHost(name);
+                if (host != null && host.getParent() == context) context = host;
+            }
             try {
                 expression = JavaPsiFacade.getElementFactory(name.getProject()).createExpressionFromText(text, context);
             } catch (IncorrectOperationException e) {
@@ -190,20 +206,46 @@ public final class JMLNames {
         return text.length() > 2 && text.charAt(2) == '@';
     }
 
-    /**
-     * @return whether JML declares the name: the variable of an enclosing quantifier, the exception of a signals
-     * clause, or a variable of an old clause or ghost declaration in the same JML
-     */
     private static boolean isDeclaredInJml(@NotNull PsiIdentifier identifier) {
-        String name = identifier.getText();
-        if (quantifierType(identifier) != null) return true;
-        JMLSignalsClause signals = PsiTreeUtil.getParentOfType(identifier, JMLSignalsClause.class);
+        return isDeclaredInJml(identifier, identifier.getText());
+    }
+
+    /**
+     * @param element an element in JML
+     * @return whether JML declares the name where the element is: the variable of an enclosing quantifier, the
+     * exception of a signals clause, or a variable of an old clause or ghost declaration in the same specification,
+     * also in another comment of it
+     */
+    public static boolean isDeclaredInJml(@NotNull PsiElement element, @NotNull String name) {
+        if (quantifierType(element, name) != null) return true;
+        JMLSignalsClause signals = PsiTreeUtil.getParentOfType(element, JMLSignalsClause.class);
         if (signals != null && signals.getIdent() != null && name.equals(signals.getIdent().getText())) return true;
         // the variables of old clauses and ghost declarations in the same JML
-        for (JMLGhostDeclarator declarator : PsiTreeUtil.findChildrenOfType(identifier.getContainingFile(), JMLGhostDeclarator.class)) {
+        for (JMLGhostDeclarator declarator : PsiTreeUtil.findChildrenOfType(element.getContainingFile(), JMLGhostDeclarator.class)) {
             if (name.equals(declaredName(declarator))) return true;
         }
-        return false;
+        // and in the other comments of the same specification, such as an old clause above an ensures clause
+        PsiElement context = JMLAnnotatorUtil.getJavaContext(element);
+        PsiFile file = InjectedLanguageManager.getInstance(element.getProject()).getTopLevelFile(element);
+        return context != null && file != null && declaredInJml(file).getOrDefault(context, Set.of()).contains(name);
+    }
+
+    /**
+     * @return for the methods, classes and blocks of a Java file, the names that the old clauses and ghost
+     * declarations of their JML declare
+     */
+    private static @NotNull Map<PsiElement, Set<String>> declaredInJml(@NotNull PsiFile file) {
+        return CachedValuesManager.getCachedValue(file, () -> {
+            Map<PsiElement, Set<String>> declared = new HashMap<>();
+            for (PsiFile jml : jmlFiles(file)) {
+                for (JMLGhostDeclarator declarator : PsiTreeUtil.findChildrenOfType(jml, JMLGhostDeclarator.class)) {
+                    String name = declaredName(declarator);
+                    PsiElement context = JMLAnnotatorUtil.getJavaContext(declarator);
+                    if (name != null && context != null) declared.computeIfAbsent(context, key -> new HashSet<>()).add(name);
+                }
+            }
+            return CachedValueProvider.Result.create(declared, PsiModificationTracker.getInstance(file.getProject()));
+        });
     }
 
     /**
@@ -211,8 +253,11 @@ public final class JMLNames {
      * for n in "(\forall Node n; ...)", or null if no quantifier declares it
      */
     private static @Nullable String quantifierType(@NotNull PsiIdentifier identifier) {
-        String name = identifier.getText();
-        for (JMLQuantifiedExpr quantifier = PsiTreeUtil.getParentOfType(identifier, JMLQuantifiedExpr.class); quantifier != null;
+        return quantifierType(identifier, identifier.getText());
+    }
+
+    private static @Nullable String quantifierType(@NotNull PsiElement element, @NotNull String name) {
+        for (JMLQuantifiedExpr quantifier = PsiTreeUtil.getParentOfType(element, JMLQuantifiedExpr.class); quantifier != null;
              quantifier = PsiTreeUtil.getParentOfType(quantifier, JMLQuantifiedExpr.class)) {
             for (JMLQVarDecl declaration : PsiTreeUtil.findChildrenOfType(quantifier, JMLQVarDecl.class)) {
                 if (PsiTreeUtil.getParentOfType(declaration, JMLQuantifiedExpr.class) != quantifier) continue;
@@ -231,13 +276,10 @@ public final class JMLNames {
      * @return the name that a declarator such as "int n = size" declares: the last name before "=", or the end
      */
     private static @Nullable String declaredName(@NotNull JMLGhostDeclarator declarator) {
+        // the type is an element of its own, its names are not the variable's
         String name = null;
-        for (PsiElement child = declarator.getFirstChild(); child != null; child = child.getNextSibling()) {
+        for (PsiElement child = declarator.getFirstChild(); child != null && !isToken(child, JavaTokenType.EQ); child = child.getNextSibling()) {
             if (child instanceof PsiIdentifier identifier) name = identifier.getText();
-            else if (isToken(child, JavaTokenType.EQ) || !(child instanceof PsiJavaToken || child instanceof PsiWhiteSpace
-                    || child instanceof PsiKeyword)) {
-                break;
-            }
         }
         return name;
     }
@@ -368,8 +410,14 @@ public final class JMLNames {
             PsiElement open = matching(last, false);
             if (open == null) return null;
             PsiElement before = previous(open);
-            // a call, or an expression in parentheses
-            return before instanceof PsiIdentifier ? before : open;
+            // an expression in parentheses
+            if (!(before instanceof PsiIdentifier)) return open;
+            // a new object, as "new Counter()" or "new demo.Counter()", or a call
+            PsiElement type = before;
+            while (isToken(previous(type), JavaTokenType.DOT) && previous(previous(type)) instanceof PsiIdentifier) {
+                type = previous(previous(type));
+            }
+            return isToken(previous(type), JavaTokenType.NEW_KEYWORD) ? previous(type) : before;
         }
         if (isToken(last, JavaTokenType.RBRACKET)) {
             PsiElement open = matching(last, false);

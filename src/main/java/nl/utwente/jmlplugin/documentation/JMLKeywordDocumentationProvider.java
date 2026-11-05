@@ -5,13 +5,15 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.PsiWhiteSpace;
+import nl.utwente.jmlplugin.annotator.JMLNames;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * Explains the JML keyword under the mouse or at the caret, such as requires, \old or ==>, in the documentation popup
- * (on hover and with Ctrl+Q)
+ * (on hover and with Ctrl+Q). On a name in JML, the popup shows the documentation of the field, method, parameter,
+ * variable or class that it refers to, as on a name in the Java code, with the JML specification of a method.
  */
 public class JMLKeywordDocumentationProvider extends AbstractDocumentationProvider {
 
@@ -26,7 +28,9 @@ public class JMLKeywordDocumentationProvider extends AbstractDocumentationProvid
             PsiElement before = file.findElementAt(targetOffset - 1);
             if (JMLKeywordDocs.of(before) != null) return before;
         }
-        return null;
+        // a name: Java's documentation of what it refers to (JMLDocumentationProvider adds the JML of a method)
+        PsiElement name = JMLNames.nameAt(file, targetOffset);
+        return name == null ? null : JMLNames.resolve(name);
     }
 
     @Override

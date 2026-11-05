@@ -587,7 +587,9 @@ public final class EscVerifier {
     }
 
     // the label that OpenJML puts after assert, as in "assert Assert x > 0;"
-    private static final Pattern ASSERT_LABEL = Pattern.compile("^(assert|assume) [A-Z][A-Za-z]* ");
+    // the label that OpenJML writes after assert and assume, but not a name in capitals that starts the condition, as
+    // MAX in "assert MAX > x;", which an operator or a dot follows
+    private static final Pattern ASSERT_LABEL = Pattern.compile("^(assert|assume) [A-Z][A-Za-z]* (?![<>=!&|+\\-*/%.?:;)\\]^,\\[])");
     // the kind of assertion in a message, as Postcondition in "cannot establish an assertion (Postcondition: ...)"
     private static final Pattern FAILURE_KIND = Pattern.compile("\\(([A-Za-z]+)[:)]");
 

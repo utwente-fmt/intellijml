@@ -55,7 +55,17 @@
   JML, grouped as "Usage in JML specification", and Ctrl+click on a name in JML goes to its declaration. Rename, Find
   Usages and Highlight Usages in File also work with the caret on the name in the JML. A private field or method that
   is `spec_public` or `spec_protected` is also found in the specifications of other classes. The variable of a
-  quantifier, as `i` in `(\forall int i; ...)`, is the quantifier's own and keeps its name.
+  quantifier, as `i` in `(\forall int i; ...)`, is the quantifier's own and keeps its name. Renaming a parameter or
+  variable to the name of a field that JML uses qualifies the field there, also when the JML does not mention the
+  parameter, as when `b` is renamed to `balance` in `Account(int b)` with `ensures balance >= 0;`.
+- With the caret on a name in JML, its other uses in the file are highlighted, in the code and in JML, as with the
+  caret on a name in the code; Ctrl+Shift+F7 does the same. Hovering over a name in JML, or Ctrl+Q on it, shows the
+  documentation of the field, method, parameter or class, with the JML specification of a method. In a call of a
+  method in JML, the parameters are shown as in Java code, when typing `(` and with Ctrl+P.
+- Typing `"` in JML adds the closing quote, and `(` after `signals` or `[` adds the closing one, as in Java code;
+  the parentheses of JML itself, as in `signals (Exception e)`, are highlighted in pairs.
+- A folded JML specification shows its first clause, as `//@ requires amount > 0; ...`, instead of Java's `//...` for
+  comments: a `/*@ ... @*/` comment of more than one line, and `//@` comments on consecutive lines.
 - A private field or method, a parameter or a variable that only JML uses, such as a pure method called in an
   invariant, is no longer greyed out with "Private method 'valid()' is never used" or "Private field 'count' is
   assigned but never accessed".

@@ -133,4 +133,46 @@ public class JMLFormatTest extends LightJavaCodeInsightFixtureTestCase {
                 }
                 """, myFixture.getEditor().getDocument().getText());
     }
+
+    public void testSeveralRanges() {
+        // as Reformat Code on the changed lines only: two ranges, each with a comment, and the code between them is
+        // left as it is
+        String text = """
+                class A {
+                        /*@ requires x > 0;
+                          @ ensures \\result > 0;
+                          @*/
+                        int m(int x) { return x; }
+                        int k;
+                        /*@ requires y > 0;
+                          @ ensures \\result > 0;
+                          @*/
+                        int n(int y) { return y; }
+                }
+                """;
+        myFixture.configureByText("A.java", text);
+        java.util.List<com.intellij.openapi.util.TextRange> ranges = java.util.List.of(
+                new com.intellij.openapi.util.TextRange(text.indexOf("/*@ requires x"), text.indexOf("return x; }") + "return x; }".length()),
+                new com.intellij.openapi.util.TextRange(text.indexOf("/*@ requires y"), text.lastIndexOf("}\n}") + 1));
+        WriteCommandAction.writeCommandAction(getProject()).run(() ->
+                CodeStyleManager.getInstance(getProject()).reformatText(myFixture.getFile(), ranges));
+        assertEquals("""
+                class A {
+                    /*@ requires x > 0;
+                      @ ensures \\result > 0;
+                      @*/
+                    int m(int x) {
+                        return x;
+                    }
+                        int k;
+
+                    /*@ requires y > 0;
+                      @ ensures \\result > 0;
+                      @*/
+                    int n(int y) {
+                        return y;
+                    }
+                }
+                """, myFixture.getEditor().getDocument().getText());
+    }
 }
