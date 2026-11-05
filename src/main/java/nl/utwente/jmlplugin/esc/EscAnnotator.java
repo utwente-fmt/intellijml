@@ -8,6 +8,7 @@ import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.ProblemGroup;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.ExternalAnnotator;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.RangeMarker;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.VirtualFile;
@@ -33,6 +34,15 @@ import java.util.List;
  * related to, and quick fixes
  */
 public class EscAnnotator extends ExternalAnnotator<List<EscResults.Problem>, List<EscResults.Problem>> {
+
+    /**
+     * Also when the file has errors: by default an external annotator shows nothing then, so that one error of the
+     * plugin or of Java elsewhere in the file would hide all that OpenJML found
+     */
+    @Override
+    public @Nullable List<EscResults.Problem> collectInformation(@NotNull PsiFile file, @NotNull Editor editor, boolean hasErrors) {
+        return collectInformation(file);
+    }
 
     @Override
     public @Nullable List<EscResults.Problem> collectInformation(@NotNull PsiFile file) {

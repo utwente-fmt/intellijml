@@ -142,7 +142,7 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
         if (sources.isEmpty()) throw new ExecutionException("There are no Java source files to compile with JML checks");
 
         indicator.setText("Compiling " + sources.size() + " files with JML checks (OpenJML)");
-        Path classes = outputDirectory(project);
+        Path classes = outputDirectory(project, environment.getRunProfile().getName());
         // OpenJML reads its options from an openjml.properties file in the directory it runs in, if there is one
         Path workDirectory = project.getBasePath() != null && Files.isDirectory(Path.of(project.getBasePath()))
                 ? Path.of(project.getBasePath()) : classes.getParent();
@@ -177,10 +177,15 @@ public class JMLRacProgramRunner extends AsyncProgramRunner<RunnerSettings> {
     }
 
     /**
-     * @return the directory for the classes compiled with JML checks
+     * @param configuration the name of the run configuration
+     * @return the directory for the classes compiled with JML checks, one for each run configuration, so that running
+     * another one (which empties its directory first) does not take away the classes of a program that still runs
      */
-    static @NotNull Path outputDirectory(@NotNull Project project) {
-        return PathManager.getSystemDir().resolve("intellijml").resolve("rac").resolve(project.getLocationHash());
+    static @NotNull Path outputDirectory(@NotNull Project project, @NotNull String configuration) {
+        String name = configuration.replaceAll("[^\\w.-]+", "_");
+        if (name.length() > 40) name = name.substring(0, 40);
+        return PathManager.getSystemDir().resolve("intellijml").resolve("rac").resolve(project.getLocationHash())
+                .resolve(name + "-" + Integer.toHexString(configuration.hashCode()));
     }
 
     /**

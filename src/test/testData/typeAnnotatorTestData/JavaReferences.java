@@ -8,28 +8,28 @@ public class JavaReferences {
 
     // with an inner class
     //@ invariant <error descr="Reference cannot be resolved">Inner.testNum</error> > 0;
-    //@ invariant <error descr="An identifier with private visibility may not be used in a invariant clause with package visibility">new Inner().testNum</error> > 0;
+    //@ invariant <error descr="An identifier with private visibility may not be used in a invariant clause with package visibility"><error descr="Object allocation is not permitted in specification expressions">new Inner()</error>.testNum</error> > 0;
     //@ invariant <error descr="Reference cannot be resolved">Inner.publicTestNum</error> > 0;
-    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">new Inner().publicTestNum</error> > 0;
+    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility"><error descr="Object allocation is not permitted in specification expressions">new Inner()</error>.publicTestNum</error> > 0;
     //@ invariant <error descr="Method could not be resolved, maybe the parameters do not correspond?">Inner.getTestNum()</error> > 0;
-    //@ invariant new Inner().getTestNum() > 0;
+    //@ invariant <error descr="Object allocation is not permitted in specification expressions">new Inner()</error>.getTestNum() > 0;
 
     // with a different class
     //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">JavaReferencesTest.testNum</error> > 0;
-    //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">new JavaReferencesTest().testNum</error> > 0;
+    //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications"><error descr="Object allocation is not permitted in specification expressions">new JavaReferencesTest()</error>.testNum</error> > 0;
     //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">JavaReferencesTest.publicStaticTestNum</error> > 0;
-    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">new JavaReferencesTest().publicStaticTestNum</error> > 0;
+    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility"><error descr="Object allocation is not permitted in specification expressions">new JavaReferencesTest()</error>.publicStaticTestNum</error> > 0;
     //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">JavaReferencesTest.staticTestNum</error> > 0;
-    //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">new JavaReferencesTest().staticTestNum</error> > 0;
+    //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications"><error descr="Object allocation is not permitted in specification expressions">new JavaReferencesTest()</error>.staticTestNum</error> > 0;
     //@ invariant <error descr="Reference cannot be resolved">JavaReferencesTest.protectedTestNum</error> > 0;
-    //@ invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with package visibility">new JavaReferencesTest().protectedTestNum</error> > 0;
+    //@ invariant <error descr="An identifier with protected visibility may not be used in a invariant clause with package visibility"><error descr="Object allocation is not permitted in specification expressions">new JavaReferencesTest()</error>.protectedTestNum</error> > 0;
     //@ invariant <error descr="Method could not be resolved, maybe the parameters do not correspond?">JavaReferencesTest.getTestNum()</error> > 0;
-    //@ invariant new JavaReferencesTest().getTestNum() > 0;
+    //@ invariant <error descr="Object allocation is not permitted in specification expressions">new JavaReferencesTest()</error>.getTestNum() > 0;
 
     //@ invariant <error descr="Reference cannot be resolved">nonExistent</error> > 0;
 
     // chains
-    /*@ invariant <error descr="Reference cannot be resolved">new Inner().obj.a</error>.b.c == null;
+    /*@ invariant <error descr="Reference cannot be resolved"><error descr="Object allocation is not permitted in specification expressions">new Inner()</error>.obj.a</error>.b.c == null;
       @ invariant <error descr="Reference cannot be resolved">b</error>.c.d == null;
     */
 

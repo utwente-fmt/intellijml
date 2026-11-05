@@ -1,16 +1,17 @@
 package semanticsAnnotatorTestData;
 
 public class MultipleSignalsOnly {
+    // as in OpenJML, an error on the second one
     /*@
-        <warning descr="Use a single signals_only clause to avoid confusion">signals_only java.lang.Exception;</warning>
-        <warning descr="Use a single signals_only clause to avoid confusion">signals_only ArithmeticException;</warning>
+        signals_only java.lang.Exception;
+        <error descr="At most one signals_only clause is permitted in a specification case">signals_only ArithmeticException;</error>
      */
     public int div(int a, int b) throws ArithmeticException {
         return a / b;
     }
 
     //@signals_only java.lang.Exception;
-    //@<warning descr="Use a single signals_only clause to avoid confusion">signals_only ArithmeticException;</warning>
+    //@<error descr="At most one signals_only clause is permitted in a specification case">signals_only ArithmeticException;</error>
     public int div2(int a, int b) throws ArithmeticException {
         return a / b;
     }

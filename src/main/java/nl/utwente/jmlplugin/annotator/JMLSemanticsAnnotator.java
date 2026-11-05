@@ -81,7 +81,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.SPLIT_OUT_OF_PLACE).range(element.getFirstChild()).create();
             return true;
         } else if (element instanceof JMLSignalsOnlyClause && checkMultipleSignalsOnly((JMLSignalsOnlyClause) element)) {
-            holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.MULTIPLE_SIGNALS_ONLY).create();
+            holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.MULTIPLE_SIGNALS_ONLY).create();
+            // its exceptions are still checked
             return true;
         } else if ((element instanceof JMLRequiresClause || element.getParent() instanceof JMLSpecBody) && checkRedundantNotSpecified(element)) {
             holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.NOT_SPECIFIED_REDUNDANT).create();
@@ -289,7 +290,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      * @return true if there are multiple signals_only clauses
      */
     private static boolean checkMultipleSignalsOnly(JMLSignalsOnlyClause element) {
-        return countInSpecCase(element, "signals_only") > 1;
+        // as in OpenJML, an error on every one after the first
+        return countInSpecCase(element, "signals_only", true) > 0;
     }
 
     /**
@@ -637,13 +639,15 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
      * @return true if this error has occurred
      */
     private static boolean checkHelperNotAllowed(PsiElement element) {
-        // as in OpenJML, a helper method must be pure (or spec_pure, also by an annotation or inherited), private or final
+        // as in OpenJML, a helper method must be pure (or spec_pure, also by an annotation or inherited), private, final
+        // or static
         PsiElement method = getJavaContext(element);
         if (method == null) return false;
         if (method instanceof PsiMethod psiMethod && Purity.of(psiMethod) != Purity.NONE) return false;
         PsiModifierList modifierList = getChildOfType(method, PsiModifierList.class);
         if (modifierList == null) return false;
-        return !modifierList.hasModifierProperty(PsiModifier.PRIVATE) && !modifierList.hasModifierProperty(PsiModifier.FINAL);
+        return !modifierList.hasModifierProperty(PsiModifier.PRIVATE) && !modifierList.hasModifierProperty(PsiModifier.FINAL)
+                && !modifierList.hasModifierProperty(PsiModifier.STATIC);
     }
 
 

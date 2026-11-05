@@ -58,12 +58,26 @@ public class AddLoopSpecificationIntention extends PsiElementBaseIntentionAction
         if (loop == null || loop instanceof PsiDoWhileStatement) return null;
         PsiStatement body = loop.getBody();
         if (body != null && element.getTextRange().getStartOffset() >= body.getTextRange().getStartOffset()) return null;
+        // the clauses go on the lines above the loop, which must start its line in a block: OpenJML does not accept
+        // them above the label of a labelled loop, nor above an "if (...)" that the loop is on the line of
+        if (!(loop.getParent() instanceof PsiCodeBlock) || !startsLine(loop)) return null;
         for (PsiElement before = loop.getPrevSibling(); before instanceof PsiComment || before instanceof PsiWhiteSpace;
              before = before.getPrevSibling()) {
             String text = before.getText();
             if (before instanceof PsiComment && (text.startsWith("//@") || text.startsWith("/*@"))) return null;
         }
         return loop;
+    }
+
+    /**
+     * @return whether only whitespace is before the statement on its line
+     */
+    private static boolean startsLine(@NotNull PsiElement statement) {
+        String text = statement.getContainingFile().getText();
+        for (int i = statement.getTextRange().getStartOffset() - 1; i >= 0 && text.charAt(i) != '\n'; i--) {
+            if (!Character.isWhitespace(text.charAt(i))) return false;
+        }
+        return true;
     }
 
     /**

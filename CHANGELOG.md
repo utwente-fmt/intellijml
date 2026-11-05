@@ -200,8 +200,8 @@
   before its loop, and a parameter in an `assignable` clause is an error again ("An assignable clause may not contain
   method formal parameters")
 - As in OpenJML, an invariant (or `initially` or `constraint`) may be right above a field or method, an invariant in
-  an interface is an instance invariant unless it is `static`, and a `helper` method may also be `final` ("A helper
-  method must be private or pure or final")
+  an interface is an instance invariant unless it is `static`, and a `helper` method may also be `final` or
+  `static` ("A helper method must be private or pure or final")
 - The plugin can be installed, updated and removed without restarting IntelliJ IDEA
 - The unfinished run time checking of earlier versions, which hooked into every build without inserting any checks,
   is removed in favour of Run with JML Checks
@@ -209,6 +209,14 @@
 - The tests need no setup any more (they use a mock JDK 21 that is downloaded automatically), and the build
   fails if a test run is interrupted part-way
 - `x++` and `x--` in a specification are an error, like assignments, as they change a variable
+- As in OpenJML, creating an object in a specification, as in `ensures \result.equals(new Point(0, 0));`, gives the
+  error "Object allocation is not permitted in specification expressions"; it is allowed in `set` statements and the
+  initializers of ghost variables
+- As in OpenJML, a second `signals_only` clause in a specification case gives the error "At most one signals_only
+  clause is permitted in a specification case", instead of a warning on all of them
+- As in OpenJML, a method of the project without JML is not pure in a specification because IntelliJ infers that it
+  is; IntelliJ's contracts, also inferred ones, are still used for the methods of libraries
+- `\index` is accepted as OpenJML's other name for `\count`
 - Visibility in specifications is checked as OpenJML does, with the same error messages:
   - A method specification has the visibility of the method, so `ensures count == \old(count) + 1;` on a public
     method gives an error if `count` is private, unless it is declared `spec_public`. This applies to `requires`,
@@ -272,7 +280,8 @@
 - `//@ assert`, `assume` and other statements right above a local variable declaration gave "In-method
   specifications are not allowed above a variable declaration"
 - Optimize Imports removed imports that are only used in JML, such as `import java.util.ArrayList;` for
-  `//@ ensures \result instanceof ArrayList;`
+  `//@ ensures \result instanceof ArrayList;`. "Optimize imports on the fly" still does, so the README says to leave
+  it off.
 - `assignable` and `signals_only` lists that continue on a new line starting with `@` gave a syntax error
 - Typing `/*@` at the very end of a file caused an exception
 - The quick documentation of a method showed `<` and `&&` in its JML wrongly, and left out modifiers such as

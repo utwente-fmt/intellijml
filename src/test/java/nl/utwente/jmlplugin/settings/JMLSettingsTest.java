@@ -3,6 +3,7 @@ package nl.utwente.jmlplugin.settings;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.testFramework.fixtures.BasePlatformTestCase;
 import nl.utwente.jmlplugin.rac.OpenJml;
+import nl.utwente.jmlplugin.rac.OpenJmlInstaller;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,6 +63,32 @@ public class JMLSettingsTest extends BasePlatformTestCase {
         assertEquals(installation.toString(), JMLApplicationSettings.getInstance().OPENJML_PATH);
         assertEquals(installation, OpenJml.installation());
         assertFalse(configuration.isModified());
+    }
+
+    public void testDownloadedInstallation() throws Exception {
+        // OpenJML downloaded by the plugin, also from a notification while the settings were open, is used and shown
+        // without a second click
+        Path installation = OpenJmlInstaller.installationDirectory();
+        try {
+            Files.createDirectories(installation);
+            Files.writeString(OpenJml.launcher(installation), "");
+            Files.writeString(OpenJml.runtimeLibrary(installation), "");
+            Files.createDirectories(OpenJml.java(installation).getParent());
+            Files.writeString(OpenJml.java(installation), "");
+            Files.createDirectories(installation.resolve("libs"));
+            Files.writeString(installation.resolve("libs").resolve("jSMTLIB.jar"), "");
+            Files.createDirectories(installation.resolve("specs"));
+            Files.createDirectories(installation.resolve("Solvers-test"));
+            JMLApplicationSettings.getInstance().OPENJML_PATH = "";
+            assertEquals(installation, OpenJml.installation());
+            configuration.reset();
+            assertEquals(installation.toString(), panel.getOpenJmlPath());
+            assertFalse(configuration.isModified());
+        } finally {
+            com.intellij.openapi.util.io.NioFiles.deleteRecursively(installation);
+        }
+        configuration.reset();
+        assertEquals("", panel.getOpenJmlPath());
     }
 
     public void testNotAnInstallation() throws Exception {

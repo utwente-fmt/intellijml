@@ -10,13 +10,13 @@ public class BackslashTypeFunctions {
     //@ ensures <error descr="This must be of type boolean, but is Class<Class>">\TYPE.class</error>;
     /*@ ensures <error descr="This must be of type boolean, but is Class<Integer>">\typeof(number)</error>;
       @ ensures <error descr="This must be of type boolean, but is Class<String>">\typeof("")</error>;
-      @ ensures <error descr="This must be of type boolean, but is Class<BackslashTypeFunctions>">\typeof(new BackslashTypeFunctions())</error>;
+      @ ensures <error descr="This must be of type boolean, but is Class<BackslashTypeFunctions>">\typeof(<error descr="Object allocation is not permitted in specification expressions">new BackslashTypeFunctions()</error>)</error>;
       @ ensures \typeof(<error descr="Reference cannot be resolved">NonExistentClass</error>);
       @ ensures \typeof(<error descr="Reference cannot be resolved">nonExistentVar</error>);
       @ ensures <error descr="This must be of type boolean, but is Class<int[]>">\typeof(new int[5])</error>;
       @ ensures \typeof(<error descr="Reference cannot be resolved">\TYPE</error>);
     */
-    /*@ ensures \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?">new Object()</error>);
+    /*@ ensures \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?"><error descr="Object allocation is not permitted in specification expressions">new Object()</error></error>);
       @ ensures \elemtype(<error descr="This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?">number</error>);
       @ ensures \elemtype(<error descr="Reference cannot be resolved">nonExistentVar</error>.class);
       @ ensures <error descr="This must be of type boolean, but is Class<Integer>">\elemtype(\typeof(new int[5]))</error>;
@@ -24,12 +24,12 @@ public class BackslashTypeFunctions {
       @ ensures <error descr="This must be of type boolean, but is Class<Integer>">\elemtype(new int[5].getClass())</error>;
       @ ensures \elemtype(<error descr="This is not an array">\type(Object)</error>);
       @ ensures \elemtype(<error descr="This is not an array">Object.class</error>);
-      @ ensures \elemtype(<error descr="This is not an array">new Object().getClass()</error>);
+      @ ensures \elemtype(<error descr="This is not an array"><error descr="Object allocation is not permitted in specification expressions">new Object()</error>.getClass()</error>);
       @ ensures \elemtype(<error descr="This is not an array">\TYPE.class</error>);
     */
     /*@ ensures \nonnullelements(new int[5]);
       @ ensures \nonnullelements(new int[5][][]);
-      @ ensures \nonnullelements(<error descr="This is not an array">new Object()</error>);
+      @ ensures \nonnullelements(<error descr="This is not an array"><error descr="Object allocation is not permitted in specification expressions">new Object()</error></error>);
       @ ensures \nonnullelements(<error descr="This is not an array">number</error>);
       @ ensures \nonnullelements(<error descr="Reference cannot be resolved">nonExistentVar</error>);
     */

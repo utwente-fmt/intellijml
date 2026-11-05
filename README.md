@@ -32,7 +32,9 @@ and completes keywords, names and `\forall`-style quantifiers. To help write spe
 - **Ctrl+/** on a `//@` line comments the line out, and back. **Reformat Code** keeps the `@`s of a
   `/*@ ... @*/` comment under each other. A **folded** specification shows its first clause.
 - **Optimize Imports** keeps the imports that only JML uses, and they are not greyed out as unused, nor are fields,
-  methods and parameters that only JML uses.
+  methods and parameters that only JML uses. IntelliJ's "Optimize imports on the fly" (Settings | Editor | General |
+  Auto Import, off by default) removes them, so leave it off; in IntelliJ IDEA 2026.2 the Alt+Enter fixes "Optimize
+  imports" and "Remove unused imports" on another, unused import remove them too. Ctrl+Alt+O keeps them.
 
 ## Running with JML checks
 

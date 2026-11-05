@@ -81,15 +81,17 @@ public class ConfigurationPanel extends JPanel {
      */
     private void download() {
         try {
-            Path installation = ProgressManager.getInstance().runProcessWithProgressSynchronously(
+            ProgressManager.getInstance().runProcessWithProgressSynchronously(
                     () -> OpenJmlInstaller.install(ProgressManager.getInstance().getProgressIndicator()),
                     "Downloading OpenJML", true, null);
-            openJmlPath.setText(installation.toString());
         } catch (ProcessCanceledException e) {
-            // cancelled by the user
+            // cancelled
         } catch (IOException e) {
             Messages.showErrorDialog(this, "OpenJML could not be downloaded: " + e.getMessage(), "Download OpenJML");
         }
+        // the installation as soon as it is complete: a student had to click twice for the path to be filled in
+        Path installation = OpenJmlInstaller.installationDirectory();
+        if (OpenJml.missing(installation) == null) openJmlPath.setText(installation.toString());
     }
 
     boolean isCheckOnSaveEnabled() {

@@ -10,7 +10,7 @@ public class SpecVisibilityAcrossClasses {
     //@ invariant <error descr="This is not visible here, declare it spec_public to use it in specifications">other.private_method()</error>;
     //@ invariant other.spec_public_method();
     //@ invariant other.spec_protected_method();
-    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">new SpecVisibilityAcrossClassesOtherClass(0).spec_public_field</error>;
+    //@ invariant <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility"><error descr="Object allocation is not permitted in specification expressions">new SpecVisibilityAcrossClassesOtherClass(0)</error>.spec_public_field</error>;
 }
 
 class SpecVisibilityAcrossClassesOtherClass {

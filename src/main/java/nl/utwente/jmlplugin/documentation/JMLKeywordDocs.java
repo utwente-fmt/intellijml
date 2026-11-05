@@ -380,8 +380,9 @@ public final class JMLKeywordDocs {
                         + "warning when OpenJML cannot prove that there is no overflow; `\\bigint_math` with "
                         + "mathematical integers, without overflow.",
                 "//@ ensures \\result == \\java_math(x * 31);");
-        add(List.of("\\count"), EXPRESSION, LOOPS,
-                "In a loop specification of a for-each loop: the number of iterations that the loop has done so far.",
+        add(List.of("\\count", "\\index"), EXPRESSION, LOOPS,
+                "In a loop specification of a for-each loop: the number of iterations that the loop has done so far. "
+                        + "`\\index` is another name for it.",
                 "//@ maintaining 0 <= \\count && \\count <= a.length;", "for (int x : a) { ... }");
         add(List.of("\\lbl", "\\lblpos", "\\lblneg"), EXPRESSION, DEBUGGING,
                 "`(\\lbl L e)` gives the expression `e` the name `L`, so that OpenJML reports its value under that "

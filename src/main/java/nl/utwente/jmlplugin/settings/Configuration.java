@@ -39,7 +39,7 @@ public class Configuration extends BaseConfigurable {
      */
     @Override
     public boolean isModified() {
-        return !panel.getOpenJmlPath().equals(settings.OPENJML_PATH)
+        return !panel.getOpenJmlPath().equals(OpenJml.configuredPath())
                 || settings.CHECK_ON_SAVE ^ panel.isCheckOnSaveEnabled()
                 || settings.RAINBOW_MODE ^ panel.isEasterEggEnabled();
     }
@@ -76,7 +76,8 @@ public class Configuration extends BaseConfigurable {
      */
     @Override
     public void reset() {
-        panel.setOpenJmlPath(settings.OPENJML_PATH);
+        // also a download that the settings do not name yet
+        panel.setOpenJmlPath(OpenJml.configuredPath());
         panel.setCheckOnSaveEnabled(settings.CHECK_ON_SAVE);
         panel.setEasterEggEnabled(settings.RAINBOW_MODE);
     }

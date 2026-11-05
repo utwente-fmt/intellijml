@@ -6,9 +6,9 @@ public class JavaBooleanExpressions {
     //@ invariant getZero() == 0 && 8 > 7;
     //@ invariant true && false || bool ^ false | true & bool;
     // only show error on first problem
-    //@ invariant true<error descr="This operator cannot be applied to type boolean and type Object"> && </error>new Object() || new Object() ^ false | new Object() & false;
-    //@ invariant true && false || new Object()<error descr="This operator cannot be applied to type Object and type boolean"> ^ </error>false | new Object() & false;
-    //@ invariant true && false || true ^ false | new Object()<error descr="This operator cannot be applied to type Object and type boolean"> & </error>false;
+    //@ invariant true<error descr="This operator cannot be applied to type boolean and type Object"> && </error><error descr="Object allocation is not permitted in specification expressions">new Object()</error> || new Object() ^ false | new Object() & false;
+    //@ invariant true && false || <error descr="Object allocation is not permitted in specification expressions">new Object()</error><error descr="This operator cannot be applied to type Object and type boolean"> ^ </error>false | new Object() & false;
+    //@ invariant true && false || true ^ false | <error descr="Object allocation is not permitted in specification expressions">new Object()</error><error descr="This operator cannot be applied to type Object and type boolean"> & </error>false;
     // non existent variables, again, only show first problem
     //@ invariant true && false || <error descr="Reference cannot be resolved">z</error> ^ false | true & z;
 

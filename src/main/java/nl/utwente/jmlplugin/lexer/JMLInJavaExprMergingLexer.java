@@ -66,6 +66,8 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
             textToToken.put("safe_math", JMLTypes.SAFE_MATH);
             textToToken.put("bigint_math", JMLTypes.BIGINT_MATH);
             textToToken.put("count", JMLTypes.COUNT);
+            // OpenJML's other name for it
+            textToToken.put("index", JMLTypes.COUNT);
             textToToken.put("lbl", JMLTypes.LBL);
             textToToken.put("lblpos", JMLTypes.LBLPOS);
             textToToken.put("lblneg", JMLTypes.LBLNEG);

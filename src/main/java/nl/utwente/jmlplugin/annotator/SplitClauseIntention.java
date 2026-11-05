@@ -115,7 +115,10 @@ public class SplitClauseIntention extends PsiElementBaseIntentionAction {
                     i++;
                 } else if (condition.startsWith("||", i) || c == '?' || condition.startsWith("==>", i)
                         || condition.startsWith("<==", i) || condition.startsWith("<=!=>", i)
-                        || condition.startsWith("//", i)) {
+                        || condition.startsWith("//", i)
+                        // a quantifier without parentheses, as "\forall int i; 0 <= i && i < n; a[i] > 0", whose
+                        // range is not a part of the condition
+                        || c == ';' || condition.startsWith("\\forall", i) || condition.startsWith("\\exists", i)) {
                     return null;
                 }
             }

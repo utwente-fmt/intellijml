@@ -59,10 +59,10 @@ public class StorageSpace {
     //@ ensures <error descr="Unknown keyword \rsul, or a JML keyword that this plugin does not support">\rsul</error> >= 0;
     //@ requires \not_specified;
     // some semantic errors with exceptions
-    /*@ <warning descr="Use a single signals_only clause to avoid confusion">signals_only ArithmeticException;</warning>
+    /*@ signals_only ArithmeticException;
     signals (ArithmeticException)  nrOfFullBoxes == 0;
     signals (<error descr="This class could not be resolved, did you forget to import it?">IOException</error>) nrOfFullBoxes == 0;
-    <warning descr="Use a single signals_only clause to avoid confusion">signals_only <warning descr="This exception (or a superclass or subclass of it) should be mentioned in the throws clause of this method">EOFException</warning>;</warning>
+    <error descr="At most one signals_only clause is permitted in a specification case">signals_only <warning descr="This exception (or a superclass or subclass of it) should be mentioned in the throws clause of this method">EOFException</warning>;</error>
     signals (<error descr="This class could not be resolved, did you forget to import it?">AritheeemeticException</error> e) <error descr="Reference cannot be resolved">e</error> instanceof RuntimeException;
     */
     public float getAverageWeight() /*<error descr="Modifiers are not allowed before a method body">@pure</error>*/ {

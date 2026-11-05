@@ -599,7 +599,10 @@ public final class EscVerifier {
      * "assert Assert x > 0;"
      */
     static @NotNull String traceCode(@NotNull String text) {
-        return ASSERT_LABEL.matcher(text.trim()).replaceFirst("$1 ");
+        // and without the file that OpenJML adds to the step of an invariant, as
+        // "//@ public invariant balance >= 0; // sourcefile: SimpleFileObject[C:\...\Account.java]"
+        String code = text.replaceFirst("\\s*// sourcefile: SimpleFileObject\\[.*]\\s*$", "");
+        return ASSERT_LABEL.matcher(code.trim()).replaceFirst("$1 ");
     }
 
     /**

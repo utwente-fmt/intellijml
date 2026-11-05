@@ -35,17 +35,30 @@ public final class OpenJml {
     }
 
     /**
-     * @return the OpenJML installation in the settings, or null if there is none
+     * @return the OpenJML installation in the settings, or the one that the plugin downloaded when the settings name
+     * none; null if there is none
      */
     public static @Nullable Path installation() {
-        String path = JMLApplicationSettings.getInstance().OPENJML_PATH;
-        if (StringUtil.isEmptyOrSpaces(path)) return null;
+        String path = configuredPath();
+        if (path.isEmpty()) return null;
         try {
-            Path directory = Path.of(path.trim());
+            Path directory = Path.of(path);
             return isInstallation(directory) ? directory : null;
         } catch (InvalidPathException e) {
             return null;
         }
+    }
+
+    /**
+     * @return the folder of OpenJML as the settings page shows it: the one in the settings, or, when they name none,
+     * the folder that the plugin downloaded OpenJML to, if the download is complete (also one that finished while the
+     * settings page was open, or that a download from a notification made); "" if there is none
+     */
+    public static @NotNull String configuredPath() {
+        String path = JMLApplicationSettings.getInstance().OPENJML_PATH;
+        if (!StringUtil.isEmptyOrSpaces(path)) return path.trim();
+        Path downloaded = OpenJmlInstaller.installationDirectory();
+        return missing(downloaded) == null ? downloaded.toString() : "";
     }
 
     /**

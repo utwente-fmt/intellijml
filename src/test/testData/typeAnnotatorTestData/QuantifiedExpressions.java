@@ -21,7 +21,7 @@ public class QuantifiedExpressions {
     */
     /*@ (* wrong type in range *)
       @ ensures (<weak_warning descr="Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression">\forall</weak_warning> int i; <error descr="This must be of type boolean, but is int">i</error>; arr[i] > 0);
-      @ ensures (<weak_warning descr="Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression">\exists</weak_warning> int i; <error descr="This must be of type boolean, but is Object">new Object()</error>; arr[i] > 0);
+      @ ensures (<weak_warning descr="Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression">\exists</weak_warning> int i; <error descr="This must be of type boolean, but is Object"><error descr="Object allocation is not permitted in specification expressions">new Object()</error></error>; arr[i] > 0);
     */
     /*@ (* empty range / no range *)
       @ ensures (<weak_warning descr="Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression">\forall</weak_warning> int i; ; arr[i] > 0);

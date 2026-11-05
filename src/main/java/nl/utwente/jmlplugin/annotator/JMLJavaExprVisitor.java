@@ -13,6 +13,8 @@ import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiTypesUtil;
 import com.intellij.psi.util.TypeConversionUtil;
+import nl.utwente.jmlplugin.psi.JMLGhostDeclaration;
+import nl.utwente.jmlplugin.psi.JMLSetStatement;
 import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -358,7 +360,12 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
                 }
             }
         } else {
-            // is class creation
+            // is class creation, which OpenJML only allows in set statements and the initializers of ghost variables
+            if (PsiTreeUtil.getParentOfType(originalElement, JMLSetStatement.class, JMLGhostDeclaration.class) == null) {
+                // the types are still checked
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.OBJECT_ALLOCATION)
+                        .range(rangeManager.getOriginalRange(expr)).create();
+            }
             PsiJavaCodeReferenceElement ref = expr.getClassReference();
             if (!typeErrorGuard(false, ref)) return;
             // check if reference to the class has been resolved
@@ -479,8 +486,9 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         Purity purity = Purity.of(method);
         if (purity == Purity.NONE) {
             // a method without JML, such as one of the Java library, which IntelliJ's contracts (also inferred ones)
-            // can declare pure
-            PsiAnnotation[] annotations = AnnotationUtil.getAllAnnotations(method, true, null, true);
+            // can declare pure; inferred ones only for the library, since a method of the project needs JML for OpenJML
+            PsiAnnotation[] annotations = AnnotationUtil.getAllAnnotations(method, true, null,
+                    method instanceof PsiCompiledElement);
             for (PsiAnnotation annotation : annotations) {
                 // found a contract
                 if ("org.jetbrains.annotations.Contract".equals(annotation.getQualifiedName())) {

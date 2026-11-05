@@ -46,4 +46,9 @@ public class HelperModifierAllowed {
     public int div8(int a, int b) {
         return a / b;
     }
+
+    // OpenJML also allows a public static helper method
+    //@ helper
+    public static void reset() {
+    }
 }

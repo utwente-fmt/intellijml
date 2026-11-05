@@ -126,6 +126,17 @@ public final class OpenJmlCompiler {
      * @param indicator       shows the progress, and can cancel
      * @return the output of OpenJML, with its exit code
      */
+    /**
+     * @return the encoding of the system, in which a Java program such as OpenJML writes to a pipe
+     */
+    static @NotNull Charset nativeCharset() {
+        try {
+            return Charset.forName(System.getProperty("native.encoding", Charset.defaultCharset().name()));
+        } catch (IllegalArgumentException e) {
+            return Charset.defaultCharset();
+        }
+    }
+
     public static @NotNull ProcessOutput compile(@NotNull Path installation, @NotNull Path workDirectory,
                                                  @NotNull Path outputDirectory, @NotNull List<String> classPath,
                                                  @NotNull Charset encoding, @NotNull List<Path> sources,
@@ -139,7 +150,9 @@ public final class OpenJmlCompiler {
             GeneralCommandLine commandLine = new GeneralCommandLine(OpenJml.launcher(installation).toString(),
                     "-rac", "@" +argumentFile.toString().replace('\\', '/'))
                     .withWorkingDirectory(workDirectory)
-                    .withCharset(StandardCharsets.UTF_8);
+                    // OpenJML writes its messages in the encoding of the system when they go to a pipe, as cp1252 on
+                    // Windows, which UTF-8 would garble in names and paths with accents
+                    .withCharset(nativeCharset());
             return new CapturingProcessHandler(commandLine).runProcessWithProgressIndicator(indicator);
         } catch (IOException e) {
             throw new ExecutionException("Could not prepare the compilation with OpenJML: " + e.getMessage(), e);

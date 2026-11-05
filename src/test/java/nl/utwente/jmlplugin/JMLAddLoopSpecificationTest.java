@@ -83,6 +83,9 @@ public class JMLAddLoopSpecificationTest extends LightJavaCodeInsightFixtureTest
         checkNotOffered("<caret>for (int i = 0; i < next(); i++)");
         checkNotOffered("<caret>for (double i = 0; i < n; i++)");
         checkNotOffered("//@ maintaining 0 <= i;\n        <caret>for (int i = 0; i < n; i++)");
+        // where OpenJML does not accept the clauses above the line: a labelled loop, a loop on the line of an if
+        checkNotOffered("outer: <caret>for (int i = 0; i < n; i++)");
+        checkNotOffered("if (n > 0) <caret>for (int i = 0; i < n; i++)");
         myFixture.configureByText("A.java", "class A {\n    void m(int n) {\n        for (int i = 0; i < n; i++) {\n" +
                 "            n<caret>++;\n        }\n    }\n}\n");
         assertEmpty(myFixture.filterAvailableIntentions(ADD));

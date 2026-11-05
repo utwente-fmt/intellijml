@@ -160,6 +160,7 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
         assertTrue(text, text.contains("import static java.lang.Integer.*;"));
     }
 
+
     /**
      * Types Enter at the caret and checks the result
      */
@@ -357,6 +358,23 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
                 """, "Insert ';'", """
                 class A {
                     //@ requires x > 0;
+                    void m(int x) {}
+                }
+                """);
+    }
+
+    public void testInsertSemicolonOnSecondLine() {
+        // the fix of a clause over two //@ lines, whose end is in the second comment
+        quickFix("""
+                class A {
+                    //@ requires x > 0 &&
+                    //@          x < 10
+                    void m(int x) {}
+                }
+                """, "Insert ';'", """
+                class A {
+                    //@ requires x > 0 &&
+                    //@          x < 10;
                     void m(int x) {}
                 }
                 """);

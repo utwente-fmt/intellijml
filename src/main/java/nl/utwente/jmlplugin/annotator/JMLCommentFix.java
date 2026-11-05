@@ -9,6 +9,7 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
+import com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -45,11 +46,18 @@ public class JMLCommentFix implements IntentionAction {
     static @Nullable JMLCommentFix create(@NotNull PsiElement jml, @NotNull TextRange range, @NotNull String replacement,
                                           @NotNull String text, @NotNull String familyName) {
         InjectedLanguageManager manager = InjectedLanguageManager.getInstance(jml.getProject());
-        if (!(manager.getInjectionHost(jml) instanceof PsiComment host)) return null;
+        PsiFile hostFile = manager.getTopLevelFile(jml);
+        if (hostFile == null) return null;
         TextRange hostRange = manager.injectedToHost(jml, range);
-        int start = host.getTextRange().getStartOffset();
-        if (!host.getTextRange().contains(hostRange)) return null;
-        return new JMLCommentFix(host, hostRange.shiftLeft(start), replacement, text, familyName);
+        // the comment that the range is in: a clause over several //@ lines is one JML file in several comments, and
+        // the injection host is only the first of them
+        for (int offset : new int[]{hostRange.getStartOffset(), hostRange.getStartOffset() - 1}) {
+            PsiComment host = offset < 0 ? null : PsiTreeUtil.getParentOfType(hostFile.findElementAt(offset), PsiComment.class, false);
+            if (host != null && host.getTextRange().contains(hostRange)) {
+                return new JMLCommentFix(host, hostRange.shiftLeft(host.getTextRange().getStartOffset()), replacement, text, familyName);
+            }
+        }
+        return null;
     }
 
     @Override

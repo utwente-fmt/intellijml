@@ -37,6 +37,9 @@ public class JMLSplitClauseTest extends LightJavaCodeInsightFixtureTestCase {
         assertNull(SplitClauseIntention.conjuncts("a && b <==> c"));
         assertNull(SplitClauseIntention.conjuncts("a && b ? c : d"));
         assertNull(SplitClauseIntention.conjuncts("a"));
+        // a quantifier without parentheses: its range is not a part
+        assertNull(SplitClauseIntention.conjuncts("\\forall int i; 0 <= i && i < a.length; a[i] > 0"));
+        assertNull(SplitClauseIntention.conjuncts("a.length > 0 && \\forall int i; 0 <= i && i < a.length; a[i] > 0"));
     }
 
     public void testEnsuresOnItsOwnLine() {

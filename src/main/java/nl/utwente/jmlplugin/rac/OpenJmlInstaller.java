@@ -1,6 +1,7 @@
 package nl.utwente.jmlplugin.rac;
 
 import com.intellij.openapi.application.PathManager;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.util.SystemInfo;
 import com.intellij.util.io.Decompressor;
@@ -20,6 +21,8 @@ import java.util.EnumSet;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Stream;
 
 /**
@@ -74,6 +77,26 @@ public final class OpenJmlInstaller {
      * @return the installation
      */
     public static @NotNull Path install(@NotNull ProgressIndicator indicator) throws IOException {
+        // one download at a time: one from a notification and one from the settings page would write the same file,
+        // so the second waits for the first, and then finds OpenJML there
+        while (true) {
+            try {
+                if (DOWNLOAD.tryLock(100, TimeUnit.MILLISECONDS)) break;
+            } catch (InterruptedException e) {
+                throw new ProcessCanceledException(e);
+            }
+            indicator.checkCanceled();
+        }
+        try {
+            return installLocked(indicator);
+        } finally {
+            DOWNLOAD.unlock();
+        }
+    }
+
+    private static final ReentrantLock DOWNLOAD = new ReentrantLock();
+
+    private static @NotNull Path installLocked(@NotNull ProgressIndicator indicator) throws IOException {
         Path installation = installationDirectory();
         // also again after a download that was not unpacked completely
         if (OpenJml.missing(installation) == null) return installation;

@@ -324,7 +324,7 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         // the signatures as OpenJML writes them
         for (String openJml : List.of("demo.Shapes.Shapes()", "demo.Shapes.id(int)", "demo.Shapes.id(String)",
                 "demo.Shapes.count(java.util.List<String>,int...)", "demo.Shapes.array(java.util.Map.Entry<String,Integer>[])",
-                "demo.Shapes.generic(T)", "demo.Shapes.Inner.one()", "demo.Shapes.find(@Nullable String,int @Nullable [])",
+                "demo.Shapes.<T>generic(T)", "demo.Shapes.<T extends java.lang.Comparable<T>>generic(T)", "demo.Shapes.Inner.one()", "demo.Shapes.find(@Nullable String,int @Nullable [])",
                 "demo.Shapes.find(java.lang.@org.jmlspecs.annotation.Nullable String,int @org.jmlspecs.annotation.Nullable [])")) {
             assertTrue(openJml + " not in " + keys.keySet(), keys.containsKey(EscOutput.key(openJml)));
         }
@@ -357,7 +357,11 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
      * Shows what OpenJML found about abs, as the verifier does when OpenJML has finished
      */
     private void verifiedAbs() {
-        myFixture.configureByText("Account.java", ACCOUNT);
+        verifiedAbs(ACCOUNT);
+    }
+
+    private void verifiedAbs(String text) {
+        myFixture.configureByText("Account.java", text);
         Document document = myFixture.getEditor().getDocument();
         EscVerifier.Snapshot snapshot = new EscVerifier.Snapshot(document);
         EscResults results = EscResults.getInstance(getProject());
@@ -565,6 +569,16 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
                 warnings);
     }
 
+    public void testProblemsInEditorDespiteErrors() {
+        // an error elsewhere in the file does not hide what OpenJML found (an external annotator shows nothing then,
+        // unless it says otherwise)
+        int end = ACCOUNT.lastIndexOf('}');
+        verifiedAbs(ACCOUNT.substring(0, end) + "    int broken() { return undefinedName; }\n" + ACCOUNT.substring(end));
+        long openJml = myFixture.doHighlighting(HighlightSeverity.WARNING).stream()
+                .filter(info -> info.getDescription() != null && info.getDescription().startsWith("OpenJML")).count();
+        assertEquals(3, openJml);
+    }
+
     public void testGutterIcons() {
         verifiedAbs();
         myFixture.doHighlighting();
@@ -707,6 +721,9 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         assertEquals("assert Math.abs(x) > 0;", EscVerifier.traceCode("assert Math.abs(x) > 0;"));
         assertEquals("assert MAX >= x;", EscVerifier.traceCode("assert Assert MAX >= x;"));
         assertEquals("assert FLAG instanceof Object;", EscVerifier.traceCode("assert FLAG instanceof Object;"));
+        // not the file that OpenJML adds to an invariant
+        assertEquals("//@ public invariant balance >= 0;", EscVerifier.traceCode(
+                "\t//@ public invariant balance >= 0; // sourcefile: SimpleFileObject[C:\\Users\\Zoë\\src\\demo\\Account.java]"));
         assertEquals("x = 1;", EscVerifier.traceCode("x = 1;"));
     }
 }

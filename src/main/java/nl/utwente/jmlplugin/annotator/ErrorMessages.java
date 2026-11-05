@@ -38,7 +38,7 @@ public final class ErrorMessages {
 
     // Semantic error messages
     public static final String REQUIRES_FIRST = "Requires clauses must be placed before all other clauses in a specification as it is a pre-condition";
-    public static final String MULTIPLE_SIGNALS_ONLY = "Use a single signals_only clause to avoid confusion";
+    public static final String MULTIPLE_SIGNALS_ONLY = "At most one signals_only clause is permitted in a specification case";
     // OpenJML's messages for clauses that a normal_behavior or exceptional_behavior does not allow
     public static final String SIGNALS_IN_NORMAL_BEHAVIOR = "Signals clauses are not permitted in normal specification cases";
     public static final String SIGNALS_ONLY_IN_NORMAL_BEHAVIOR = "Signals_only clauses are not permitted in normal specification cases";
@@ -99,6 +99,7 @@ public final class ErrorMessages {
     public static final String ARRAY_DIM_NO_INT = "Array dimensions should be of type int or something that can be converted to int";
     public static final String ARRAY_INITIALIZER_WRONG_TYPE = "Initializer is not the same type as the array element type";
     public static final String METHOD_UNRESOLVED = "Method could not be resolved, maybe the parameters do not correspond?";
+    public static final String OBJECT_ALLOCATION = "Object allocation is not permitted in specification expressions";
     public static final String CONSTRUCTOR_UNRESOLVED = "Constructor could not be resolved, maybe the parameters do not correspond?";
     public static final String INCOMPATIBLE_CAST = "Incompatible type cast";
     public static final String INVARIANT_SHOULD_BE_STATIC = "A static invariant can only see static fields";

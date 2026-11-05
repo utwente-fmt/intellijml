@@ -24,7 +24,7 @@ public class JavaCallExpressions {
     // overloading
     //@ invariant overload(7);
     //@ invariant overload("string");
-    //@ invariant <error descr="Method could not be resolved, maybe the parameters do not correspond?">overload(new Object())</error>;
+    //@ invariant <error descr="Method could not be resolved, maybe the parameters do not correspond?">overload(<error descr="Object allocation is not permitted in specification expressions">new Object()</error>)</error>;
     //@ invariant overload("string",10);
 
     /*@pure*/int getNum() {

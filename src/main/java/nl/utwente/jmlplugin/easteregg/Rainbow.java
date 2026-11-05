@@ -53,7 +53,8 @@ public class Rainbow implements Annotator {
     List<Color> getColors(int count) {
         // get a subset of the colors
         List<Color> colorsSubset = new ArrayList<>();
-        int increments = colors.size() / Math.min(count, colors.size() - 1);
+        // an empty JML comment has a length of 0
+        int increments = colors.size() / Math.max(1, Math.min(count, colors.size() - 1));
         for (int i = 0; i < colors.size(); i += increments) {
             colorsSubset.add(colors.get(i));
         }

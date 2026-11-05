@@ -12,9 +12,12 @@ public class SpecialExpressions {
         //@ decreases a.length - \count;
         for (int v : a) {
             //@ assert \count >= 0;
+            // OpenJML's other name for it
+            //@ assert \index == \count;
             s += v > 0 ? v : 0;
         }
         //@ assert <error descr="A \count token is used outside the scope of a foreach loop">\count</error> >= 0;
+        //@ assert <error descr="A \count token is used outside the scope of a foreach loop">\index</error> >= 0;
         //@ maintaining <error descr="This must be of type boolean, but is int">\count</error>;
         while (s > 100) {
             s--;

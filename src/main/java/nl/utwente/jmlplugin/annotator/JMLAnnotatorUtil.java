@@ -286,6 +286,13 @@ public class JMLAnnotatorUtil {
      * @return the number of times the keyword occurs in the specification case
      */
     public static int countInSpecCase(@NotNull PsiElement element, String keyword) {
+        return countInSpecCase(element, keyword, false);
+    }
+
+    /**
+     * @param before whether only the occurrences before the element count
+     */
+    public static int countInSpecCase(@NotNull PsiElement element, String keyword, boolean before) {
         PsiComment myComment = getCommentContext(element);
         if (myComment == null) return 0;
         ArrayList<PsiComment> previousComments = collectPreviousComments(myComment, false);
@@ -311,6 +318,7 @@ public class JMLAnnotatorUtil {
                 break;
             }
         }
+        if (before) end = Math.max(start, Math.min(end, elementOffset));
         Matcher matcher = keywordPattern(keyword).matcher(text).region(start, end);
         int count = 0;
         while (matcher.find()) {

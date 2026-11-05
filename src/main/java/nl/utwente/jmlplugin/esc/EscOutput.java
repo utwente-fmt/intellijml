@@ -296,6 +296,14 @@ public final class EscOutput {
             String name = type.substring(0, end);
             types.add(name.substring(name.lastIndexOf('.') + 1) + type.substring(end));
         }
-        return signature.substring(0, open) + "(" + String.join(",", types) + ")";
+        // without the type parameters of a generic method, as in "demo.Account.<T>generic(T[])"
+        StringBuilder name = new StringBuilder();
+        depth = 0;
+        for (char c : signature.substring(0, open).toCharArray()) {
+            if (c == '<') depth++;
+            else if (c == '>') depth--;
+            else if (depth == 0) name.append(c);
+        }
+        return name + "(" + String.join(",", types) + ")";
     }
 }
