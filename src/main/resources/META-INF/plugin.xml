@@ -71,6 +71,9 @@
         <lang.documentationProvider language="JAVA"
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLDocumentationProvider"
                                     order="first"/>
+        <!-- explanations of the JML keywords, on hover and with Ctrl+Q -->
+        <lang.documentationProvider language="JML"
+                                    implementationClass="nl.utwente.jmlplugin.documentation.JMLKeywordDocumentationProvider"/>
     </extensions>
 
     <actions>

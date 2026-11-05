@@ -22,6 +22,10 @@
   clause, and for a sum, product, negation or division that may not fit in its type, a `requires` clause that
   bounds it is added, such as `//@ requires a + b <= Integer.MAX_VALUE;`, when the operation only uses parameters
   and fields that the method does not change before.
+- Hovering over a JML keyword, or Ctrl+Q on it, explains it for students: what `requires`, `\old`, `maintaining`,
+  `spec_public`, `\forall`, `==>` and the other keywords mean, with an example in the colours of the editor, the
+  other ways to write it (such as `modifies` for `assignable`, and the `_redundantly` forms), and a link to the page
+  of the OpenJML tutorial about it.
 - Enter in a `/*@ ... @*/` comment starts the new line with an `@` below the one above it, and closes a comment
   that is not closed yet with `@*/`. Enter in the middle of a `//@` comment makes the rest a `//@` comment too.
   This replaces the live templates that Enter expanded after `@` and `;`.

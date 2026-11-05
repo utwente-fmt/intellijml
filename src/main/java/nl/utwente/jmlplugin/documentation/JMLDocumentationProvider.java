@@ -60,38 +60,9 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
                         jmlFound = true;
                     }
 
-                    // Get a lexer to get the token types in the comment
-                    JMLSyntaxHighlighter syntaxHighlighter = new JMLSyntaxHighlighter();
-                    JMLMultiLayerLexer lexer = new JMLMultiLayerLexer();
                     // remove the start of the comment
                     String jmlText = "\n"+jmlComment.getText().replaceAll("(//|/\\*|\\*/)","").trim();
-
-                    // go through all tokens
-                    lexer.start(jmlText);
-                    while(lexer.getCurrentPosition().getOffset() < jmlText.length()) {
-                        IElementType type = lexer.getTokenType();
-                        if (type == null) break;
-                        TextAttributesKey[] arr = syntaxHighlighter.getTokenHighlights(type);
-                        // get the first, as that is usually the JML highlighting, in the colour scheme that is in use
-                        TextAttributes attrs = arr.length > 0 ? scheme.getAttributes(arr[0]) : null;
-                        Color fg = attrs != null ? attrs.getForegroundColor() : null;
-                        if (fg != null) {
-                            // add foreground color and optional font-weight
-                            resultBuilder.append("<span style=\"color:#").append(Integer.toHexString(fg.getRGB()).substring(2)).append(";");
-                            if (attrs.getFontType() == Font.BOLD) resultBuilder.append("font-weight:bold;");
-                            resultBuilder. append("\">").append(StringUtil.escapeXmlEntities(lexer.getTokenText())).append("</span>");
-                        } else if (lexer.getTokenText().length() == 0) {
-                            // don't add span around empty tokens
-                            resultBuilder.append(lexer.getTokenText());
-                        } else {
-                            // no highlighting found, so just add the text itself (escaped, as < and & are HTML),
-                            // but do newlines with HTML newlines
-                            String text = StringUtil.escapeXmlEntities(lexer.getTokenText()).replaceAll("\n[ \t\r]*","<br/>");
-                            resultBuilder.append("<span>").append(text).append("</span>");
-                        }
-
-                        lexer.advance();
-                    }
+                    appendHighlighted(resultBuilder, jmlText, scheme);
                 }
             }
 
@@ -102,5 +73,44 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
         }
 
         return original;
+    }
+
+    /**
+     * Appends JML text as HTML, in the colours that the editor gives it in the colour scheme
+     *
+     * @param resultBuilder the HTML so far
+     * @param jmlText       the JML, such as "@ requires x > 0;"
+     */
+    static void appendHighlighted(StringBuilder resultBuilder, String jmlText, EditorColorsScheme scheme) {
+        // Get a lexer to get the token types in the comment
+        JMLSyntaxHighlighter syntaxHighlighter = new JMLSyntaxHighlighter();
+        JMLMultiLayerLexer lexer = new JMLMultiLayerLexer();
+
+        // go through all tokens
+        lexer.start(jmlText);
+        while(lexer.getCurrentPosition().getOffset() < jmlText.length()) {
+            IElementType type = lexer.getTokenType();
+            if (type == null) break;
+            TextAttributesKey[] arr = syntaxHighlighter.getTokenHighlights(type);
+            // get the first, as that is usually the JML highlighting, in the colour scheme that is in use
+            TextAttributes attrs = arr.length > 0 ? scheme.getAttributes(arr[0]) : null;
+            Color fg = attrs != null ? attrs.getForegroundColor() : null;
+            if (fg != null) {
+                // add foreground color and optional font-weight
+                resultBuilder.append("<span style=\"color:#").append(Integer.toHexString(fg.getRGB()).substring(2)).append(";");
+                if (attrs.getFontType() == Font.BOLD) resultBuilder.append("font-weight:bold;");
+                resultBuilder. append("\">").append(StringUtil.escapeXmlEntities(lexer.getTokenText())).append("</span>");
+            } else if (lexer.getTokenText().length() == 0) {
+                // don't add span around empty tokens
+                resultBuilder.append(lexer.getTokenText());
+            } else {
+                // no highlighting found, so just add the text itself (escaped, as < and & are HTML),
+                // but do newlines with HTML newlines
+                String text = StringUtil.escapeXmlEntities(lexer.getTokenText()).replaceAll("\n[ \t\r]*","<br/>");
+                resultBuilder.append("<span>").append(text).append("</span>");
+            }
+
+            lexer.advance();
+        }
     }
 }
