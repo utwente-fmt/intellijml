@@ -13,6 +13,15 @@
   method that OpenJML cannot verify, the values of a counterexample are shown at the end of the lines, as the
   debugger shows values: the parameters for which the method goes wrong, and the variables, fields and conditions
   on the lines it goes through, also on an invariant that does not hold.
+- What OpenJML cannot prove is said in plain words, such as "OpenJML cannot prove that the invariant on line 6
+  holds when reset() returns (InvariantExit)", with a hint on what it means and how it is usually fixed, and
+  OpenJML's own message, in the tooltip. A failure and the clause it is about link to each other, in the tooltip and
+  with Alt+Enter: a postcondition that does not hold at a return statement and the ensures clause, a precondition
+  of a called method and the part of it that may be false, an invariant and the method that breaks it.
+- Quick fixes for what OpenJML cannot prove: a location that the method assigns is added to its `assignable`
+  clause, and for a sum, product, negation or division that may not fit in its type, a `requires` clause that
+  bounds it is added, such as `//@ requires a + b <= Integer.MAX_VALUE;`, when the operation only uses parameters
+  and fields that the method does not change before.
 - Enter in a `/*@ ... @*/` comment starts the new line with an `@` below the one above it, and closes a comment
   that is not closed yet with `@*/`. Enter in the middle of a `//@` comment makes the rest a `//@` comment too.
   This replaces the live templates that Enter expanded after `@` and `;`.

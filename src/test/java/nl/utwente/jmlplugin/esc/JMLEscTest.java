@@ -377,14 +377,23 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
 
             @Override
             public void diagnostic(@NotNull Diagnostic diagnostic) {
-                int offset = snapshot.offset(diagnostic.line(), diagnostic.column());
-                EscVerifier.add(getProject(), myFixture.getFile().getVirtualFile(), document, offset, diagnostic,
-                        List.of(Path.of("src")), run);
+                EscVerifier.place(getProject(), diagnostic, places(snapshot), List.of(Path.of("src")), run);
             }
         });
         OUTPUT.lines().filter(line -> !line.contains("deposit")).forEach(parser::line);
         parser.flush();
         snapshot.dispose();
+    }
+
+    /**
+     * @return the places in the file of the fixture, for any path that OpenJML writes
+     */
+    private EscVerifier.Places places(EscVerifier.Snapshot snapshot) {
+        Document document = myFixture.getEditor().getDocument();
+        return (path, line, column) -> {
+            int offset = snapshot.offset(line, column);
+            return offset < 0 ? null : new EscVerifier.Place(myFixture.getFile().getVirtualFile(), document, offset);
+        };
     }
 
     /**
@@ -415,9 +424,7 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
 
             @Override
             public void diagnostic(@NotNull Diagnostic diagnostic) {
-                int offset = snapshot.offset(diagnostic.line(), diagnostic.column());
-                EscVerifier.add(getProject(), myFixture.getFile().getVirtualFile(), document, offset, diagnostic,
-                        List.of(Path.of("src")), run);
+                EscVerifier.place(getProject(), diagnostic, places(snapshot), List.of(Path.of("src")), run);
             }
 
             @Override
@@ -486,9 +493,10 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
             }
         }
         assertEquals(Set.of(
-                "-x | OpenJML: The prover cannot establish an assertion (ArithmeticOperationRange) in method abs: int negation",
-                "return x < 0 ? -x : x; | OpenJML: The prover cannot establish an assertion (Postcondition: demo\\Account.java:17:) in method abs",
-                "ensures \\result >= 0; | OpenJML: Associated declaration: demo\\Account.java:19:"), warnings);
+                "-x | OpenJML cannot prove that this negation fits in an int, as -Integer.MIN_VALUE does not (ArithmeticOperationRange)",
+                "return x < 0 ? -x : x; | OpenJML cannot prove that the postcondition on line 17 holds when abs() returns (Postcondition)",
+                "ensures \\result >= 0; | OpenJML cannot prove that this postcondition holds when abs() returns (see line 19) (Postcondition)"),
+                warnings);
     }
 
     public void testGutterIcons() {

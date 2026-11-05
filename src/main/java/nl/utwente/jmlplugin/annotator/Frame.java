@@ -27,13 +27,13 @@ import java.util.regex.Pattern;
  * \everything" (also when it is not specified), as in OpenJML; then there is no frame to check.
  */
 final class Frame {
-    private static final Pattern ALSO = Pattern.compile("(?<![\\w$])also(?![\\w$])");
+    static final Pattern ALSO = Pattern.compile("(?<![\\w$])also(?![\\w$])");
     // the clauses of a method specification, to tell a specification case from the text before the "also" that an
     // overriding method starts with
     private static final Pattern CLAUSE = Pattern.compile("(?<![\\w$\\\\])(?:requires|pre|ensures|post|signals|signals_only"
             + "|diverges|reads|accessible|old|assignable|modifiable|modifies|assigns)(?![\\w$])");
     private static final Pattern FRAME_CLAUSE = Pattern.compile("(?<![\\w$\\\\])(?:assignable|modifiable|modifies|assigns)(?![\\w$])");
-    private static final Pattern INFORMAL_OR_STRING = Pattern.compile("\\(\\*.*?\\*\\)|\"(?:[^\"\\\\]|\\\\.)*\"", Pattern.DOTALL);
+    static final Pattern INFORMAL_OR_STRING = Pattern.compile("\\(\\*.*?\\*\\)|\"(?:[^\"\\\\]|\\\\.)*\"", Pattern.DOTALL);
     // an in clause, which puts a field in the data group of a model field, as in "private int count; //@ in size;"
     private static final Pattern IN_CLAUSE = Pattern.compile("(?<![\\w$])in\\s+([^;]+);");
 
@@ -223,7 +223,7 @@ final class Frame {
     /**
      * @return the JML comments of the method that are not about its class, such as an invariant, in their order
      */
-    private static List<PsiComment> jmlComments(@NotNull PsiMethod method) {
+    static List<PsiComment> jmlComments(@NotNull PsiMethod method) {
         List<PsiComment> comments = new ArrayList<>(JMLAnnotatorUtil.commentsAbove(method));
         Collections.reverse(comments);
         comments.addAll(PsiTreeUtil.getChildrenOfTypeAsList(method, PsiComment.class));

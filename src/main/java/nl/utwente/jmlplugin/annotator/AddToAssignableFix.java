@@ -9,24 +9,55 @@ import com.intellij.openapi.fileTypes.PlainTextFileType;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
+import com.intellij.psi.util.PsiTreeUtil;
 import nl.utwente.jmlplugin.psi.JMLAssignableClause;
 import nl.utwente.jmlplugin.psi.JMLStoreRef;
 import nl.utwente.jmlplugin.psi.JMLStoreRefKeyword;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Quick fix that adds a location to the assignable clause of a method, as in "assignable count, total;", or replaces
  * \nothing with it
  */
-class AddToAssignableFix implements LocalQuickFix {
+public class AddToAssignableFix implements LocalQuickFix {
     private final SmartPsiElementPointer<JMLAssignableClause> clause;
     private final String location;
 
     AddToAssignableFix(@NotNull JMLAssignableClause clause, @NotNull String location) {
         this.clause = SmartPointerManager.createPointer(clause);
         this.location = location;
+    }
+
+    /**
+     * @param file     a Java file
+     * @param offset   an offset in the file
+     * @param location the location to add, such as "count" or "values[0]"
+     * @return the fix that adds the location to the assignable clause on the line of the offset, or null if the line
+     * has none
+     */
+    public static @Nullable AddToAssignableFix onLine(@NotNull PsiFile file, int offset, @NotNull String location) {
+        Document document = PsiDocumentManager.getInstance(file.getProject()).getDocument(file);
+        if (document == null || offset > document.getTextLength()) return null;
+        int line = document.getLineNumber(offset);
+        int start = document.getLineStartOffset(line);
+        int end = document.getLineEndOffset(line);
+        InjectedLanguageManager manager = InjectedLanguageManager.getInstance(file.getProject());
+        List<JMLAssignableClause> clauses = new ArrayList<>();
+        for (PsiElement leaf = file.findElementAt(start); leaf != null && leaf.getTextRange().getStartOffset() <= end;
+             leaf = PsiTreeUtil.nextLeaf(leaf)) {
+            if (!(leaf instanceof PsiComment comment)) continue;
+            manager.enumerate(comment, (injected, places) -> {
+                for (JMLAssignableClause clause : PsiTreeUtil.findChildrenOfType(injected, JMLAssignableClause.class)) {
+                    int clauseStart = manager.injectedToHost(clause, clause.getTextRange()).getStartOffset();
+                    if (clauseStart >= start && clauseStart <= end && !clauses.contains(clause)) clauses.add(clause);
+                }
+            });
+        }
+        return clauses.isEmpty() ? null : new AddToAssignableFix(clauses.get(0), location);
     }
 
     @Override

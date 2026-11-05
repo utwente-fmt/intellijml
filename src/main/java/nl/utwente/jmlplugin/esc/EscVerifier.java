@@ -31,6 +31,7 @@ import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
+import com.intellij.psi.util.PsiTreeUtil;
 import nl.utwente.jmlplugin.esc.EscOutput.Counterexample;
 import nl.utwente.jmlplugin.esc.EscOutput.Diagnostic;
 import nl.utwente.jmlplugin.esc.EscOutput.Status;
@@ -112,6 +113,7 @@ public final class EscVerifier {
         // the methods and lines as they are now, to show the results in the right place if the file is edited while
         // OpenJML runs
         Snapshot snapshot = new Snapshot(document);
+        Places places = places(virtualFile, snapshot);
         EscResults results = EscResults.getInstance(project);
         Map<String, PsiMethod> scope = new LinkedHashMap<>();
         for (PsiMethod psiMethod : method == null ? EscMethods.methods(file) : EscMethods.overloads(method)) {
@@ -156,7 +158,7 @@ public final class EscVerifier {
                     public void diagnostic(@NotNull Diagnostic diagnostic) {
                         if (diagnostic.kind().equals("error")) summary.errors++;
                         ApplicationManager.getApplication().invokeLater(() -> {
-                            place(project, diagnostic, virtualFile, snapshot, sourceRoots, run);
+                            place(project, diagnostic, places, sourceRoots, run);
                             restart(project, virtualFile);
                         }, project.getDisposed());
                     }
@@ -329,40 +331,127 @@ public final class EscVerifier {
     }
 
     /**
-     * Shows a message of OpenJML in the editor
+     * A place in a file that OpenJML reports
+     *
+     * @param file     the file
+     * @param document its document
+     * @param offset   the offset of the place in the document as it is now
      */
-    static void place(@NotNull Project project, @NotNull Diagnostic diagnostic, @NotNull VirtualFile verifiedFile,
-                      @NotNull Snapshot snapshot, @NotNull List<Path> sourceRoots, long run) {
-        VirtualFile file;
-        try {
-            file = LocalFileSystem.getInstance().findFileByNioFile(Path.of(diagnostic.file()));
-        } catch (InvalidPathException e) {
-            return;
-        }
-        if (file == null) return;
-        Document document = FileDocumentManager.getInstance().getDocument(file);
-        if (document == null) return;
-        int offset = file.equals(verifiedFile) ? snapshot.offset(diagnostic.line(), diagnostic.column())
-                : Snapshot.offset(document, diagnostic.line(), diagnostic.column());
-        if (offset >= 0) add(project, file, document, offset, diagnostic, sourceRoots, run);
+    record Place(@NotNull VirtualFile file, @NotNull Document document, int offset) {
     }
 
     /**
-     * Shows a message of OpenJML in the editor, at an offset in the current document
+     * Finds the places that OpenJML reports in the documents as they are now
      */
-    static void add(@NotNull Project project, @NotNull VirtualFile file, @NotNull Document document, int offset,
-                    @NotNull Diagnostic diagnostic, @NotNull List<Path> sourceRoots, long run) {
+    interface Places {
+        /**
+         * @param path   the path of the file, as OpenJML writes it
+         * @param line   the line, starting at 1
+         * @param column the column, starting at 0, or -1 for the start of the code on the line
+         * @return the place, or null if the file is not found or the line has changed since OpenJML started
+         */
+        @Nullable Place find(@NotNull String path, int line, int column);
+    }
+
+    /**
+     * @return the places in the files on disk, and in the verified file as it was when OpenJML started
+     */
+    static @NotNull Places places(@NotNull VirtualFile verifiedFile, @NotNull Snapshot snapshot) {
+        return (path, line, column) -> {
+            VirtualFile file;
+            try {
+                file = LocalFileSystem.getInstance().findFileByNioFile(Path.of(path));
+            } catch (InvalidPathException e) {
+                return null;
+            }
+            if (file == null) return null;
+            Document document = FileDocumentManager.getInstance().getDocument(file);
+            if (document == null) return null;
+            int offset = file.equals(verifiedFile) ? snapshot.offset(line, column) : Snapshot.offset(document, line, column);
+            return offset < 0 ? null : new Place(file, document, offset);
+        };
+    }
+
+    /**
+     * Shows a message of OpenJML in the editor, with what it is about: for a failure, the place it is related to,
+     * such as the ensures clause of a postcondition that does not hold; for a message about the failure before it,
+     * such as "Associated declaration" at the ensures clause, that failure
+     */
+    static void place(@NotNull Project project, @NotNull Diagnostic diagnostic, @NotNull Places places,
+                      @NotNull List<Path> sourceRoots, long run) {
+        Place place = places.find(diagnostic.file(), diagnostic.line(), diagnostic.column());
+        if (place == null) return;
+        Document document = place.document();
+        int offset = place.offset();
         PsiDocumentManager.getInstance(project).commitDocument(document);
-        PsiFile psiFile = PsiManager.getInstance(project).findFile(file);
+        PsiFile psiFile = PsiManager.getInstance(project).findFile(place.file());
         TextRange range = psiFile == null ? null : range(psiFile, document, offset);
         if (range == null) {
             int lineEnd = document.getLineEndOffset(document.getLineNumber(offset));
             range = new TextRange(offset, Math.min(offset + 1, lineEnd));
         }
-        RangeMarker marker = document.createRangeMarker(range);
         String method = diagnostic.method() == null ? null : EscOutput.key(diagnostic.method());
-        EscResults.getInstance(project).add(new EscResults.Problem(file, marker, severity(diagnostic.kind()),
-                message(diagnostic.message(), sourceRoots), method, run));
+        EscResults results = EscResults.getInstance(project);
+        EscMessages.Explanation explanation = null;
+        Place related = null;
+        EscMessages.Failure failure = EscMessages.failure(diagnostic.message());
+        if (failure != null) {
+            if (failure.file() != null) related = places.find(failure.file(), failure.line(), -1);
+            explanation = new EscMessages.Explanation(EscMessages.Role.FAILURE, failure,
+                    subject(project, failure, related), null);
+        } else {
+            EscMessages.Role role = EscMessages.role(diagnostic.message());
+            EscResults.Problem cause = role == null ? null : results.lastFailure(method, run);
+            if (cause != null && cause.explanation() != null && cause.range().isValid()
+                    && (role != EscMessages.Role.DECLARATION || isAt(cause, places, diagnostic.message()))) {
+                explanation = new EscMessages.Explanation(role, cause.explanation().failure(),
+                        cause.explanation().subject(), EscMessages.conjunct(diagnostic.message()));
+                related = new Place(cause.file(), cause.range().getDocument(), cause.range().getStartOffset());
+            }
+        }
+        RangeMarker relatedMarker = related == null ? null
+                : related.document().createRangeMarker(related.offset(), related.offset());
+        results.add(new EscResults.Problem(place.file(), document.createRangeMarker(range), severity(diagnostic.kind()),
+                message(diagnostic.message(), sourceRoots), method, run, explanation,
+                related == null ? null : related.file(), relatedMarker));
+    }
+
+    /**
+     * @param message an "Associated declaration" message
+     * @return whether the failure is on the line that the message gives, if that line can be found
+     */
+    private static boolean isAt(@NotNull EscResults.Problem failure, @NotNull Places places, @NotNull String message) {
+        String file = EscMessages.declarationFile(message);
+        Place place = file == null ? null : places.find(file, EscMessages.declarationLine(message), -1);
+        if (place == null) return true;
+        Document document = failure.range().getDocument();
+        return place.document() == document
+                && document.getLineNumber(place.offset()) == document.getLineNumber(failure.range().getStartOffset());
+    }
+
+    /**
+     * @param related the place that OpenJML relates the failure to, or null
+     * @return the method that the failure is about, such as "deposit()" for a precondition of deposit that a call
+     * may not meet, or null if there is none or it is not found
+     */
+    private static @Nullable String subject(@NotNull Project project, @NotNull EscMessages.Failure failure,
+                                            @Nullable Place related) {
+        String callee = EscMessages.callee(failure);
+        if (callee != null) return callee;
+        if (related == null || !Set.of("Precondition", "UndefinedCalledMethodPrecondition", "UndefinedPrecondition")
+                .contains(failure.kind())) {
+            return null;
+        }
+        // OpenJML relates it to the declaration of the method
+        PsiDocumentManager.getInstance(project).commitDocument(related.document());
+        PsiFile file = PsiManager.getInstance(project).findFile(related.file());
+        PsiElement element = file == null ? null : file.findElementAt(related.offset());
+        PsiMethod method = PsiTreeUtil.getParentOfType(element, PsiMethod.class, false);
+        PsiIdentifier name = method == null ? null : method.getNameIdentifier();
+        if (name == null) return null;
+        Document document = related.document();
+        if (document.getLineNumber(name.getTextOffset()) != document.getLineNumber(related.offset())) return null;
+        return method.getName() + "()";
     }
 
     /**

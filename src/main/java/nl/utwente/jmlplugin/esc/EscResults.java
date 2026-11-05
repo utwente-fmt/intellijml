@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
@@ -52,15 +53,30 @@ public final class EscResults implements Disposable {
     /**
      * A message of OpenJML about a place in the code
      *
-     * @param file     the file
-     * @param range    the place
-     * @param severity how it is shown
-     * @param message  the message
-     * @param method   the key of the method whose proof gave the message, or null
-     * @param run      the verification that gave the message, from {@link #newRun}
+     * @param file        the file
+     * @param range       the place
+     * @param severity    how it is shown
+     * @param message     OpenJML's message
+     * @param method      the key of the method whose proof gave the message, or null
+     * @param run         the verification that gave the message, from {@link #newRun}
+     * @param explanation what the message is about, to put it in plain words, or null if it is another message
+     * @param relatedFile the file of the place that the message is related to, or null
+     * @param related     the place that the message is related to, such as the ensures clause of a postcondition that
+     *                    does not hold, and the other way round, or null
      */
     public record Problem(@NotNull VirtualFile file, @NotNull RangeMarker range, @NotNull HighlightSeverity severity,
-                          @NotNull String message, @Nullable String method, long run) {
+                          @NotNull String message, @Nullable String method, long run,
+                          @Nullable EscMessages.Explanation explanation, @Nullable VirtualFile relatedFile,
+                          @Nullable RangeMarker related) {
+        public Problem(@NotNull VirtualFile file, @NotNull RangeMarker range, @NotNull HighlightSeverity severity,
+                       @NotNull String message, @Nullable String method, long run) {
+            this(file, range, severity, message, method, run, null, null, null);
+        }
+
+        void dispose() {
+            range.dispose();
+            if (related != null) related.dispose();
+        }
     }
 
     /**
@@ -169,7 +185,7 @@ public final class EscResults implements Disposable {
         problems.removeIf(problem -> {
             boolean remove = keys.contains(problem.method())
                     || problem.method() == null && problem.file().equals(wholeFile);
-            if (remove) problem.range().dispose();
+            if (remove) problem.dispose();
             return remove;
         });
         values.removeIf(lineValues -> {
@@ -208,6 +224,20 @@ public final class EscResults implements Disposable {
         problems.add(problem);
     }
 
+    /**
+     * @param method the key of a method, or null for messages outside a proof
+     * @return the last failure that the verification found in the method, if the problems added after it are about it
+     */
+    @Nullable Problem lastFailure(@Nullable String method, long run) {
+        for (int i = problems.size() - 1; i >= 0; i--) {
+            Problem problem = problems.get(i);
+            if (problem.run() != run || !Objects.equals(problem.method(), method)) continue;
+            if (problem.explanation() == null) return null;
+            if (problem.explanation().role() == EscMessages.Role.FAILURE) return problem;
+        }
+        return null;
+    }
+
     public @NotNull String output() {
         return output;
     }
@@ -219,7 +249,7 @@ public final class EscResults implements Disposable {
     @Override
     public void dispose() {
         methods.values().forEach(result -> result.range().dispose());
-        problems.forEach(problem -> problem.range().dispose());
+        problems.forEach(Problem::dispose);
         values.forEach(lineValues -> lineValues.line().dispose());
         methods.clear();
         problems.clear();
