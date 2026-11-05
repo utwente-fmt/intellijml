@@ -12,6 +12,22 @@ The installable plugin file (a .jar file) can be found in the [releases section]
 
 An installation guide can be found [here](docs/Installation_Guide.pdf)
 
+## Writing JML
+
+The plugin checks JML in `//@` and `/*@ ... @*/` comments while you type, with the same errors as OpenJML,
+and completes keywords, names and `\forall`-style quantifiers. To help write specifications:
+
+- **Hover over a JML keyword**, or press Ctrl+Q on it, for a short explanation with an example, its other
+  spellings (such as `modifies` for `assignable`) and a link to the page of the OpenJML tutorial about it.
+- **Alt+Enter on the name of a method** without a specification adds `requires true;`, `ensures true;` and an
+  `assignable` clause with the fields that the method assigns; Tab goes from one part to fill in to the next.
+- **Alt+Enter on a counting loop**, such as `for (int i = 0; i < a.length; i++)`, a `while` loop that counts the
+  same way, or a for-each loop over an array, adds its loop invariant and `decreases` clause.
+- **Alt+Enter on a clause** such as `ensures a && b;` splits it into one clause per part, so that Verify with
+  OpenJML says which part it cannot prove.
+- **Ctrl+/** on a `//@` line comments the line out, and back.
+- **Optimize Imports** keeps the imports that only JML uses, and they are not greyed out as unused.
+
 ## Running with JML checks
 
 **Run with JML Checks** (next to Run and Debug, also in the menu of the run icon next to `main` and
@@ -54,6 +70,20 @@ conditions on the lines it goes through, also on an invariant that does not hold
 results, as they may no longer hold. **Show output** in the notification shows OpenJML's own output, with the
 trace of each counterexample. OpenJML cannot tell overloaded methods apart, so Verify Method verifies all methods with that name
 in the class.
+
+What OpenJML cannot prove is said in plain words, such as "OpenJML cannot prove that the invariant on line 6
+holds when reset() returns (InvariantExit)", with a hint and OpenJML's own message in the tooltip. A failure
+and the clause it is about link to each other, in the tooltip and with Alt+Enter. Alt+Enter also offers:
+
+- for an assignment that the `assignable` clause does not allow, adding the location to the clause;
+- for a sum, product or other operation that may overflow, a `requires` clause that bounds it;
+- for a postcondition that does not hold at a `return`, splitting it into its parts, or asserting it before the
+  `return`, to move the assert up and find the statement that makes it false;
+- when OpenJML cannot prove several assertions of a method, showing the values of another one's counterexample.
+
+When a Java file with JML is saved, OpenJML also checks its JML in the background, as a safety net for what the
+plugin does not check itself: an error that only OpenJML finds is shown as "OpenJML: ..." on its line. This can be
+switched off in **Settings | Tools | IntelliJML**.
 
 This uses the same OpenJML installation as Run with JML Checks. OpenJML keeps running in the background after
 a verification (it stops after 10 minutes without one), because starting it takes a few seconds: verifying a
