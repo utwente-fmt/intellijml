@@ -1,0 +1,9 @@
+class Arrays {
+    static void clear(int[] a) {
+        <spot>//@ maintaining 0 <= i && i <= a.length;
+        //@ decreases a.length - i;</spot>
+        for (int i = 0; i < a.length; i++) {
+            a[i] = 0;
+        }
+    }
+}

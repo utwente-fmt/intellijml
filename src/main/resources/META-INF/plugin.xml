@@ -77,6 +77,12 @@
             <className>nl.utwente.jmlplugin.annotator.AddSpecificationIntention</className>
             <category>JML</category>
         </intentionAction>
+        <!-- Alt+Enter on a counting for loop without a loop specification -->
+        <intentionAction>
+            <language>JAVA</language>
+            <className>nl.utwente.jmlplugin.annotator.AddLoopSpecificationIntention</className>
+            <category>JML</category>
+        </intentionAction>
         <!-- explanations of the JML keywords, on hover and with Ctrl+Q -->
         <lang.documentationProvider language="JML"
                                     implementationClass="nl.utwente.jmlplugin.documentation.JMLKeywordDocumentationProvider"/>
