@@ -216,6 +216,8 @@
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- Reformat Code (Ctrl+Alt+L) moved the first line of a `/*@ ... @*/` comment but not the lines after it, which left
+  the `@`s out of line. The comment now moves as a whole, as other block comments do.
 - Comment with Line Comment (Ctrl+/) on a `//@` line removed the `//`, which left the JML as broken Java code, such
   as `@ requires x > 0;`. It now comments out the line, as `//    //@ requires x > 0;`, and Ctrl+/ again brings it
   back; on a line of a `/*@ ... @*/` block it puts `//` before the line, which JML takes as a comment.

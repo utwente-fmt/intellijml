@@ -78,6 +78,9 @@
         <multiLangCommenter implementation="nl.utwente.jmlplugin.editor.JMLLineCommentProvider"/>
         <!-- imports that only JML uses are not greyed out as unused -->
         <daemon.highlightInfoFilter implementation="nl.utwente.jmlplugin.editor.JMLUnusedImportFilter"/>
+        <!-- Reformat Code moves the lines of a JML block comment with its first line -->
+        <preFormatProcessor implementation="nl.utwente.jmlplugin.editor.JMLBlockCommentIndent$Before"/>
+        <postFormatProcessor implementation="nl.utwente.jmlplugin.editor.JMLBlockCommentIndent$After"/>
         <!-- nor fields, methods, parameters and variables that only JML uses -->
         <implicitUsageProvider implementation="nl.utwente.jmlplugin.editor.JMLImplicitUsageProvider"/>
         <!-- before Java's own handling of Enter in comments -->
