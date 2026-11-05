@@ -59,7 +59,8 @@
   variable to the name of a field that JML uses qualifies the field there, also when the JML does not mention the
   parameter, as when `b` is renamed to `balance` in `Account(int b)` with `ensures balance >= 0;`.
 - With the caret on a name in JML, its other uses in the file are highlighted, in the code and in JML, as with the
-  caret on a name in the code; Ctrl+Shift+F7 does the same. Hovering over a name in JML, or Ctrl+Q on it, shows the
+  caret on a name in the code, and on the variable of a quantifier its declaration and uses in the quantifier;
+  Ctrl+Shift+F7 does the same. Hovering over a name in JML, or Ctrl+Q on it, shows the
   documentation of the field, method, parameter or class, with the JML specification of a method. In a call of a
   method in JML, the parameters are shown as in Java code, when typing `(` and with Ctrl+P.
 - Typing `"` in JML adds the closing quote, and `(` after `signals` or `[` adds the closing one, as in Java code;
@@ -68,7 +69,7 @@
   comments: a `/*@ ... @*/` comment of more than one line, and `//@` comments on consecutive lines.
 - A private field or method, a parameter or a variable that only JML uses, such as a pure method called in an
   invariant, is no longer greyed out with "Private method 'valid()' is never used" or "Private field 'count' is
-  assigned but never accessed".
+  assigned but never accessed", also when only the JML of another class uses a `spec_public` one.
 - Alt+Enter on a method without a specification adds a skeleton to fill in with Tab: `requires true;`,
   `ensures true;` and an `assignable` clause with the fields and array elements that the method assigns, also
   through the methods that it calls (a pure method gets none).

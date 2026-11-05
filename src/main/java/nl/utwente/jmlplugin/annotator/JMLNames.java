@@ -19,8 +19,10 @@ import nl.utwente.jmlplugin.psi.impl.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -285,6 +287,41 @@ public final class JMLNames {
      */
     private static @Nullable String quantifierType(@NotNull PsiIdentifier identifier) {
         return quantifierType(identifier, identifier.getText());
+    }
+
+    /**
+     * @param name a name in JML, or the declaration of the variable of a quantifier
+     * @return the declaration and the uses of the variable of a quantifier that the name is, as the i's of
+     * "(\forall int i; 0 <= i; a[i] > 0)", not those of another quantifier with a variable of the same name; empty if
+     * the name is no such variable
+     */
+    public static @NotNull List<PsiElement> quantifierVariable(@NotNull PsiElement name) {
+        JMLQuantifiedExpr quantifier = declaringQuantifier(name);
+        if (quantifier == null) return List.of();
+        String text = name.getText();
+        List<PsiElement> occurrences = new ArrayList<>();
+        for (PsiElement element : PsiTreeUtil.collectElements(quantifier, element -> (element instanceof JMLQVarDeclIdentifier
+                || isName(element)) && text.equals(element.getText()))) {
+            if (declaringQuantifier(element) == quantifier) occurrences.add(element);
+        }
+        return occurrences;
+    }
+
+    /**
+     * @return the innermost quantifier around the element that declares a variable with its name, or null
+     */
+    private static @Nullable JMLQuantifiedExpr declaringQuantifier(@NotNull PsiElement name) {
+        String text = name.getText();
+        for (JMLQuantifiedExpr quantifier = PsiTreeUtil.getParentOfType(name, JMLQuantifiedExpr.class); quantifier != null;
+             quantifier = PsiTreeUtil.getParentOfType(quantifier, JMLQuantifiedExpr.class)) {
+            for (JMLQVarDecl declaration : PsiTreeUtil.findChildrenOfType(quantifier, JMLQVarDecl.class)) {
+                if (PsiTreeUtil.getParentOfType(declaration, JMLQuantifiedExpr.class) != quantifier) continue;
+                for (JMLQVarDeclIdentifier variable : declaration.getIdentifiers()) {
+                    if (text.equals(variable.getText())) return quantifier;
+                }
+            }
+        }
+        return null;
     }
 
     private static @Nullable String quantifierType(@NotNull PsiElement element, @NotNull String name) {

@@ -614,6 +614,29 @@ public class JMLRenameTest extends LightJavaCodeInsightFixtureTestCase {
         assertEmpty(underCaret(HIGHLIGHT.replace("requires count", "requ<caret>ires count")));
     }
 
+    public void testHighlightQuantifierVariableUnderCaret() throws Exception {
+        // the variable of a quantifier: its declaration and uses in that quantifier, not the i of the other one
+        String text = """
+                class A {
+                    int[] a;
+                    //@ ensures (\\forall int i; 0 <= i && i < a.length; a[i] >= 0) && (\\forall int i; 0 <= i; i >= 0);
+                    void m() {}
+                }
+                """;
+        int first = text.indexOf("int i;") + "int ".length();
+        int second = text.indexOf("int i;", first) + "int ".length();
+        List<String> expected = new ArrayList<>();
+        for (int at = text.indexOf('i', first); at < second; at = text.indexOf('i', at + 1)) {
+            // the i's of the first quantifier, not the one of "int"
+            if (!Character.isLetter(text.charAt(at - 1)) && !Character.isLetter(text.charAt(at + 1))) expected.add(String.valueOf(at));
+        }
+        assertEquals(4, expected.size());
+        expected = expected.stream().sorted().toList();
+        assertEquals(expected, underCaret(text.replace("a[i]", "a[<caret>i]")));
+        // also with the caret on the declaration
+        assertEquals(expected, underCaret(new StringBuilder(text).insert(first, "<caret>").toString()));
+    }
+
     public void testHighlightUsagesInFileFromJml() {
         // Ctrl+Shift+F7 on a name in JML
         myFixture.configureByText("A.java", HIGHLIGHT.replace("assignable count", "assignable co<caret>unt"));

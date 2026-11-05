@@ -10,10 +10,12 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import com.intellij.psi.search.LocalSearchScope;
+import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.search.searches.MethodReferencesSearch;
 import com.intellij.psi.search.searches.ReferencesSearch;
 import com.intellij.util.Consumer;
 import nl.utwente.jmlplugin.annotator.JMLNames;
+import nl.utwente.jmlplugin.psi.impl.JMLQVarDeclIdentifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,10 +40,59 @@ public class JMLHighlightUsagesHandlerFactory implements HighlightUsagesHandlerF
         // this is asked at every move of the caret, so first the cheap check that it is in a JML comment
         if (!inJmlComment(hostFile, offset) && !inJmlComment(hostFile, offset - 1)) return null;
         PsiElement name = JMLNames.nameAt(hostFile, offset);
+        if (name == null) name = quantifierDeclaration(hostFile, offset);
         if (name == null) return null;
         PsiElement target = JMLNames.resolve(name);
-        if (!(target instanceof PsiNamedElement)) return null;
-        return new Handler(hostEditor, hostFile, target);
+        if (target instanceof PsiNamedElement) return new Handler(hostEditor, hostFile, target);
+        // the variable of a quantifier, which is JML's own: its declaration and uses in the quantifier
+        List<PsiElement> variable = JMLNames.quantifierVariable(name);
+        return variable.isEmpty() ? null : new VariableHandler(hostEditor, hostFile, variable);
+    }
+
+    /**
+     * @return the declaration of the variable of a quantifier at the offset or right before it, as the first i of
+     * "(\forall int i; ...)", or null
+     */
+    private static @Nullable PsiElement quantifierDeclaration(@NotNull PsiFile file, int offset) {
+        InjectedLanguageManager manager = InjectedLanguageManager.getInstance(file.getProject());
+        for (int at : new int[]{offset, offset - 1}) {
+            PsiElement element = at < 0 ? null : manager.findInjectedElementAt(file, at);
+            JMLQVarDeclIdentifier declaration = PsiTreeUtil.getParentOfType(element, JMLQVarDeclIdentifier.class, false);
+            if (declaration != null) return declaration;
+        }
+        return null;
+    }
+
+    /**
+     * The declaration and uses of the variable of a quantifier, which are all in the JML
+     */
+    private static class VariableHandler extends HighlightUsagesHandlerBase<PsiElement> {
+        private final @NotNull List<PsiElement> occurrences;
+
+        VariableHandler(@NotNull Editor editor, @NotNull PsiFile file, @NotNull List<PsiElement> occurrences) {
+            super(editor, file);
+            this.occurrences = occurrences;
+        }
+
+        @Override
+        public @NotNull List<PsiElement> getTargets() {
+            return List.of(occurrences.get(0));
+        }
+
+        @Override
+        protected void selectTargets(@NotNull List<? extends PsiElement> targets,
+                                     @NotNull Consumer<? super List<? extends PsiElement>> selectionConsumer) {
+            selectionConsumer.consume(targets);
+        }
+
+        @Override
+        public void computeUsages(@NotNull List<? extends PsiElement> targets) {
+            InjectedLanguageManager manager = InjectedLanguageManager.getInstance(myFile.getProject());
+            for (PsiElement occurrence : occurrences) {
+                if (occurrence.isValid()) myReadUsages.add(manager.injectedToHost(occurrence, occurrence.getTextRange()));
+            }
+            buildStatusText(occurrences.get(0).getText(), occurrences.size() - 1);
+        }
     }
 
     private static boolean inJmlComment(@NotNull PsiFile file, int offset) {

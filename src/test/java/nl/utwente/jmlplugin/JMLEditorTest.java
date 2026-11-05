@@ -96,6 +96,36 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
                 "Parameter 'y' is never used", "Parameter 'args' is never used"), unused);
     }
 
+    public void testSpecPublicMembersUsedInOtherFilesAreNotGreyedOut() {
+        // count and valid() are spec_public, and only the JML of another class uses them
+        myFixture.enableInspections(new UnusedDeclarationInspection(true));
+        myFixture.addFileToProject("User.java", """
+                public class User {
+                    //@ requires o.count > 0 && o.valid();
+                    //@ assignable o.limit;
+                    void m(Owner o) {}
+                }
+                """);
+        myFixture.configureByText("Owner.java", """
+                public class Owner {
+                    private /*@ spec_public @*/ int count;
+                    private /*@ spec_public @*/ int limit;
+                    private /*@ spec_public @*/ int other;
+                    private int hidden;
+
+                    private /*@ pure spec_public @*/ boolean valid() {
+                        return true;
+                    }
+                }
+                """);
+        List<String> unused = myFixture.doHighlighting().stream()
+                .map(HighlightInfo::getDescription)
+                .filter(description -> description != null && description.matches(".*(never used|never accessed).*")).toList();
+        // limit is only a location of an assignable clause there, which the method may assign, and nothing reads it
+        assertEquals(List.of("Private field 'limit' is assigned but never accessed", "Private field 'other' is never used",
+                "Private field 'hidden' is never used"), unused);
+    }
+
     public void testOptimizeImportsKeepsImportsUsedInJml() {
         myFixture.configureByText("A.java", """
                 import java.util.ArrayList;
