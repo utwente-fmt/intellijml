@@ -25,8 +25,13 @@ and completes keywords, names and `\forall`-style quantifiers. To help write spe
   same way, or a for-each loop over an array, adds its loop invariant and `decreases` clause.
 - **Alt+Enter on a clause** such as `ensures a && b;` splits it into one clause per part, so that Verify with
   OpenJML says which part it cannot prove.
-- **Ctrl+/** on a `//@` line comments the line out, and back.
-- **Optimize Imports** keeps the imports that only JML uses, and they are not greyed out as unused.
+- **Rename** (Shift+F6) a field, method, parameter or variable, and its uses in JML are renamed too; **Find
+  Usages** (Alt+F7) shows them, and **Ctrl+click** on a name in JML goes to its declaration. This also works with
+  the caret on the name in the JML.
+- **Ctrl+/** on a `//@` line comments the line out, and back. **Reformat Code** keeps the `@`s of a
+  `/*@ ... @*/` comment under each other.
+- **Optimize Imports** keeps the imports that only JML uses, and they are not greyed out as unused, nor are fields,
+  methods and parameters that only JML uses.
 
 ## Running with JML checks
 
