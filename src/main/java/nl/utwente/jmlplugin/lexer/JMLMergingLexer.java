@@ -162,7 +162,18 @@ public class JMLMergingLexer extends MergingLexerAdapter {
             if (lastType != null && !endsOperand()) return true;
             // no name follows a literal, this or super, as in "ensures y > 7 pure;" with a missing semicolon; after a
             // name, parenthesis or bracket it can, in a declaration "int instance;" or a cast "(Object) instance"
-            if (lastType == JMLTypes.REST || lastType == JMLTypes.THIS || lastType == JMLTypes.SUPER) return false;
+            if ((lastType == JMLTypes.REST && !afterJmlType(lexer)) || lastType == JMLTypes.THIS || lastType == JMLTypes.SUPER) {
+                return false;
+            }
+            return nameFollows(lexer);
+        }
+
+        /**
+         * @param lexer the lexer, at a JML keyword
+         * @return whether the token after the keyword is one that follows a name: a parenthesis, dot, bracket, comma,
+         * semicolon or operator
+         */
+        private static boolean nameFollows(Lexer lexer) {
             LexerPosition position = lexer.getCurrentPosition();
             lexer.advance();
             while (commentsAndWhitespace.contains(lexer.getTokenType()) || lexer.getTokenType() == JMLTypes.AT_SIGN) {
@@ -175,6 +186,20 @@ public class JMLMergingLexer extends MergingLexerAdapter {
             if (NAME_FOLLOWERS.contains(next)) return true;
             // an operator, such as == or +, but not a backslash keyword such as \result
             return next == JMLTypes.REST && nextText.length() > 0 && OPERATOR_CHARACTERS.indexOf(nextText.charAt(0)) >= 0;
+        }
+
+        /**
+         * @param lexer the lexer, at a JML keyword
+         * @return whether the word before the keyword is a backslash word, such as the type \bigint in a declaration
+         * "\bigint instance", after which a name can follow, unlike after a literal
+         */
+        private static boolean afterJmlType(Lexer lexer) {
+            CharSequence buffer = lexer.getBufferSequence();
+            int i = lexer.getTokenStart() - 1;
+            while (i >= 0 && (Character.isWhitespace(buffer.charAt(i)) || buffer.charAt(i) == '@')) i--;
+            int end = i;
+            while (i >= 0 && Character.isJavaIdentifierPart(buffer.charAt(i))) i--;
+            return i >= 0 && i < end && buffer.charAt(i) == '\\';
         }
 
         /**
@@ -250,14 +275,20 @@ public class JMLMergingLexer extends MergingLexerAdapter {
                     while (skipAfterJavaExpr.contains(originalLexer.getTokenType())) {
                         originalLexer.advance();
                     }
-                    //end of expression so return java expression
-                    if (startsClause(originalLexer.getTokenType())) {
+                    //end of expression so return java expression; inside the parentheses of a quantified expression,
+                    // a keyword can be a name, as in "(\forall \bigint invariant; 0 <= invariant; invariant >= 0)"
+                    if (startsClause(originalLexer.getTokenType())
+                            && !(parenDepth > 0 && JMLTokenSet.allOuterKeywords.contains(originalLexer.getTokenType())
+                            && nameFollows(originalLexer))) {
                         merging = false;
                         // restore to the position of the semicolon, because we do not want the
                         // semicolon and what comes after it in the resulting java expression token
                         originalLexer.restore(startPos);
                         return JMLTypes.JAVA_EXPR_TOKEN;
                     }
+                    // the semicolon is the last token now, after which a keyword is a name
+                    lastType = JMLTypes.SEMICOLON;
+                    lastWord = ";";
                 } else if (JMLTokenSet.allOuterKeywords.contains(originalLexer.getTokenType())
                         && !isQuantifierModifier(originalLexer.getTokenType()) && !isUsedAsName(originalLexer)) {
                     // found a JML keyword such as ensures, so Java expression is over, but user forgot semicolon

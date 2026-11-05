@@ -2,6 +2,9 @@ package nl.utwente.jmlplugin.annotator;
 
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.psi.*;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiModificationTracker;
 import com.intellij.psi.util.PsiTreeUtil;
 import nl.utwente.jmlplugin.psi.JMLAssignableClause;
 import nl.utwente.jmlplugin.psi.JMLStoreRef;
@@ -30,6 +33,7 @@ final class Frame {
     private static final Pattern CLAUSE = Pattern.compile("(?<![\\w$\\\\])(?:requires|pre|ensures|post|signals|signals_only"
             + "|diverges|reads|accessible|old|assignable|modifiable|modifies|assigns)(?![\\w$])");
     private static final Pattern FRAME_CLAUSE = Pattern.compile("(?<![\\w$\\\\])(?:assignable|modifiable|modifies|assigns)(?![\\w$])");
+    private static final Pattern INFORMAL_OR_STRING = Pattern.compile("\\(\\*.*?\\*\\)|\"(?:[^\"\\\\]|\\\\.)*\"", Pattern.DOTALL);
     // an in clause, which puts a field in the data group of a model field, as in "private int count; //@ in size;"
     private static final Pattern IN_CLAUSE = Pattern.compile("(?<![\\w$])in\\s+([^;]+);");
 
@@ -52,11 +56,19 @@ final class Frame {
      */
     static @Nullable Frame of(@NotNull PsiMethod method) {
         if (method instanceof PsiCompiledElement) return null;
+        // the inspection asks for every call, so it is computed once per change of the code
+        return CachedValuesManager.getCachedValue(method, () -> CachedValueProvider.Result.create(
+                compute(method), PsiModificationTracker.MODIFICATION_COUNT));
+    }
+
+    private static @Nullable Frame compute(@NotNull PsiMethod method) {
         List<PsiComment> comments = jmlComments(method);
         StringBuilder text = new StringBuilder();
         for (PsiComment comment : comments) text.append(JMLAnnotatorUtil.jmlText(comment)).append('\n');
+        // words in informal descriptions and string literals are no keywords
+        String keywords = INFORMAL_OR_STRING.matcher(text).replaceAll(" ");
         boolean specified = false;
-        for (String specCase : ALSO.split(text)) {
+        for (String specCase : ALSO.split(keywords)) {
             if (!CLAUSE.matcher(specCase).find()) continue;
             specified = true;
             if (!FRAME_CLAUSE.matcher(specCase).find()) return null;

@@ -63,12 +63,14 @@ public class ExtraSyntax {
     //@ public invariant_redundantly f >= 0;
     //@ public constraint_redundantly f >= 0;
     //@ public initially_redundantly f >= 0;
+    //@ invariant_redundantly <error descr="An identifier with public visibility may not be used in a invariant clause with package visibility">f</error> >= 0;
 
     // the subtype relation between types
     //@ ensures \typeof(\result) <: \type(Object);
     //@ ensures \type(String) <: \typeof(o);
     //@ ensures \typeof(o) <: \type(Number) ==> o instanceof Number;
     //@ ensures \typeof(o) == \type(String) || \typeof(o) != \type(Integer);
+    //@ ensures (\typeof(o)) == \type(String) || \typeof(o) == (\type(Integer));
     public Object subtype() {
         return o;
     }

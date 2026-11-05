@@ -110,6 +110,22 @@ public class AssignableBodies {
         <warning descr="The assignable clause does not allow assigning to total">total</warning> = 24;
     }
 
+    //@ assignable AssignableBodies.total;
+    public void classQualified() {
+        setTotal(25);
+    }
+
+    //@ requires "also".length() > 0;
+    //@ assignable count;
+    public void informal() {
+        <warning descr="The assignable clause does not allow assigning to other">other</warning> = 26;
+    }
+
+    //@ assignable total;
+    public void setTotal(int t) {
+        total = t;
+    }
+
     //@ assignable count;
     public void setCount(int c) {
         count = c;

@@ -108,8 +108,14 @@ public class JMLAssignableInspection extends AbstractBaseJavaLocalInspectionTool
             PsiClass owner = callee.getContainingClass();
             PsiField field = owner == null ? null : owner.findFieldByName(first, true);
             if (field == null || field.hasModifierProperty(PsiModifier.STATIC)) {
-                // a static field, also as "Counter.total", which does not depend on the object
+                // a static field, also as "Counter.total", which does not depend on the object; a frame may name it
+                // with its class, as in "Counter.total" or "Counter.*"
                 locations.add(calleeLocation);
+                PsiClass fieldClass = field == null ? null : field.getContainingClass();
+                if (fieldClass != null && calleeLocation.equals(first)) {
+                    locations.add(fieldClass.getName() + "." + calleeLocation);
+                    if (fieldClass.getQualifiedName() != null) locations.add(fieldClass.getQualifiedName() + "." + calleeLocation);
+                }
                 return locations;
             }
             locations.add(Frame.join(prefix, calleeLocation));

@@ -1151,10 +1151,16 @@ public class JMLTypeAnnotator {
      * the class
      */
     private static String comparedType(PsiElement element, String classLiteral) {
-        if (!isComparison(PsiTreeUtil.skipWhitespacesAndCommentsBackward(element))
-                && !isComparison(PsiTreeUtil.skipWhitespacesAndCommentsForward(element))) {
-            return classLiteral;
+        // also in parentheses, as in "(\typeof(o)) == \type(String)"
+        PsiElement before = PsiTreeUtil.skipWhitespacesAndCommentsBackward(element);
+        while (before != null && before.getNode().getElementType() == JavaTokenType.LPARENTH) {
+            before = PsiTreeUtil.skipWhitespacesAndCommentsBackward(before);
         }
+        PsiElement after = PsiTreeUtil.skipWhitespacesAndCommentsForward(element);
+        while (after != null && after.getNode().getElementType() == JavaTokenType.RPARENTH) {
+            after = PsiTreeUtil.skipWhitespacesAndCommentsForward(after);
+        }
+        if (!isComparison(before) && !isComparison(after)) return classLiteral;
         return "((java.lang.Class<?>) " + classLiteral + ")";
     }
 

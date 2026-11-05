@@ -161,7 +161,8 @@ public class JMLAnnotatorUtil {
         for (PsiElement child = invariant.getFirstChild(); child != null; child = child.getNextSibling()) {
             IElementType type = child.getNode().getElementType();
             if (type == JMLTypes.INITIALLY || type == JMLTypes.CONSTRAINT || type == JMLTypes.INVARIANT) {
-                return child.getText();
+                // as in OpenJML's messages, also for the redundant form, as in "invariant_redundantly"
+                return child.getText().replace("_redundantly", "");
             }
         }
         return "invariant";

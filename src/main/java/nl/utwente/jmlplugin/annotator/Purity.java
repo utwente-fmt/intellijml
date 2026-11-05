@@ -1,6 +1,9 @@
 package nl.utwente.jmlplugin.annotator;
 
 import com.intellij.psi.*;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiModificationTracker;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -27,7 +30,9 @@ enum Purity {
      * @return its purity: the strongest of its own, that of its class, and those of the methods it overrides
      */
     static @NotNull Purity of(@NotNull PsiMethod method) {
-        return of(method, new HashSet<>());
+        // the annotators and inspections ask for every call, so it is computed once per change of the code
+        return CachedValuesManager.getCachedValue(method, () -> CachedValueProvider.Result.create(
+                of(method, new HashSet<>()), PsiModificationTracker.MODIFICATION_COUNT));
     }
 
     private static Purity of(PsiMethod method, Set<PsiMethod> visited) {
