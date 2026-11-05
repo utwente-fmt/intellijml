@@ -467,6 +467,16 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
                 "    //@ ensures \\result >= a;\n    //@ ensures \\result >= b;\n    //@ ensures \\result >= c;\n"));
     }
 
+    public void testAssertThePostconditionBeforeTheReturn() {
+        verifiedMax(MAX);
+        String text = myFixture.getEditor().getDocument().getText();
+        myFixture.getEditor().getCaretModel().moveToOffset(text.indexOf("return max"));
+        myFixture.doHighlighting();
+        myFixture.launchAction(myFixture.findSingleIntention("Assert the postcondition before this return"));
+        assertTrue(myFixture.getEditor().getDocument().getText(), myFixture.getEditor().getDocument().getText().contains(
+                "        if (c > max) max = b;\n        //@ assert max >= a && max >= b && max >= c;\n        return max;\n"));
+    }
+
     public void testValuesInEditor() {
         verifiedMax(MAX);
         // the parameters, from the prover's model, and the values of the trace on the lines it goes through

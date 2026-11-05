@@ -16,6 +16,7 @@ import com.intellij.psi.PsiJavaFile;
 import com.intellij.psi.PsiManager;
 import nl.utwente.jmlplugin.annotator.AddRequiresFix;
 import nl.utwente.jmlplugin.annotator.AddToAssignableFix;
+import nl.utwente.jmlplugin.annotator.AssertPostconditionFix;
 import nl.utwente.jmlplugin.annotator.SplitClauseIntention;
 import nl.utwente.jmlplugin.esc.EscMessages.Explanation;
 import nl.utwente.jmlplugin.esc.EscMessages.Role;
@@ -138,6 +139,14 @@ public class EscAnnotator extends ExternalAnnotator<List<EscResults.Problem>, Li
         // for a precondition, OpenJML already says which part may be false
         if (!failure.kind().contains("Precondition")) {
             SplitClauseIntention.Fix fix = splitFix(file, problem, explanation);
+            if (fix != null) fixes.add(fix);
+        }
+        // a postcondition that does not hold at a return statement, asserted before it, to move it up and find the
+        // statement that makes it false
+        if (failure.kind().equals("Postcondition") && explanation.role() == Role.FAILURE && problem.related() != null
+                && problem.related().isValid() && file.getVirtualFile().equals(problem.relatedFile())) {
+            AssertPostconditionFix fix = AssertPostconditionFix.at(file, problem.range().getStartOffset(),
+                    problem.related().getStartOffset());
             if (fix != null) fixes.add(fix);
         }
         return fixes;

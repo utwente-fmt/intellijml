@@ -32,6 +32,9 @@
   also offered on a failure whose clause is elsewhere, such as a postcondition that does not hold at a `return`. For
   `requires`, `ensures`, invariants, loop invariants, `assert`, `assume` and `check`, not when the parts are joined by
   something that binds less tightly, as in `a || b && c` or `a && b ==> c`.
+- Alt+Enter on a postcondition that OpenJML cannot prove at a `return` asserts it right before the return, with
+  `\result` replaced by the value returned, as in `//@ assert max >= a && max >= b;`. Moving the assert up through the
+  method, and verifying again, shows which statement makes it false.
 - Quick fixes for what OpenJML cannot prove: a location that the method assigns is added to its `assignable`
   clause, and for a sum, product, negation or division that may not fit in its type, a `requires` clause that
   bounds it is added, such as `//@ requires a + b <= Integer.MAX_VALUE;`, when the operation only uses parameters
