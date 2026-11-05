@@ -101,6 +101,71 @@ public class JMLAddLoopSpecificationTest extends LightJavaCodeInsightFixtureTest
         assertEmpty(myFixture.filterAvailableIntentions(ADD));
     }
 
+    /**
+     * @param body the statements of a method with an int[] a and an int n, with &lt;caret&gt; in the loop header
+     * @param clauses the expected JML lines above the loop, which has the given header
+     */
+    private void checkAddedIn(String body, String header, String clauses) {
+        String before = "class A {\n    void m(int[] a, int n) {\n" + body + "    }\n}\n";
+        myFixture.configureByText("A.java", before);
+        myFixture.launchAction(myFixture.findSingleIntention(ADD));
+        String plain = before.replace("<caret>", "");
+        int at = plain.indexOf(header);
+        int lineStart = plain.lastIndexOf('\n', at) + 1;
+        String indent = plain.substring(lineStart, at);
+        myFixture.checkResult(plain.substring(0, lineStart) + indent + clauses.replace("\n", "\n" + indent) + "\n"
+                + plain.substring(lineStart));
+    }
+
+    public void testWhileLoops() {
+        checkAddedIn("""
+                        int i = 0;
+                        int sum = 0;
+                        wh<caret>ile (i < a.length) {
+                            sum += a[i];
+                            i++;
+                        }
+                """, "while (i < a.length)", "//@ maintaining 0 <= i && i <= a.length;\n//@ decreases a.length - i;");
+        checkAddedIn("""
+                        int k;
+                        k = n;
+                        while (k > 0<caret>) {
+                            k -= 1;
+                            a[0] = k;
+                        }
+                """, "while (k > 0)", "//@ maintaining 0 <= k && k <= n;\n//@ decreases k;");
+    }
+
+    public void testWhileLoopsNotOffered() {
+        // the update in a nested statement, twice, after a continue, without a start, or with a start that changes after
+        String[] bodies = {
+                "        int i = 0;\n        <caret>while (i < n) {\n            if (a[0] > 0) i++;\n        }\n",
+                "        int i = 0;\n        <caret>while (i < n) {\n            i++;\n            i++;\n        }\n",
+                "        int i = 0;\n        <caret>while (i < n) {\n            if (a[0] > 0) continue;\n            i++;\n        }\n",
+                "        <caret>while (n < a.length) {\n            n++;\n        }\n",
+                "        int s = 2;\n        int i = s;\n        s = 0;\n        <caret>while (i < n) {\n            i++;\n        }\n",
+        };
+        for (String body : bodies) {
+            myFixture.configureByText("A.java", "class A {\n    void m(int[] a, int n) {\n" + body + "    }\n}\n");
+            assertEmpty(body, myFixture.filterAvailableIntentions(ADD));
+        }
+    }
+
+    public void testForEachLoops() {
+        checkAddedIn("""
+                        int count = 0;
+                        f<caret>or (int x : a) {
+                            count++;
+                        }
+                """, "for (int x : a)", "//@ maintaining 0 <= \\count && \\count <= a.length;\n//@ decreases a.length - \\count;");
+        // which the plugin accepts, as OpenJML does
+        assertEmpty(myFixture.doHighlighting(com.intellij.lang.annotation.HighlightSeverity.ERROR));
+        // not over a collection, whose size the loop body could change
+        myFixture.configureByText("A.java", "import java.util.List;\nclass A {\n    void m(List<Integer> list) {\n" +
+                "        <caret>for (int x : list) {\n        }\n    }\n}\n");
+        assertEmpty(myFixture.filterAvailableIntentions(ADD));
+    }
+
     public void testPreview() {
         myFixture.configureByText("A.java", "class A {\n    void m(int[] a) {\n        f<caret>or (int i = 0; i < a.length; i++) {\n" +
                 "            a[i] = 0;\n        }\n    }\n}\n");

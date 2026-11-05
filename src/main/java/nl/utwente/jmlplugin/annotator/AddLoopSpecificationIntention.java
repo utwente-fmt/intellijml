@@ -12,13 +12,15 @@ import com.intellij.psi.util.PsiUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 /**
- * Alt+Enter on a counting for loop without a loop specification, such as {@code for (int i = 0; i < a.length; i++)}:
- * adds the loop invariant that bounds the index and the decreases clause that shows that the loop ends, as in
+ * Alt+Enter on a counting loop without a loop specification, such as {@code for (int i = 0; i < a.length; i++)}, a
+ * while loop that counts in the same way, or a for-each loop over an array: adds the loop invariant that bounds the
+ * index and the decreases clause that shows that the loop ends, as in
  * <pre>
  * //@ maintaining 0 <= i && i <= a.length;
  * //@ decreases a.length - i;
@@ -41,18 +43,19 @@ public class AddLoopSpecificationIntention extends PsiElementBaseIntentionAction
 
     @Override
     public boolean isAvailable(@NotNull Project project, Editor editor, @NotNull PsiElement element) {
-        PsiForStatement loop = loop(element);
+        PsiLoopStatement loop = loop(element);
         return loop != null && clauses(loop) != null;
     }
 
     /**
-     * @return the for loop whose header the element is in, before its body, if it has no JML above it yet
+     * @return the for, while or for-each loop whose header the element is in, before its body, if it has no JML above
+     * it yet
      */
-    private static @Nullable PsiForStatement loop(@NotNull PsiElement element) {
+    private static @Nullable PsiLoopStatement loop(@NotNull PsiElement element) {
         if (PsiTreeUtil.getParentOfType(element, PsiComment.class, false) != null) return null;
-        PsiForStatement loop = PsiTreeUtil.getParentOfType(element, PsiForStatement.class, false, PsiMember.class,
+        PsiLoopStatement loop = PsiTreeUtil.getParentOfType(element, PsiLoopStatement.class, false, PsiMember.class,
                 PsiLambdaExpression.class);
-        if (loop == null) return null;
+        if (loop == null || loop instanceof PsiDoWhileStatement) return null;
         PsiStatement body = loop.getBody();
         if (body != null && element.getTextRange().getStartOffset() >= body.getTextRange().getStartOffset()) return null;
         for (PsiElement before = loop.getPrevSibling(); before instanceof PsiComment || before instanceof PsiWhiteSpace;
@@ -65,10 +68,19 @@ public class AddLoopSpecificationIntention extends PsiElementBaseIntentionAction
 
     /**
      * @return the loop invariant and the decreases clause of the loop, or null if it does not count by one from a
-     * start to a bound that it does not change
+     * start to a bound that it does not change, or go through an array
      */
-    static @Nullable List<String> clauses(@NotNull PsiForStatement loop) {
-        // the index and its start
+    static @Nullable List<String> clauses(@NotNull PsiLoopStatement loop) {
+        if (loop instanceof PsiForStatement forLoop) return forClauses(forLoop);
+        if (loop instanceof PsiWhileStatement whileLoop) return whileClauses(whileLoop);
+        if (loop instanceof PsiForeachStatement forEach) return forEachClauses(forEach);
+        return null;
+    }
+
+    /**
+     * For a for loop with an index that it declares or assigns, and changes by one in its update only
+     */
+    private static @Nullable List<String> forClauses(@NotNull PsiForStatement loop) {
         PsiVariable index;
         PsiExpression start;
         PsiStatement initialization = loop.getInitialization();
@@ -86,12 +98,122 @@ public class AddLoopSpecificationIntention extends PsiElementBaseIntentionAction
         } else {
             return null;
         }
-        if (start == null || !PsiTypes.intType().equals(index.getType()) && !PsiTypes.longType().equals(index.getType())) {
+        if (start == null || isAssignedIn(index, loop.getBody())) return null;
+        return counting(loop, index, start, loop.getCondition(), step(loop.getUpdate(), index), loop.getUpdate());
+    }
+
+    /**
+     * For a while loop that counts with a local variable, which the statements before it give its start, as in
+     * "int i = 0;", and which one statement of its body changes by one, as in "i++;", not in a nested statement and
+     * without a continue that could skip it
+     */
+    private static @Nullable List<String> whileClauses(@NotNull PsiWhileStatement loop) {
+        if (!(PsiUtil.skipParenthesizedExprDown(loop.getCondition()) instanceof PsiBinaryExpression condition)
+                || !(loop.getBody() instanceof PsiBlockStatement body)) {
             return null;
         }
+        for (PsiExpression operand : new PsiExpression[]{condition.getLOperand(), condition.getROperand()}) {
+            if (!(PsiUtil.skipParenthesizedExprDown(operand) instanceof PsiReferenceExpression reference)
+                    || reference.getQualifierExpression() != null || !(reference.resolve() instanceof PsiLocalVariable index)) {
+                continue;
+            }
+            PsiStatement update = update(body.getCodeBlock(), index);
+            if (update == null || hasContinue(loop)) continue;
+            PsiExpression start = startBefore(loop, index);
+            if (start == null) continue;
+            return counting(loop, index, start, loop.getCondition(), step(update, index), update);
+        }
+        return null;
+    }
+
+    /**
+     * @return the one statement of the block that assigns the variable, if it is an expression statement of the block
+     * itself, or null
+     */
+    private static @Nullable PsiStatement update(@NotNull PsiCodeBlock block, @NotNull PsiVariable variable) {
+        PsiStatement update = null;
+        for (PsiStatement statement : block.getStatements()) {
+            if (!isAssignedIn(variable, statement)) continue;
+            if (update != null || !(statement instanceof PsiExpressionStatement)) return null;
+            update = statement;
+        }
+        return update;
+    }
+
+    private static boolean hasContinue(@NotNull PsiLoopStatement loop) {
+        for (PsiContinueStatement statement : PsiTreeUtil.findChildrenOfType(loop.getBody(), PsiContinueStatement.class)) {
+            if (statement.findContinuedStatement() == loop) return true;
+        }
+        return false;
+    }
+
+    /**
+     * @return the value that the variable gets before the loop: the initializer of its declaration, or an assignment,
+     * in the statements before the loop in its block, if the statements after it do not change what it uses, or null
+     */
+    private static @Nullable PsiExpression startBefore(@NotNull PsiLoopStatement loop, @NotNull PsiVariable index) {
+        List<PsiStatement> after = new ArrayList<>();
+        for (PsiElement before = loop.getPrevSibling(); before != null; before = before.getPrevSibling()) {
+            if (!(before instanceof PsiStatement statement)) continue;
+            PsiExpression start = null;
+            if (statement instanceof PsiDeclarationStatement declaration
+                    && List.of(declaration.getDeclaredElements()).contains(index)) {
+                start = index instanceof PsiLocalVariable variable ? variable.getInitializer() : null;
+                if (start == null) return null;
+            } else if (statement instanceof PsiExpressionStatement expression
+                    && expression.getExpression() instanceof PsiAssignmentExpression assignment
+                    && assignment.getOperationTokenType() == JavaTokenType.EQ
+                    && isIndex(PsiUtil.skipParenthesizedExprDown(assignment.getLExpression()), index)) {
+                start = assignment.getRExpression();
+                if (start == null) return null;
+            } else if (isAssignedIn(index, statement)) {
+                return null;
+            }
+            if (start != null) {
+                // the references in the start, which may be one itself
+                List<PsiReferenceExpression> references = new ArrayList<>(PsiTreeUtil.findChildrenOfType(start, PsiReferenceExpression.class));
+                if (start instanceof PsiReferenceExpression reference) references.add(reference);
+                for (PsiReferenceExpression reference : references) {
+                    if (!(reference.resolve() instanceof PsiVariable variable)) continue;
+                    for (PsiStatement later : after) {
+                        if (isAssignedIn(variable, later)) return null;
+                    }
+                }
+                return start;
+            }
+            after.add(statement);
+        }
+        return null;
+    }
+
+    /**
+     * For a for-each loop over an array that the loop does not change: \count is the number of iterations done
+     */
+    private static @Nullable List<String> forEachClauses(@NotNull PsiForeachStatement loop) {
+        PsiExpression array = PsiUtil.skipParenthesizedExprDown(loop.getIteratedValue());
+        if (array == null || !(array.getType() instanceof PsiArrayType)
+                || !isUnchanged(array, loop, loop.getIterationParameter(), null)) {
+            return null;
+        }
+        String length = (array instanceof PsiReferenceExpression || array instanceof PsiMethodCallExpression
+                || array instanceof PsiArrayAccessExpression ? array.getText() : "(" + array.getText() + ")") + ".length";
+        return List.of("maintaining 0 <= \\count && \\count <= " + length + ";", "decreases " + length + " - \\count;");
+    }
+
+    /**
+     * @param start  the value of the index before the loop
+     * @param step   1 if the loop adds one to the index each iteration, -1 if it subtracts one, 0 otherwise
+     * @param update the statement that changes the index
+     * @return the clauses of a loop that counts with the index from the start to the bound in the condition, or null if
+     * it does not, or the loop changes what the start and the bound use
+     */
+    private static @Nullable List<String> counting(@NotNull PsiLoopStatement loop, @NotNull PsiVariable index,
+                                                   @NotNull PsiExpression start, @Nullable PsiExpression loopCondition,
+                                                   int step, @Nullable PsiElement update) {
+        if (!PsiTypes.intType().equals(index.getType()) && !PsiTypes.longType().equals(index.getType())) return null;
 
         // the bound, with the index on the left
-        if (!(PsiUtil.skipParenthesizedExprDown(loop.getCondition()) instanceof PsiBinaryExpression condition)) return null;
+        if (!(PsiUtil.skipParenthesizedExprDown(loopCondition) instanceof PsiBinaryExpression condition)) return null;
         PsiExpression left = PsiUtil.skipParenthesizedExprDown(condition.getLOperand());
         PsiExpression right = PsiUtil.skipParenthesizedExprDown(condition.getROperand());
         IElementType comparison = condition.getOperationTokenType();
@@ -107,15 +229,12 @@ public class AddLoopSpecificationIntention extends PsiElementBaseIntentionAction
         if (bound == null || comparison == null) return null;
 
         // the step, which has to agree with the comparison
-        int step = step(loop.getUpdate(), index);
         boolean up = comparison == JavaTokenType.LT || comparison == JavaTokenType.LE;
         boolean down = comparison == JavaTokenType.GT || comparison == JavaTokenType.GE;
         if (!(up && step == 1 || down && step == -1)) return null;
 
         // the start and the bound must mean the same before and after each iteration
-        if (!isUnchanged(start, loop, index) || !isUnchanged(bound, loop, index) || isAssignedIn(index, loop.getBody())) {
-            return null;
-        }
+        if (!isUnchanged(start, loop, index, update) || !isUnchanged(bound, loop, index, update)) return null;
 
         // i <= n - 1 counts as i < n, and i >= n + 1 as i > n
         PsiExpression oneOff = comparison == JavaTokenType.LE ? withoutOne(bound, JavaTokenType.MINUS)
@@ -225,8 +344,8 @@ public class AddLoopSpecificationIntention extends PsiElementBaseIntentionAction
      * loop does not assign the variables and fields that it uses, nor the index, and its calls are of methods that are
      * pure or in the library, such as length() of a String
      */
-    private static boolean isUnchanged(@NotNull PsiExpression expression, @NotNull PsiForStatement loop,
-                                       @NotNull PsiVariable index) {
+    private static boolean isUnchanged(@NotNull PsiExpression expression, @NotNull PsiLoopStatement loop,
+                                       @NotNull PsiVariable index, @Nullable PsiElement update) {
         Set<PsiVariable> used = new HashSet<>();
         boolean[] ok = {true};
         expression.accept(new JavaRecursiveElementWalkingVisitor() {
@@ -262,7 +381,7 @@ public class AddLoopSpecificationIntention extends PsiElementBaseIntentionAction
         });
         if (!ok[0] || used.contains(index)) return false;
         for (PsiVariable variable : used) {
-            if (isAssignedIn(variable, loop.getBody()) || isAssignedIn(variable, loop.getUpdate())) return false;
+            if (isAssignedIn(variable, loop.getBody()) || isAssignedIn(variable, update)) return false;
         }
         return true;
     }
@@ -313,7 +432,7 @@ public class AddLoopSpecificationIntention extends PsiElementBaseIntentionAction
 
     @Override
     public void invoke(@NotNull Project project, Editor editor, @NotNull PsiElement element) {
-        PsiForStatement loop = loop(element);
+        PsiLoopStatement loop = loop(element);
         List<String> clauses = loop == null ? null : clauses(loop);
         if (clauses == null) return;
         // the document of the editor, which is a copy for the preview

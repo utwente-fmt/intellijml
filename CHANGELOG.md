@@ -48,7 +48,9 @@
   through the methods that it calls (a pure method gets none).
 - Alt+Enter on a `for` loop that counts by one, such as `for (int i = 0; i < a.length; i++)`, adds its loop
   invariant and `decreases` clause: `//@ maintaining 0 <= i && i <= a.length;` and `//@ decreases a.length - i;`.
-  It also works for loops that count down, and with `<=` and `>=`, when the loop does not change its start and bound.
+  It also works for loops that count down, and with `<=` and `>=`, when the loop does not change its start and bound;
+  for `while` loops that count in the same way, with one `i++` or `i--` in their body; and for for-each loops over an
+  array, with `\count`, the number of iterations done: `//@ maintaining 0 <= \count && \count <= a.length;`.
 - Enter in a `/*@ ... @*/` comment starts the new line with an `@` below the one above it, and closes a comment
   that is not closed yet with `@*/`. Enter in the middle of a `//@` comment makes the rest a `//@` comment too.
   This replaces the live templates that Enter expanded after `@` and `;`.

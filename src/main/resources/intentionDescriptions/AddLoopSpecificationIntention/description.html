@@ -1,7 +1,9 @@
 <html>
 <body>
-Adds the loop invariant and the <code>decreases</code> clause of a <code>for</code> loop that counts by one, such
-as <code>for (int i = 0; i &lt; a.length; i++)</code>.
+Adds the loop invariant and the <code>decreases</code> clause of a loop that counts by one, such as
+<code>for (int i = 0; i &lt; a.length; i++)</code>, or a <code>while</code> loop that does the same with one
+<code>i++</code> in its body, or of a for-each loop over an array, with <code>\count</code>, the number of
+iterations done.
 <!-- tooltip end -->
 <p>
     The invariant bounds the index, also after the last iteration, when it is one past the bound; the
