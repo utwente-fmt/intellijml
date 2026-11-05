@@ -7,6 +7,7 @@ import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.util.PsiUtilCore;
 import nl.utwente.jmlplugin.JMLMultiHostInjector;
 import nl.utwente.jmlplugin.psi.JMLClassInvariant;
 import nl.utwente.jmlplugin.psi.JMLModifiers;
@@ -21,6 +22,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -374,6 +376,27 @@ public class JMLAnnotatorUtil {
      * @return whether the regex matches in one of the comments, as a whole word after an at-sign, a semicolon or a
      * modifier, such as a modifier
      */
+    /**
+     * @param comments comments of Java code
+     * @param types    types of JML tokens, such as modifiers
+     * @return the tokens of these types in the JML of the comments, by where they are in the Java file: only JML, not
+     * the words in a // comment in it
+     */
+    public static @NotNull TreeMap<Integer, PsiElement> jmlTokens(@NotNull List<PsiComment> comments, @NotNull TokenSet types) {
+        TreeMap<Integer, PsiElement> tokens = new TreeMap<>();
+        if (comments.isEmpty()) return tokens;
+        InjectedLanguageManager manager = InjectedLanguageManager.getInstance(comments.get(0).getProject());
+        for (PsiComment comment : comments) {
+            if (!(comment instanceof PsiLanguageInjectionHost host)) continue;
+            manager.enumerate(host, (injected, places) -> {
+                for (PsiElement token : PsiTreeUtil.collectElements(injected, e -> types.contains(PsiUtilCore.getElementType(e)))) {
+                    tokens.put(manager.injectedToHost(token, token.getTextRange().getStartOffset()), token);
+                }
+            });
+        }
+        return tokens;
+    }
+
     public static boolean commentsContain(@NotNull List<PsiComment> comments, String regex) {
         return countTextMatchesAcrossComments(new ArrayList<>(comments), regex, 1) >= 1;
     }

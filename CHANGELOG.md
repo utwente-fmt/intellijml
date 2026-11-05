@@ -219,7 +219,10 @@
 - Calls in specifications are checked as OpenJML 21 does, with its warning "A non-pure method is being called where it
   is not permitted": a specification may call a `spec_pure` method, and a `pure` method only if it returns a primitive
   value, such as an `int` or a `boolean`, as a `pure` method may return a new object. A method is also pure when the
-  method it overrides is, or when its class is declared `pure`. The tooltip explains when `spec_pure` is needed.
+  method it overrides is, or when its class is declared `pure`. The tooltip explains when `spec_pure` is needed, and
+  Alt+Enter declares the method `pure`, or `spec_pure` if it returns an object (instead of `pure`, as OpenJML does not
+  allow both). Two of `pure`, `spec_pure`, `strictly_pure` and `no_state` on one method give OpenJML's error "A
+  declaration may not be both spec_pure and pure".
 - `\result` and `\old` in a clause that does not allow them give OpenJML's messages, such as "A \result expression may
   not be in a requires clause"; as in OpenJML, `\old` is allowed in invariants, `set` statements and the initializers
   of ghost variables

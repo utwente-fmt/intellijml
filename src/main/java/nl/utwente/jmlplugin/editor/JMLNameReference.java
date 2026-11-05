@@ -4,6 +4,7 @@ import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
+import com.intellij.psi.util.InheritanceUtil;
 import com.intellij.psi.util.PsiTreeUtil;
 import nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil;
 import nl.utwente.jmlplugin.annotator.JMLNames;
@@ -145,16 +146,28 @@ public final class JMLNameReference implements PsiReference {
      */
     private @NotNull String qualifier(@NotNull PsiElement name, @NotNull String newName) {
         if (!(target instanceof PsiField field) || JMLNames.isQualified(name)) return "";
-        if (JMLNames.isDeclaredInJml(name, newName)) return qualifier(field);
+        if (JMLNames.isDeclaredInJml(name, newName)) return qualifier(field, name);
         PsiElement other = JMLNames.resolveExpression(newName, name);
         if (other == null || other.equals(target)) return "";
-        return qualifier(field);
+        return qualifier(field, name);
     }
 
-    static @NotNull String qualifier(@NotNull PsiField field) {
+    /**
+     * @param place the name in JML that is qualified
+     * @return how to qualify the field where the name is: "this.", or "Outer.this." in an inner or anonymous class of
+     * the class of the field, or for a static field the name of the class where the name is (which may have inherited
+     * it) or of the class of the field
+     */
+    static @NotNull String qualifier(@NotNull PsiField field, @NotNull PsiElement place) {
         PsiClass owner = field.getContainingClass();
-        if (!field.hasModifierProperty(PsiModifier.STATIC)) return "this.";
-        return owner == null || owner.getName() == null ? "" : owner.getName() + ".";
+        PsiElement context = JMLAnnotatorUtil.getJavaContext(place);
+        PsiClass here = context instanceof PsiClass psiClass ? psiClass : PsiTreeUtil.getParentOfType(context, PsiClass.class);
+        boolean inherited = owner == null || here != null && InheritanceUtil.isInheritorOrSelf(here, owner, true);
+        if (!field.hasModifierProperty(PsiModifier.STATIC)) {
+            return inherited || owner.getName() == null ? "this." : owner.getName() + ".this.";
+        }
+        PsiClass named = inherited && here != null && here.getName() != null ? here : owner;
+        return named == null || named.getName() == null ? "" : named.getName() + ".";
     }
 
     /**
@@ -172,7 +185,7 @@ public final class JMLNameReference implements PsiReference {
                 if (!inScope(other, scope, manager) || !(JMLNames.resolve(other) instanceof PsiField field) || field.equals(target)) {
                     continue;
                 }
-                Replacement replacement = replacement(other, qualifier(field) + newName, manager, document);
+                Replacement replacement = replacement(other, qualifier(field, other) + newName, manager, document);
                 if (replacement != null) replacements.add(replacement);
             }
         }

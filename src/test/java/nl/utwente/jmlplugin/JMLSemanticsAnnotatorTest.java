@@ -161,5 +161,14 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    /**
+     * The errors are those of OpenJML 21.0.29 for this file: two of pure, spec_pure, strictly_pure and no_state, at the
+     * second, also in another comment
+     */
+    public void testPurityModifiers() {
+        myFixture.configureByFile("PurityModifiers.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
 
 }

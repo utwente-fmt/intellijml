@@ -30,7 +30,8 @@ public class JMLReadWriteAccessDetector extends ReadWriteAccessDetector {
 
     @Override
     public boolean isReadWriteAccessible(@NotNull PsiElement element) {
-        return next(element) != null;
+        // only what JML can refer to: the fields and variables of Java, not those of Kotlin, which are Kotlin's
+        return element.getLanguage().isKindOf(JavaLanguage.INSTANCE) && next(element) != null;
     }
 
     @Override
@@ -50,10 +51,19 @@ public class JMLReadWriteAccessDetector extends ReadWriteAccessDetector {
     public @NotNull Access getExpressionAccess(@NotNull PsiElement expression) {
         if (JMLNames.isName(expression)) return Access.Read;
         if (expression.getLanguage().isKindOf(JavaLanguage.INSTANCE)) return JAVA.getExpressionAccess(expression);
-        // another language: the detector of what the expression refers to
+        // another language, as Kotlin code that uses a Java field: the detector of what it refers to, or the next one
+        // (Kotlin's, which comes first otherwise)
         PsiReference reference = expression.getReference();
         PsiElement target = reference == null ? null : reference.resolve();
         ReadWriteAccessDetector next = target == null ? null : next(target);
+        if (next == null) {
+            for (ReadWriteAccessDetector detector : EP_NAME.getExtensionList()) {
+                if (!(detector instanceof JMLReadWriteAccessDetector)) {
+                    next = detector;
+                    break;
+                }
+            }
+        }
         return next == null ? Access.Read : next.getExpressionAccess(expression);
     }
 }

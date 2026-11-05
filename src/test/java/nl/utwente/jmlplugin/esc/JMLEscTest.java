@@ -706,6 +706,7 @@ public class JMLEscTest extends LightJavaCodeInsightFixtureTestCase {
         assertEquals("assert MAX > x;", EscVerifier.traceCode("assert MAX > x;"));
         assertEquals("assert Math.abs(x) > 0;", EscVerifier.traceCode("assert Math.abs(x) > 0;"));
         assertEquals("assert MAX >= x;", EscVerifier.traceCode("assert Assert MAX >= x;"));
+        assertEquals("assert FLAG instanceof Object;", EscVerifier.traceCode("assert FLAG instanceof Object;"));
         assertEquals("x = 1;", EscVerifier.traceCode("x = 1;"));
     }
 }

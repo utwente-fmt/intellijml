@@ -1,5 +1,6 @@
 package nl.utwente.jmlplugin.editor;
 
+import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.lang.parameterInfo.CreateParameterInfoContext;
 import com.intellij.lang.parameterInfo.ParameterInfoHandler;
 import com.intellij.lang.parameterInfo.ParameterInfoUIContext;
@@ -7,12 +8,16 @@ import com.intellij.lang.parameterInfo.UpdateParameterInfoContext;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.util.PsiTreeUtil;
+import com.intellij.psi.util.MethodSignature;
 import com.intellij.psi.util.PsiUtilCore;
 import nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil;
 import nl.utwente.jmlplugin.annotator.JMLNames;
 import nl.utwente.jmlplugin.psi.JMLTypes;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Parameter info (Ctrl+P, and when typing the "(" of a call) for a call of a method in JML, as in
@@ -43,10 +48,14 @@ public class JMLParameterInfoHandler implements ParameterInfoHandler<PsiElement,
 
     @Override
     public void updateParameterInfo(@NotNull PsiElement open, @NotNull UpdateParameterInfoContext context) {
-        if (context.getParameterOwner() != null && !open.equals(context.getParameterOwner())) {
+        // the JML is parsed again at every change, so the "(" of the call is a new element then: the same call is the
+        // "(" at the same place in the Java file, and a "(" that is gone was replaced
+        PsiElement owner = context.getParameterOwner();
+        if (owner != null && owner.isValid() && hostOffset(owner) != hostOffset(open)) {
             context.removeHint();
             return;
         }
+        if (owner != open) context.setParameterOwner(open);
         int index = argumentIndex(open, context.getOffset());
         context.setCurrentParameter(index);
         Object[] methods = context.getObjectsToView();
@@ -99,6 +108,10 @@ public class JMLParameterInfoHandler implements ParameterInfoHandler<PsiElement,
         return null;
     }
 
+    private static int hostOffset(@NotNull PsiElement element) {
+        return InjectedLanguageManager.getInstance(element.getProject()).injectedToHost(element, element.getTextRange().getStartOffset());
+    }
+
     /**
      * @return the name of a method right before the "(", or null if it is something else, as in "(a + b)"
      */
@@ -122,11 +135,20 @@ public class JMLParameterInfoHandler implements ParameterInfoHandler<PsiElement,
         if (name == null) return PsiMethod.EMPTY_ARRAY;
         PsiElement resolved = JMLNames.resolve(name);
         PsiClass owner = resolved instanceof PsiMethod method ? method.getContainingClass() : null;
-        if (owner == null && !JMLNames.isQualified(name)) {
+        if (owner == null && JMLNames.isQualified(name)) {
+            // as "s.equals(" while it is typed: the class of s
+            owner = JMLNames.qualifierClass(name);
+        } else if (owner == null) {
             PsiElement context = JMLAnnotatorUtil.getJavaContext(name);
             owner = context instanceof PsiClass psiClass ? psiClass : PsiTreeUtil.getParentOfType(context, PsiClass.class);
         }
-        return owner == null ? PsiMethod.EMPTY_ARRAY : owner.findMethodsByName(name.getText(), true);
+        if (owner == null) return PsiMethod.EMPTY_ARRAY;
+        // once each, not also the methods of the superclasses that they override, as equals of Object for a String
+        Map<MethodSignature, PsiMethod> methods = new LinkedHashMap<>();
+        for (PsiMethod method : owner.findMethodsByName(name.getText(), true)) {
+            methods.putIfAbsent(method.getSignature(PsiSubstitutor.EMPTY), method);
+        }
+        return methods.values().toArray(PsiMethod.EMPTY_ARRAY);
     }
 
     /**

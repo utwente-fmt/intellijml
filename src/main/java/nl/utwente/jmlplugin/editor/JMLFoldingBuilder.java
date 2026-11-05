@@ -86,7 +86,8 @@ public class JMLFoldingBuilder extends FoldingBuilderEx implements DumbAware {
 
     @Override
     public @Nullable String getPlaceholderText(@NotNull ASTNode node) {
-        return "/*@ ... @*/";
+        // not asked, as the regions have their own text
+        return node.getText().startsWith("//@") ? "//@ ..." : "/*@ ... @*/";
     }
 
     @Override

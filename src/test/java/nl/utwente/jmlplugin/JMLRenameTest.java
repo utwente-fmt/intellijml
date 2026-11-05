@@ -317,11 +317,49 @@ public class JMLRenameTest extends LightJavaCodeInsightFixtureTestCase {
         myFixture.configureByText("A.java", text.replace("int count;", "int <caret>count;"));
         myFixture.renameElementAtCaret("i");
         assertEquals(text.replace("int count;", "int i;").replace("a[i] <= count", "a[i] <= this.i").replace("size == count", "size == i"), text());
-        // and of an old variable in another comment of the specification (also in the clause above it, which is more
-        // than needed, but keeps the meaning)
+        // and of an old variable in another comment of the specification, after it, not in the clause above it
         myFixture.configureByText("A.java", text.replace("int count;", "int <caret>count;"));
         myFixture.renameElementAtCaret("size");
-        assertEquals(text.replace("int count;", "int size;").replace("a[i] <= count", "a[i] <= this.size").replace("size == count", "size == this.size"), text());
+        assertEquals(text.replace("int count;", "int size;").replace("a[i] <= count", "a[i] <= size").replace("size == count", "size == this.size"), text());
+    }
+
+    public void testRenameVariableToNameOfOuterField() {
+        // in an anonymous class, the field of the class around it is Account.this.balance
+        String text = """
+                class Account {
+                    int balance;
+                    void m() {
+                        Runnable r = new Runnable() {
+                            public void run() {
+                                int b = 0;
+                                //@ assert balance >= 0;
+                                b++;
+                            }
+                        };
+                    }
+                }
+                """;
+        myFixture.configureByText("Account.java", text.replace("int b = 0;", "int <caret>b = 0;"));
+        myFixture.renameElementAtCaret("balance");
+        assertEquals(text.replace("int b = 0;", "int balance = 0;").replace("assert balance", "assert Account.this.balance")
+                .replace("b++", "balance++"), text());
+    }
+
+    public void testGhostVariableBeforeItsDeclarationIsTheField() {
+        // the n of the first assert is the field: the ghost variable n is declared after it
+        String text = """
+                class A {
+                    int n;
+                    void m() {
+                        //@ assert n > 0;
+                        //@ ghost int n = 0;
+                        //@ assert n == 0;
+                    }
+                }
+                """;
+        myFixture.configureByText("A.java", text.replace("int n;", "int <caret>n;"));
+        myFixture.renameElementAtCaret("size");
+        assertEquals(text.replace("int n;", "int size;").replace("assert n > 0", "assert size > 0"), text());
     }
 
     public void testOldVariableInAnotherCommentIsNotTheField() {

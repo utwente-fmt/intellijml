@@ -296,6 +296,40 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testPureQuickFix() {
+        // a call of a method that is not pure, in a specification: Alt+Enter declares it pure
+        myFixture.configureByText("A.java", "class A {\n    int count;\n\n" +
+                "    //@ requires <caret>valid();\n    void m() {}\n\n    boolean valid() { return count >= 0; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'valid' pure"));
+        myFixture.checkResult("class A {\n    int count;\n\n" +
+                "    //@ requires valid();\n    void m() {}\n\n    /*@ pure @*/ boolean valid() { return count >= 0; }\n}");
+        myFixture.checkHighlighting(true, false, true, false);
+        // spec_pure for one that returns an object; when it is pure already, instead of pure, as OpenJML does not allow
+        // both
+        myFixture.configureByText("A2.java", "class A2 {\n    String name;\n\n" +
+                "    //@ requires <caret>name().length() > 0;\n    void m() {}\n\n    String name() { return name; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'name' spec_pure"));
+        myFixture.checkResult("class A2 {\n    String name;\n\n" +
+                "    //@ requires name().length() > 0;\n    void m() {}\n\n    /*@ spec_pure @*/ String name() { return name; }\n}");
+        myFixture.checkHighlighting(true, false, true, false);
+        myFixture.configureByText("A3.java", "class A3 {\n    String name;\n\n" +
+                "    //@ requires <caret>name().length() > 0;\n    void m() {}\n\n    /*@ pure @*/ String name() { return name; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'name' spec_pure"));
+        myFixture.checkResult("class A3 {\n    String name;\n\n" +
+                "    //@ requires name().length() > 0;\n    void m() {}\n\n    /*@ spec_pure @*/ String name() { return name; }\n}");
+        myFixture.configureByText("A4.java", "class A4 {\n    String name;\n\n" +
+                "    //@ requires <caret>name().length() > 0;\n    void m() {}\n\n    //@ pure\n    String name() { return name; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'name' spec_pure"));
+        myFixture.checkResult("class A4 {\n    String name;\n\n" +
+                "    //@ requires name().length() > 0;\n    void m() {}\n\n    //@ spec_pure\n    String name() { return name; }\n}");
+        // the word pure in a comment in the JML is not replaced
+        myFixture.configureByText("A5.java", "class A5 {\n    String name;\n\n" +
+                "    //@ requires <caret>name().length() > 0;\n    void m() {}\n\n    //@ ensures true; // pure soon\n    String name() { return name; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'name' spec_pure"));
+        myFixture.checkResult("class A5 {\n    String name;\n\n" +
+                "    //@ requires name().length() > 0;\n    void m() {}\n\n    //@ ensures true; // pure soon\n    /*@ spec_pure @*/ String name() { return name; }\n}");
+    }
+
     public void testSpecProtectedQuickFix() {
         myFixture.configureByText("A.java", "class A {\n    int count;\n\n" +
                 "    //@ requires <caret>count > 0;\n    protected void decrement() { count--; }\n}");

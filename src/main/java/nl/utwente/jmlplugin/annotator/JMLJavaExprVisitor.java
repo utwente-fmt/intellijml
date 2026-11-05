@@ -498,6 +498,10 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
                 ErrorMessages.nonPureCall(Purity.qualifiedName(method))).range(rangeManager.getOriginalRange(expr));
         // a pure method that returns an object needs spec_pure, which is not obvious
         if (purity == Purity.PURE) builder = builder.tooltip(ErrorMessages.pureReturnsObjectTooltip(method.getName()));
+        // Alt+Enter declares it so, in the project's code: pure, or spec_pure if it returns an object (a constructor
+        // has no result)
+        PsiType returned = method.getReturnType();
+        builder = builder.withFix(new SpecVisibilityFix(method, returned == null || returned instanceof PsiPrimitiveType ? "pure" : "spec_pure"));
         builder.create();
     }
 

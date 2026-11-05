@@ -146,6 +146,8 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             } else if (JMLTokenSet.nullityModifiers.contains(element.getNode().getElementType())
                     && nullityType(element) instanceof PsiPrimitiveType primitive) {
                 holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.nullityOnPrimitive(primitive)).create();
+            } else if (earlierPurity(element) != null) {
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.bothModifiers(element.getText(), earlierPurity(element))).create();
             } else if (checkDuplicateModifiers(element, modifierPosition)) {
                 holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.DUPLICATE_MODIFIER).create();
                 return true;
@@ -576,6 +578,26 @@ public class JMLSemanticsAnnotator extends InnerJavaExprResult {
             }
         }
         return new ArrayList<>(comments);
+    }
+
+    private static final TokenSet PURITY = TokenSet.create(JMLTypes.PURE, JMLTypes.SPEC_PURE, JMLTypes.STRICTLY_PURE,
+            JMLTypes.NO_STATE);
+
+    /**
+     * @param element a modifier
+     * @return for pure, spec_pure, strictly_pure or no_state, another of these that the declaration has before it, as
+     * OpenJML reports the second of two, as in "/*@ pure spec_pure @*&#47;", also when they are in different comments;
+     * null otherwise
+     */
+    private static String earlierPurity(PsiElement element) {
+        if (!PURITY.contains(element.getNode().getElementType())) return null;
+        InjectedLanguageManager manager = InjectedLanguageManager.getInstance(element.getProject());
+        int at = manager.injectedToHost(element, element.getTextRange().getStartOffset());
+        // the first one before it, of another kind
+        for (PsiElement other : jmlTokens(declarationComments(element), PURITY).headMap(at).values()) {
+            if (!other.getText().equals(element.getText())) return other.getText();
+        }
+        return null;
     }
 
     /**

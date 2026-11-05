@@ -69,7 +69,7 @@ public class JMLRenameListenerProvider implements RefactoringElementListenerProv
             for (PsiElement name : PsiTreeUtil.collectElements(jml, candidate -> JMLNames.isName(candidate)
                     && !JMLNames.isQualified(candidate))) {
                 if (JMLNameReference.inScope(name, scope, manager) && JMLNames.resolve(name) instanceof PsiField field) {
-                    fields.add(new FieldName(SmartPointerManager.createPointer(name), name.getText(), JMLNameReference.qualifier(field)));
+                    fields.add(new FieldName(SmartPointerManager.createPointer(name), name.getText(), JMLNameReference.qualifier(field, name)));
                 }
             }
         }

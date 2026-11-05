@@ -20,7 +20,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -129,6 +128,35 @@ public final class JMLNames {
      * @return what the expression refers to, if it is a name or a call, as Java would resolve it where the name is
      */
     public static @Nullable PsiElement resolveExpression(@NotNull String text, @NotNull PsiElement name) {
+        PsiExpression expression = PsiUtil.skipParenthesizedExprDown(expression(text, name));
+        PsiElement resolved = expression instanceof PsiMethodCallExpression call ? call.resolveMethod()
+                : expression instanceof PsiReferenceExpression reference ? reference.resolve() : null;
+        return original(resolved, JMLAnnotatorUtil.getJavaContext(name) instanceof PsiMethod method ? method : null);
+    }
+
+    /**
+     * @param name a name in JML, with a qualifier, as equals in "s.equals(" or max in "Math.max("
+     * @return the class of the qualifier: of its type, as String for a String s, or the class itself, as Math; null if
+     * the name has no qualifier, or it is not a class
+     */
+    public static @Nullable PsiClass qualifierClass(@NotNull PsiIdentifier name) {
+        PsiElement dot = previous(name);
+        PsiElement start = qualifiedStart(name);
+        if (!isToken(dot, JavaTokenType.DOT) || start == null || start == name) return null;
+        PsiElement last = previous(dot);
+        String text = last == null ? null : javaText(start, last);
+        if (text == null) return null;
+        PsiExpression expression = expression(text, name);
+        PsiType type = expression == null ? null : expression.getType();
+        if (type instanceof PsiClassType classType) return classType.resolve();
+        // a class, for a static method
+        return type == null && text.matches("[\\w$.\\s]+") && resolveType(text, name) instanceof PsiClass psiClass ? psiClass : null;
+    }
+
+    /**
+     * @return the Java expression, made where the name is (see {@link #resolveExpression}), or null if it is not one
+     */
+    private static @Nullable PsiExpression expression(@NotNull String text, @NotNull PsiElement name) {
         PsiElement context = JMLAnnotatorUtil.getJavaContext(name);
         if (context == null) return null;
         PsiExpression expression;
@@ -153,10 +181,7 @@ public final class JMLNames {
                 return null;
             }
         }
-        expression = PsiUtil.skipParenthesizedExprDown(expression);
-        PsiElement resolved = expression instanceof PsiMethodCallExpression call ? call.resolveMethod()
-                : expression instanceof PsiReferenceExpression reference ? reference.resolve() : null;
-        return original(resolved, method);
+        return expression;
     }
 
     /**
@@ -213,35 +238,41 @@ public final class JMLNames {
     /**
      * @param element an element in JML
      * @return whether JML declares the name where the element is: the variable of an enclosing quantifier, the
-     * exception of a signals clause, or a variable of an old clause or ghost declaration in the same specification,
-     * also in another comment of it
+     * exception of a signals clause, or a variable of an old clause or ghost declaration before it in the same
+     * specification or block, also in another comment
      */
     public static boolean isDeclaredInJml(@NotNull PsiElement element, @NotNull String name) {
         if (quantifierType(element, name) != null) return true;
         JMLSignalsClause signals = PsiTreeUtil.getParentOfType(element, JMLSignalsClause.class);
         if (signals != null && signals.getIdent() != null && name.equals(signals.getIdent().getText())) return true;
-        // the variables of old clauses and ghost declarations in the same JML
-        for (JMLGhostDeclarator declarator : PsiTreeUtil.findChildrenOfType(element.getContainingFile(), JMLGhostDeclarator.class)) {
-            if (name.equals(declaredName(declarator))) return true;
-        }
-        // and in the other comments of the same specification, such as an old clause above an ensures clause
+        // the variables of old clauses and ghost declarations, such as an old clause above an ensures clause
         PsiElement context = JMLAnnotatorUtil.getJavaContext(element);
         PsiFile file = InjectedLanguageManager.getInstance(element.getProject()).getTopLevelFile(element);
-        return context != null && file != null && declaredInJml(file).getOrDefault(context, Set.of()).contains(name);
+        Integer declared = context == null || file == null ? null : declaredInJml(file).getOrDefault(context, Map.of()).get(name);
+        return declared != null && declared <= hostOffset(element);
+    }
+
+    /**
+     * @return where the element is in the Java file
+     */
+    private static int hostOffset(@NotNull PsiElement element) {
+        return InjectedLanguageManager.getInstance(element.getProject()).injectedToHost(element, element.getTextRange().getStartOffset());
     }
 
     /**
      * @return for the methods, classes and blocks of a Java file, the names that the old clauses and ghost
-     * declarations of their JML declare
+     * declarations of their JML declare, with where the first declaration of each starts in the Java file
      */
-    private static @NotNull Map<PsiElement, Set<String>> declaredInJml(@NotNull PsiFile file) {
+    private static @NotNull Map<PsiElement, Map<String, Integer>> declaredInJml(@NotNull PsiFile file) {
         return CachedValuesManager.getCachedValue(file, () -> {
-            Map<PsiElement, Set<String>> declared = new HashMap<>();
+            Map<PsiElement, Map<String, Integer>> declared = new HashMap<>();
             for (PsiFile jml : jmlFiles(file)) {
                 for (JMLGhostDeclarator declarator : PsiTreeUtil.findChildrenOfType(jml, JMLGhostDeclarator.class)) {
                     String name = declaredName(declarator);
                     PsiElement context = JMLAnnotatorUtil.getJavaContext(declarator);
-                    if (name != null && context != null) declared.computeIfAbsent(context, key -> new HashSet<>()).add(name);
+                    if (name != null && context != null) {
+                        declared.computeIfAbsent(context, key -> new HashMap<>()).merge(name, hostOffset(declarator), Math::min);
+                    }
                 }
             }
             return CachedValueProvider.Result.create(declared, PsiModificationTracker.getInstance(file.getProject()));

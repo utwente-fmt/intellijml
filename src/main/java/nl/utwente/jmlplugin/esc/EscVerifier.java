@@ -586,10 +586,11 @@ public final class EscVerifier {
         return new EscResults.TraceStep(marker, code, values);
     }
 
-    // the label that OpenJML puts after assert, as in "assert Assert x > 0;"
-    // the label that OpenJML writes after assert and assume, but not a name in capitals that starts the condition, as
-    // MAX in "assert MAX > x;", which an operator or a dot follows
-    private static final Pattern ASSERT_LABEL = Pattern.compile("^(assert|assume) [A-Z][A-Za-z]* (?![<>=!&|+\\-*/%.?:;)\\]^,\\[])");
+    // the label that OpenJML writes after assert and assume, as in "assert Assert x > 0;", but not a name in capitals
+    // that starts the condition, as MAX in "assert MAX > x;" or "assert FLAG instanceof Object;", which an operator, a
+    // dot or instanceof follows
+    private static final Pattern ASSERT_LABEL = Pattern.compile(
+            "^(assert|assume) [A-Z][A-Za-z]* (?![<>=!&|+\\-*/%.?:;)\\]^,\\[]|instanceof\\b)");
     // the kind of assertion in a message, as Postcondition in "cannot establish an assertion (Postcondition: ...)"
     private static final Pattern FAILURE_KIND = Pattern.compile("\\(([A-Za-z]+)[:)]");
 

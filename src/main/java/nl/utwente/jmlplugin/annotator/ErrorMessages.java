@@ -313,6 +313,11 @@ public final class ErrorMessages {
         return "modifier " + modifier + " not allowed here";
     }
 
+    // OpenJML's error for two of pure, spec_pure, strictly_pure and no_state, at the second
+    public static String bothModifiers(String second, String first) {
+        return "A declaration may not be both " + second + " and " + first;
+    }
+
     public static String illegalCombinationOfModifiers(String first, String second) {
         return "illegal combination of modifiers: " + first + " and " + second;
     }

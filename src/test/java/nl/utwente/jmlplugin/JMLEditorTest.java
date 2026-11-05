@@ -529,6 +529,7 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
 
     private static final String CALLS = """
             class A {
+                String s;
                 //@ requires %s
                 void m(int x) {}
                 //@ pure
@@ -569,6 +570,36 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
         assertNotNull(parameterInfo("between(x, Math.max(x, 1), <caret>", 2));
         // not in parentheses that are no call
         assertNull(parameterInfo("(x > <caret>0);", 0));
+        // a call with a qualifier that is not closed yet: the methods of the class of the qualifier, once each (equals
+        // of String, not also that of Object)
+        methods = parameterInfo("s.equals(<caret>", 0);
+        assertNotNull(methods);
+        assertEquals(1, methods.length);
+        methods = parameterInfo("Math.max(x, <caret>", 1);
+        assertNotNull(methods);
+        assertTrue(methods.length > 1);
+    }
+
+    public void testParameterInfoStaysWhileTyping() {
+        // the JML is parsed again when a character is typed, which makes a new "(": the hint stays on the same call
+        myFixture.configureByText("A.java", CALLS.formatted("between(x, <caret>"));
+        nl.utwente.jmlplugin.editor.JMLParameterInfoHandler handler = new nl.utwente.jmlplugin.editor.JMLParameterInfoHandler();
+        var create = new com.intellij.testFramework.utils.parameterInfo.MockCreateParameterInfoContext(myFixture.getEditor(), myFixture.getFile());
+        com.intellij.psi.PsiElement before = handler.findElementForParameterInfo(create);
+        assertNotNull(before);
+        myFixture.type("3, ");
+        Editor host = myFixture.getEditor() instanceof EditorWindow window ? window.getDelegate() : myFixture.getEditor();
+        com.intellij.psi.PsiDocumentManager.getInstance(getProject()).commitAllDocuments();
+        com.intellij.psi.PsiFile hostFile = com.intellij.psi.PsiDocumentManager.getInstance(getProject()).getPsiFile(host.getDocument());
+        Editor injected = com.intellij.psi.impl.source.tree.injected.InjectedLanguageUtil.getEditorForInjectedLanguageNoCommit(host, hostFile);
+        assertTrue(injected instanceof EditorWindow);
+        var update = new com.intellij.testFramework.utils.parameterInfo.MockUpdateParameterInfoContext(injected,
+                ((EditorWindow) injected).getInjectedFile(), create.getItemsToShow());
+        update.setParameterOwner(before);
+        com.intellij.psi.PsiElement after = handler.findElementForUpdatingParameterInfo(update);
+        assertNotNull(after);
+        handler.updateParameterInfo(after, update);
+        assertEquals(2, update.getCurrentParameter());
     }
 
     public void testFoldingSpecifications() {

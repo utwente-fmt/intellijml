@@ -23,8 +23,8 @@ public class JMLBraceMatcher implements PairedBraceMatcher {
             new BracePair(JMLTypes.L_SQ_BRAC, JMLTypes.R_SQ_BRAC, false),
     };
 
-    // as Java: the closing one is added before these only, not before a name
-    private static final TokenSet BEFORE = TokenSet.create(TokenType.WHITE_SPACE, JMLTypes.SEMICOLON, JMLTypes.COMMA,
+    // as Java: the closing one is added before these only, not before a name; also before the @*/ of a block comment
+    private static final TokenSet BEFORE = TokenSet.create(TokenType.WHITE_SPACE, JMLTypes.AT_SIGN, JMLTypes.SEMICOLON, JMLTypes.COMMA,
             JMLTypes.R_PAREN, JMLTypes.R_SQ_BRAC, JavaTokenType.RPARENTH, JavaTokenType.RBRACKET, JavaTokenType.SEMICOLON,
             JavaTokenType.COMMA);
 
