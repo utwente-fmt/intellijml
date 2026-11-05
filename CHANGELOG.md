@@ -3,7 +3,8 @@
 ### Added
 - **Run with JML Checks**, next to Run and Debug: runs a program or tests with run time checks of their JML
   specifications, made by [OpenJML](https://www.openjml.org). A test that violates a specification fails; an
-  application reports violated specifications in the Run tool window, with links to the source. The plugin offers to download OpenJML (about 220 MB) the first time, or
+  application reports violated specifications in the Run tool window, with links to the source. The plugin offers to download OpenJML (about 220 MB, checked against
+  the SHA-256 of the release before it is unpacked) the first time, or
   an installation can be chosen in Settings | Tools | IntelliJML. It works for applications and JUnit tests,
   and for tests and applications that Gradle runs.
 - **Verify Method with OpenJML** and **Verify File with OpenJML**: OpenJML's extended static checking tries to
