@@ -80,6 +80,24 @@ public class JMLRacTest extends BasePlatformTestCase {
         assertEquals("openjml-ubuntu-arm64-21.0.29.zip", OpenJmlInstaller.assetName(false, false, true, "21.0.29"));
     }
 
+    public void testReleaseChecksums() throws Exception {
+        // the plugin knows the SHA-256 of the release file of every platform, and refuses a download with other content
+        for (boolean[] platform : new boolean[][]{{true, false, false}, {false, true, true}, {false, true, false},
+                {false, false, false}, {false, false, true}}) {
+            String asset = OpenJmlInstaller.assetName(platform[0], platform[1], platform[2], OpenJml.VERSION);
+            assertTrue(asset, OpenJmlInstaller.SHA256.containsKey(asset));
+        }
+        Path file = Files.createTempFile("openjml", ".zip");
+        Files.writeString(file, "abc");
+        assertEquals("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", OpenJmlInstaller.sha256(file));
+        try {
+            OpenJmlInstaller.checkDigest(file, "openjml-windows-" + OpenJml.VERSION + ".zip");
+            fail("a file that is not the release");
+        } catch (java.io.IOException e) {
+            assertTrue(e.getMessage(), e.getMessage().contains("is not the release"));
+        }
+    }
+
     public void testInstallationSetting() throws Exception {
         Path directory = Files.createTempDirectory("openjml");
         JMLApplicationSettings settings = JMLApplicationSettings.getInstance();

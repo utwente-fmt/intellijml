@@ -5,7 +5,7 @@ import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
-import com.intellij.ui.components.JBLabel;
+import com.intellij.openapi.ui.panel.ComponentPanelBuilder;
 import com.intellij.util.ui.FormBuilder;
 import com.intellij.util.ui.UIUtil;
 import nl.utwente.jmlplugin.rac.OpenJml;
@@ -44,22 +44,18 @@ public class ConfigurationPanel extends JPanel {
         openJmlRow.add(openJmlPath, BorderLayout.CENTER);
         openJmlRow.add(download, BorderLayout.EAST);
 
-        JBLabel openJmlComment = new JBLabel("<html>Used by <b>Run with JML Checks</b>, which runs a program or tests " +
-                "with checks of the JML specifications, and by <b>Verify with OpenJML</b>, which tries to prove " +
-                "that methods meet them. OpenJML compiles Java 21 and older; the download is " +
-                OpenJmlInstaller.SIZE + ".</html>");
-        openJmlComment.setComponentStyle(UIUtil.ComponentStyle.SMALL);
-        openJmlComment.setFontColor(UIUtil.FontColor.BRIGHTER);
+        // comments that wrap, as in IntelliJ's own settings, so that they do not make the page as wide as their text
+        JComponent openJmlComment = comment("Used by Run with JML Checks, which runs a program or tests with checks of " +
+                "the JML specifications, and by Verify with OpenJML, which tries to prove that methods meet them. " +
+                "OpenJML compiles Java 21 and older; the download is " + OpenJmlInstaller.SIZE + ".");
 
         checkOnSaveCheckbox = new JCheckBox("Check the JML of a file with OpenJML when it is saved");
-        JBLabel checkOnSaveComment = new JBLabel("<html>A safety net for what the plugin does not check itself: " +
-                "OpenJML's errors are shown on the lines where the plugin finds nothing. OpenJML keeps running " +
-                "for ten minutes after it was used, which takes about 500 MB of memory.</html>");
-        checkOnSaveComment.setComponentStyle(UIUtil.ComponentStyle.SMALL);
-        checkOnSaveComment.setFontColor(UIUtil.FontColor.BRIGHTER);
+        JComponent checkOnSaveComment = comment("A safety net for what the plugin does not check itself: OpenJML's " +
+                "errors are shown on the lines where the plugin finds nothing. OpenJML keeps running for ten minutes " +
+                "after it was used, which takes about 500 MB of memory.");
 
-        easterEggCheckbox = new JCheckBox("???");
-        easterEggCheckbox.setToolTipText("???");
+        // the easter egg of the first version of the plugin
+        easterEggCheckbox = new JCheckBox("Rainbow colours for JML, just for fun");
 
         setLayout(new BorderLayout());
         add(FormBuilder.createFormBuilder()
@@ -71,6 +67,13 @@ public class ConfigurationPanel extends JPanel {
                 .addVerticalGap(UIUtil.LARGE_VGAP)
                 .addComponent(easterEggCheckbox)
                 .getPanel(), BorderLayout.NORTH);
+    }
+
+    /**
+     * @return a comment below a setting, in the small grey font of IntelliJ's settings, that wraps at about 70 characters
+     */
+    private static JComponent comment(String text) {
+        return ComponentPanelBuilder.createCommentComponent(text, true, 70, true);
     }
 
     /**
