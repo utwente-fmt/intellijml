@@ -208,6 +208,9 @@
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- Comment with Line Comment (Ctrl+/) on a `//@` line removed the `//`, which left the JML as broken Java code, such
+  as `@ requires x > 0;`. It now comments out the line, as `//    //@ requires x > 0;`, and Ctrl+/ again brings it
+  back; on a line of a `/*@ ... @*/` block it puts `//` before the line, which JML takes as a comment.
 - Imports that only JML uses, as in `//@ ensures \result instanceof ArrayList;`, were greyed out as unused. They are
   not anymore, while unused imports in the same file still are.
 - Run with JML Checks failed with OpenJML's "An internal JML error occurred" on a `loop_writes` clause of a `for`
