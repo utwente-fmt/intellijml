@@ -1,6 +1,7 @@
 package nl.utwente.jmlplugin;
 
 import com.intellij.codeInsight.actions.OptimizeImportsProcessor;
+import com.intellij.codeInspection.unusedImport.UnusedImportInspection;
 import com.intellij.codeInsight.intention.IntentionAction;
 import com.intellij.injected.editor.EditorWindow;
 import com.intellij.lang.ImportOptimizer;
@@ -22,6 +23,30 @@ public class JMLEditorTest extends LightJavaCodeInsightFixtureTestCase {
     @Override
     protected @NotNull LightProjectDescriptor getProjectDescriptor() {
         return JAVA_21;
+    }
+
+    public void testImportsUsedInJmlAreNotGreyedOut() {
+        myFixture.enableInspections(new UnusedImportInspection());
+        myFixture.configureByText("A.java", """
+                import java.util.ArrayList;
+                import java.util.List;
+                import java.util.Map;
+                import java.util.concurrent.*;
+                import static java.lang.Math.max;
+
+                class A {
+                    //@ requires o instanceof ArrayList && max(1, 2) == 2;
+                    //@ ensures !(o instanceof ConcurrentHashMap);
+                    void m(Object o) {
+                    }
+                }
+                """);
+        String text = myFixture.getEditor().getDocument().getText();
+        List<String> unused = myFixture.doHighlighting().stream()
+                .filter(info -> "Unused import statement".equals(info.getDescription()))
+                .map(info -> text.substring(info.getStartOffset(), info.getEndOffset())).toList();
+        // List and Map are not used anywhere; the others are used in the JML
+        assertEquals(List.of("import java.util.List;", "import java.util.Map;"), unused);
     }
 
     public void testOptimizeImportsKeepsImportsUsedInJml() {

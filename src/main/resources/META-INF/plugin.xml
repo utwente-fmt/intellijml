@@ -66,6 +66,8 @@
         <!-- before IntelliJ's own Java import optimizer, which it uses: only one optimizer per language is used -->
         <lang.importOptimizer language="JAVA" implementationClass="nl.utwente.jmlplugin.editor.JMLImportOptimizer"
                               order="first"/>
+        <!-- imports that only JML uses are not greyed out as unused -->
+        <daemon.highlightInfoFilter implementation="nl.utwente.jmlplugin.editor.JMLUnusedImportFilter"/>
         <!-- before Java's own handling of Enter in comments -->
         <enterHandlerDelegate implementation="nl.utwente.jmlplugin.editor.JMLEnterHandler" order="first"/>
         <lang.documentationProvider language="JAVA"

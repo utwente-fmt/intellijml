@@ -208,6 +208,8 @@
   name is typed, as searching them on every keystroke was slow
 
 ### Fixed
+- Imports that only JML uses, as in `//@ ensures \result instanceof ArrayList;`, were greyed out as unused. They are
+  not anymore, while unused imports in the same file still are.
 - Run with JML Checks failed with OpenJML's "An internal JML error occurred" on a `loop_writes` clause of a `for`
   loop that declares its index, as in `for (int i = 0; ...)`, which OpenJML 21.0.29 cannot compile run time checks
   for. It now says so before OpenJML starts, with links to the loops and how to change them: declare the index before
