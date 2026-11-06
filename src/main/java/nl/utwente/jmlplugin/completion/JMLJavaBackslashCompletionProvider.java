@@ -7,6 +7,7 @@ import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
 import com.intellij.util.ProcessingContext;
 import nl.utwente.jmlplugin.psi.JMLTokenSet;
+import nl.utwente.jmlplugin.psi.JMLTypes;
 import org.jetbrains.annotations.NotNull;
 
 import static nl.utwente.jmlplugin.completion.JMLCompletionUtils.*;
@@ -29,6 +30,8 @@ public class JMLJavaBackslashCompletionProvider extends CompletionProvider<Compl
         addBackslashTokens(old, result);
         addBackslashTokens(JMLTokenSet.result, result);
         addBackslashTokens(assignableJavaKeywords, result);
+        addBackslashTokens(postconditionKeywordsInJava, result);
+        addBackslashTokens(TokenSet.create(JMLTypes.INVARIANT_FOR), result);
     }
 
     /**

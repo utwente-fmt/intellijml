@@ -1,16 +1,25 @@
 package nl.utwente.jmlplugin.documentation;
 
 import com.intellij.lang.java.JavaDocumentationProvider;
+import com.intellij.openapi.editor.colors.EditorColorsManager;
+import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.editor.markup.TextAttributes;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.psi.PsiComment;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiMethod;
+import com.intellij.psi.PsiModifierList;
 import com.intellij.psi.tree.IElementType;
+import nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil;
 import nl.utwente.jmlplugin.lexer.JMLMultiLayerLexer;
 import nl.utwente.jmlplugin.syntax_highlighting.JMLSyntaxHighlighter;
 import org.jetbrains.annotations.Nls;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 
 /**
@@ -20,7 +29,6 @@ import java.awt.*;
 
 public class JMLDocumentationProvider extends JavaDocumentationProvider {
 
-    // TODO Unit tests
     @Override
     public @Nls String generateDoc(PsiElement element, PsiElement originalElement) {
         // Original method return
@@ -32,8 +40,19 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
             // search for the JML comment
             boolean jmlFound = false;
             StringBuilder resultBuilder = new StringBuilder(original == null ? "" : original);
-            for (PsiElement elem: element.getChildren()) {
-                if (elem instanceof PsiComment &&
+            // the JML above the method that OpenJML also takes as its specification, as above its documentation
+            // comment or with a blank line in between, in the order of the file
+            List<PsiElement> children = new ArrayList<>(JMLAnnotatorUtil.commentsAbove(element));
+            Collections.reverse(children);
+            for (PsiElement child : element.getChildren()) {
+                // comments between modifiers, such as in public /*@ pure @*/ static int size(), are in the modifier list
+                if (child instanceof PsiModifierList) children.addAll(Arrays.asList(child.getChildren()));
+                else children.add(child);
+            }
+            EditorColorsScheme scheme = EditorColorsManager.getInstance().getGlobalScheme();
+            for (PsiElement elem: children) {
+                // a ghost field right above the method is not part of its specification
+                if (elem instanceof PsiComment comment && !JMLAnnotatorUtil.isClassLevelComment(comment) &&
                         (elem.getText().startsWith("/*@") || elem.getText().startsWith("//@"))) {
 
                     PsiComment jmlComment = (PsiComment) elem;
@@ -45,38 +64,9 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
                         jmlFound = true;
                     }
 
-                    // Get a lexer to get the token types in the comment
-                    JMLSyntaxHighlighter syntaxHighlighter = new JMLSyntaxHighlighter();
-                    JMLMultiLayerLexer lexer = new JMLMultiLayerLexer();
                     // remove the start of the comment
                     String jmlText = "\n"+jmlComment.getText().replaceAll("(//|/\\*|\\*/)","").trim();
-
-                    // go through all tokens
-                    lexer.start(jmlText);
-                    while(lexer.getCurrentPosition().getOffset() < jmlText.length()) {
-                        IElementType type = lexer.getTokenType();
-                        if (type == null) break;
-                        TextAttributesKey[] arr = syntaxHighlighter.getTokenHighlights(type);
-                        if (arr.length > 0) {
-                            // get the first, as that is usually the JML highlighting
-                            TextAttributes attrs = arr[0].getDefaultAttributes();
-                            // add foreground color and optional font-weight
-                            Color fg = attrs.getForegroundColor();
-                            resultBuilder.append("<span style=\"color:#").append(Integer.toHexString(fg.getRGB()).substring(2)).append(";");
-                            if (attrs.getFontType() == Font.BOLD) resultBuilder.append("font-weight:bold;");
-                            resultBuilder. append("\">").append(lexer.getTokenText()).append("</span>");
-                        } else if (lexer.getTokenText().length() == 0) {
-                            // don't add span around empty tokens
-                            resultBuilder.append(lexer.getTokenText());
-                        } else {
-                            // no highlighting found, so just add the text itself,
-                            // but do newlines with HTML newlines
-                            String text = lexer.getTokenText().replaceAll("\n[ \t\r]*","<br/>");
-                            resultBuilder.append("<span>").append(text).append("</span>");
-                        }
-
-                        lexer.advance();
-                    }
+                    appendHighlighted(resultBuilder, jmlText, scheme);
                 }
             }
 
@@ -87,5 +77,44 @@ public class JMLDocumentationProvider extends JavaDocumentationProvider {
         }
 
         return original;
+    }
+
+    /**
+     * Appends JML text as HTML, in the colours that the editor gives it in the colour scheme
+     *
+     * @param resultBuilder the HTML so far
+     * @param jmlText       the JML, such as "@ requires x > 0;"
+     */
+    static void appendHighlighted(StringBuilder resultBuilder, String jmlText, EditorColorsScheme scheme) {
+        // Get a lexer to get the token types in the comment
+        JMLSyntaxHighlighter syntaxHighlighter = new JMLSyntaxHighlighter();
+        JMLMultiLayerLexer lexer = new JMLMultiLayerLexer();
+
+        // go through all tokens
+        lexer.start(jmlText);
+        while(lexer.getCurrentPosition().getOffset() < jmlText.length()) {
+            IElementType type = lexer.getTokenType();
+            if (type == null) break;
+            TextAttributesKey[] arr = syntaxHighlighter.getTokenHighlights(type);
+            // get the first, as that is usually the JML highlighting, in the colour scheme that is in use
+            TextAttributes attrs = arr.length > 0 ? scheme.getAttributes(arr[0]) : null;
+            Color fg = attrs != null ? attrs.getForegroundColor() : null;
+            if (fg != null) {
+                // add foreground color and optional font-weight
+                resultBuilder.append("<span style=\"color:#").append(Integer.toHexString(fg.getRGB()).substring(2)).append(";");
+                if (attrs.getFontType() == Font.BOLD) resultBuilder.append("font-weight:bold;");
+                resultBuilder. append("\">").append(StringUtil.escapeXmlEntities(lexer.getTokenText())).append("</span>");
+            } else if (lexer.getTokenText().length() == 0) {
+                // don't add span around empty tokens
+                resultBuilder.append(lexer.getTokenText());
+            } else {
+                // no highlighting found, so just add the text itself (escaped, as < and & are HTML),
+                // but do newlines with HTML newlines
+                String text = StringUtil.escapeXmlEntities(lexer.getTokenText()).replaceAll("\n[ \t\r]*","<br/>");
+                resultBuilder.append("<span>").append(text).append("</span>");
+            }
+
+            lexer.advance();
+        }
     }
 }

@@ -7,7 +7,6 @@ import com.intellij.util.ProcessingContext;
 import org.jetbrains.annotations.NotNull;
 
 import static nl.utwente.jmlplugin.completion.JMLCompletionUtils.fillPrimitiveClassCompletions;
-import static nl.utwente.jmlplugin.completion.JMLCompletionUtils.sortResults;
 
 public class JMLJavaPrimitiveClassCompletion extends CompletionProvider<CompletionParameters> {
 
@@ -16,6 +15,5 @@ public class JMLJavaPrimitiveClassCompletion extends CompletionProvider<Completi
     @Override
     protected void addCompletions(@NotNull CompletionParameters parameters, @NotNull ProcessingContext context, @NotNull CompletionResultSet result) {
         fillPrimitiveClassCompletions(result);
-        sortResults(parameters, result);
     }
 }

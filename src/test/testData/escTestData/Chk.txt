@@ -1,0 +1,15 @@
+Chk.java:4: error: bad operand types for binary operator '+'
+    //@ requires x + true;
+                   ^
+  first type:  int
+  second type: boolean
+Chk.java:5: error: An identifier with private visibility may not be used in a ensures clause with public visibility
+    //@ ensures \result == count;
+                           ^
+Chk.java:11: error: cannot find symbol
+    //@ assignable nothere;
+                   ^
+  symbol:   variable nothere
+  location: class Chk
+3 errors
+

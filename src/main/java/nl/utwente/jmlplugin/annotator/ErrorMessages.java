@@ -2,6 +2,7 @@ package nl.utwente.jmlplugin.annotator;
 
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiExpression;
+import com.intellij.psi.PsiMethod;
 import com.intellij.psi.PsiType;
 import nl.utwente.jmlplugin.psi.*;
 import org.jetbrains.annotations.NotNull;
@@ -18,24 +19,58 @@ public final class ErrorMessages {
     public static final String SIGNALS_WITHOUT_PARENS = "A signals clause must have parentheses around the exception type";
     public static final String SQUARE_BRACKET_BUT_NOT_STAR = "Only '*' in between the square brackets is supported";
     public static final String EXCEPTION_REFERENCE_EXPECTED = "Reference(s) to one or more exceptions expected";
-    public static final String NO_MODIFIER_BEFORE_SPEC = "All specification cases must be placed before any modifiers";
+    public static final String PUBLIC_AND_SPEC_PUBLIC = "There is no point to a declaration being both public and spec_public";
+
+    // OpenJML's messages for modifiers before a specification case
+    public static final String MODIFIER_BEFORE_LIGHTWEIGHT_CASE = "No modifiers are allowed prior to a lightweight specification case";
+    public static final String MODIFIER_BEFORE_HEAVYWEIGHT_CASE = "This JML modifier is not allowed for a specification case";
+
+    // OpenJML's [strict-jml] warnings about also
+    public static String shouldBeginWithAlso(String method, String overrides) {
+        return "Method " + method + " overrides parent class methods and so its specification should begin with 'also' ("
+                + overrides + ")";
+    }
+
+    public static String mayNotBeginWithAlso(String method) {
+        return "Method " + method + " does not override parent class methods and so its specification may not begin with 'also'";
+    }
     public static final String NO_PARENS_AROUND_QUANTIFIER = "A quantified expression should be inside parentheses, including the keyword";
 
     // Semantic error messages
     public static final String REQUIRES_FIRST = "Requires clauses must be placed before all other clauses in a specification as it is a pre-condition";
-    public static final String MULTIPLE_SIGNALS_ONLY = "Use a single signals_only clause to avoid confusion";
+    public static final String MULTIPLE_SIGNALS_ONLY = "At most one signals_only clause is permitted in a specification case";
+    // OpenJML's messages for clauses that a normal_behavior or exceptional_behavior does not allow
+    public static final String SIGNALS_IN_NORMAL_BEHAVIOR = "Signals clauses are not permitted in normal specification cases";
+    public static final String SIGNALS_ONLY_IN_NORMAL_BEHAVIOR = "Signals_only clauses are not permitted in normal specification cases";
+    public static final String ENSURES_IN_EXCEPTIONAL_BEHAVIOR = "Ensures clauses are not permitted in exceptional specification cases";
+    // OpenJML gives this as a lint warning
+    public static final String BEHAVIOR_MORE_VISIBLE = "There is no point to a specification case having more visibility than its method";
+    // OpenJML's messages for nullable and non_null
+    public static final String CONFLICTING_NULLITY = "Entity has conflicting nullity annotations";
+    public static final String CONFLICTING_NULLITY_DEFAULTS = "A declaration may not be both non_null_by_default and nullable_by_default";
+    // OpenJML's message for a set statement that assigns something else than a ghost variable
+    public static final String SET_NOT_GHOST = "The LHS in a set statement must be a ghost variable";
     public static final String DUPLICATE_MODIFIER = "This modifier has already been used in this specification";
     public static final String MULTIPLE_VISIBILITY_MODIFIERS = "You cannot have multiple visibility modifiers (public, protected or private)";
     public static final String MULTIPLE_SPEC_VISIBILITY_MODIFIERS = "You cannot have multiple specification visibility modifiers (spec_public or spec_protected)";
-    public static final String LOOP_INVARIANT_NOT_ABOVE_LOOP = "loop_invariant / maintaining needs to be above a loop";
-    public static final String HELPER_NOT_ALLOWED = "The helper modifier is only allowed when the method is private or pure";
+    // OpenJML's message for a loop_invariant, decreases or loop_writes clause that is not above a loop
+    public static final String LOOP_SPEC_NOT_ABOVE_LOOP = "Loop specifications must immediately precede a loop statement";
+    public static final String SPLIT_OUT_OF_PLACE = "Ignoring out of place split statement";
+    public static final String COUNT_OUTSIDE_LOOP = "A \\count token is used outside the scope of a foreach loop";
     public static final String NOT_SPECIFIED_REDUNDANT = "This clause containing \\not_specified is redundant because you already specified it";
     public static final String STATIC_AND_INSTANCE = "You cannot use both instance and static, choose one";
-    public static final String BACKSLASH_RESULT_NOT_ALLOWED = "You can only use \\result in an ensures clause";
-    public static final String OLD_EXPR_NOT_ALLOWED = "You can only use an \\old() expressions in ensures and signals clauses, assert and assume statements, and in loop invariants";
+    // OpenJML's messages for \result and \old in a clause that does not allow them
+    public static String resultNotAllowed(String clause) {
+        return "A \\result expression may not be in a " + clause + " clause";
+    }
+
+    public static String oldNotAllowed(String clause) {
+        return "A \\old token with no label may not be present in a " + clause + " clause";
+    }
 
     // Type error messages
     public static final String INVALID_EXPR = "Not a valid expression";
+    public static final String CHAIN_DIRECTIONS = "Cannot chain comparisons that are in different directions";
     public static final String INCORRECT_REFERENCE = "This is not a correct reference";
     public static final String ASSIGNABLE_ARRAY_ONLY = "You can only use '[*]' on arrays";
     public static final String ASSIGNABLE_CLASS_ONLY = "You can only use '.*' on classes and interfaces";
@@ -50,7 +85,10 @@ public final class ErrorMessages {
     public static final String NO_ARRAY = "This is not an array";
     public static final String NO_CLASS_INSTANCE = "This should be of type java.lang.Class, maybe you forgot to use .class or .getClass()?";
     public static final String ASSIGNABLE_VAR_IS_FINAL = "This variable is final, so cannot be assigned";
-    public static final String ASSIGNABLE_PARAMETER = "A method may always assign its parameters, so they do not need to be listed here";
+    // OpenJML's message for a parameter in an assignable clause
+    public static String assignableParameter(String name) {
+        return "An assignable clause may not contain method formal parameters: " + name;
+    }
 
     // java expression visitor error messages
     public static final String NO_ARRAY_SO_NO_ACCESS = "Array access is not allowed as this is not an array";
@@ -61,16 +99,69 @@ public final class ErrorMessages {
     public static final String ARRAY_DIM_NO_INT = "Array dimensions should be of type int or something that can be converted to int";
     public static final String ARRAY_INITIALIZER_WRONG_TYPE = "Initializer is not the same type as the array element type";
     public static final String METHOD_UNRESOLVED = "Method could not be resolved, maybe the parameters do not correspond?";
+    public static final String OBJECT_ALLOCATION = "Object allocation is not permitted in specification expressions";
     public static final String CONSTRUCTOR_UNRESOLVED = "Constructor could not be resolved, maybe the parameters do not correspond?";
     public static final String INCOMPATIBLE_CAST = "Incompatible type cast";
-    public static final String INVARIANT_WRONG_VISIBILITY = "The (specification) visibility of the reference should be the same as the visibility of the invariant";
-    public static final String FIELD_NO_MODIFIERS = "The referenced field has no modifiers, so cannot check visibility constraints";
     public static final String INVARIANT_SHOULD_BE_STATIC = "A static invariant can only see static fields";
     public static final String VARIABLE_EXPECTED = "Variable expected";
     public static final String NOT_A_CLASS = "This is not a class";
     public static final String REFERENCE_UNRESOLVED = "Reference cannot be resolved";
-    public static final String METHOD_NOT_PURE = "JML expressions should be pure and this method might not be pure";
+    public static final String NOT_VISIBLE = "This is not visible here, declare it spec_public to use it in specifications";
+    // OpenJML's warning for a call in a specification of a method that is not spec_pure (or pure, with a primitive result)
+    public static String nonPureCall(String method) {
+        return "A non-pure method is being called where it is not permitted: " + method;
+    }
+
+    public static String pureReturnsObjectTooltip(String method) {
+        return "<html>A non-pure method is being called where it is not permitted.<br>" + method + " is pure, but a pure "
+                + "method may return a new object, so a specification may only call it if it is spec_pure, as in "
+                + "OpenJML 21: declare it spec_pure if it returns an object that already existed, such as the value of "
+                + "a field.</html>";
+    }
+
+    // the body of a pure method or constructor, which has an implicit "assignable \nothing": OpenJML's static checking
+    // reports these as assignable violations
+    public static String pureAssigns(boolean constructor, String target) {
+        return "A pure " + (constructor ? "constructor" : "method") + " may not assign to " + target;
+    }
+
+    public static String pureCalls(boolean constructor, String callee) {
+        return "A pure " + (constructor ? "constructor" : "method") + " may not call " + callee
+                + ", which is not pure and has no assignable clause, so it has 'assignable \\everything'";
+    }
+
+    // the body of a method that assigns what its assignable clause does not allow: OpenJML's static checking reports
+    // these as assignable violations
+    public static String notAssignable(String target) {
+        return "The assignable clause does not allow assigning to " + target;
+    }
+
+    public static String callAssignsEverything(String callee) {
+        return "The assignable clause does not allow calling " + callee
+                + ", which is not pure and has no assignable clause, so it has 'assignable \\everything'";
+    }
+
+    public static String callNotAssignable(String callee, String location) {
+        return "The assignable clause does not allow calling " + callee + ", which assigns " + location;
+    }
+
+    // OpenJML's errors for the assignable clauses of pure methods and of constructors
+    public static String pureMethodAssignable(String item, String method) {
+        return "Pure methods may not assign to any fields: " + item + " in " + method;
+    }
+
+    public static String pureConstructorAssignable(String item) {
+        return "Pure constructors may not assign to any fields other than non-static member fields: " + item;
+    }
+
+    public static final String CONSTRUCTOR_ASSIGNABLE_THIS = "References to 'this' are not permitted in constructor assignable clauses: this";
+
+    public static String constructorAssignableImplicitThis(String name) {
+        return "Implicit references to 'this' are not permitted in constructor assignable clauses: " + name;
+    }
+
     public static final String ASSIGNMENT_NOT_PURE = "JML expressions should be pure and assignments are not pure";
+    public static final String INCREMENT_NOT_PURE = "JML expressions should be pure and ++ and -- change a variable";
 
     // Other error messages
     public static final String WS_BEFORE_AT_SIGN = "To be considered a JML comment, there should be no whitespace between the start of the comment (/* or //) and the @-sign";
@@ -99,6 +190,156 @@ public final class ErrorMessages {
         return (output.contains("modifiers") ? "" : "modifier, ") + output;
     }
 
+    // the same message as OpenJML gives
+    // OpenJML's messages for \fresh and \invariant_for, whose argument must be an object, and for \fresh and
+    // \not_modified in a clause that does not allow them, such as "a requires clause" (and "a invariant clause")
+    public static String notReferenceType(String keyword) {
+        return "The argument of " + keyword + " must be of reference type";
+    }
+
+    public static String helperNotAllowed(PsiElement method) {
+        String name = method instanceof PsiMethod psiMethod ? psiMethod.getName() : "";
+        return "A helper method must be private or pure or final: " + name;
+    }
+
+    public static String notIntegralArgument(String keyword) {
+        return "the argument of " + keyword + " must be cast to a Java integral type";
+    }
+
+    public static String notLoopSpecification(String keyword) {
+        return "Expected loop specifications while in JML: " + keyword + " is not a loop specification keyword";
+    }
+
+    public static String notAllowedInClause(String keyword, String clause) {
+        return "A " + keyword + " expression may not be in a " + clause + " clause";
+    }
+
+    // the messages of OpenJML (and javac) for a ghost variable with the name of another variable, and for an
+    // initializer or a set statement whose value does not fit the variable
+    public static String alreadyDefined(String name, String ownerKind, String owner) {
+        return "variable " + name + " is already defined in " + ownerKind + " " + owner;
+    }
+
+    public static String incompatibleTypes(@NotNull PsiType from, @NotNull PsiType to) {
+        return "incompatible types: " + from.getPresentableText() + " cannot be converted to " + to.getPresentableText();
+    }
+
+    public static String incompatibleTypes(@NotNull PsiType from, @NotNull String to) {
+        return "incompatible types: " + from.getPresentableText() + " cannot be converted to " + to;
+    }
+
+    // OpenJML's (and javac's) messages for the modifiers of a ghost declaration
+    public static final String BOTH_INSTANCE_AND_STATIC = "A declaration may not be both instance and static";
+
+    /**
+     * @param declaration what is declared, such as "ghost field", "model field" or "local variable"
+     */
+    public static String jmlModifierNotAllowedIn(String declaration) {
+        return "This JML modifier is not allowed for a " + declaration + " declaration";
+    }
+
+    public static final String JML_MODIFIER_NOT_ALLOWED_IN_REPRESENTS = "This JML modifier is not allowed for a represents clause";
+
+    // OpenJML's messages for model fields, represents clauses and in clauses
+    public static final String MODEL_FIELD_INITIALIZER = "A non-final model field may not have an initializer";
+    public static final String REPRESENTS_WITHOUT_OPERATOR = "A represents clause must have a = or \\such_that after the identifier";
+    public static final String REPRESENTS_FIELD_ACCESS = "Field accesses are not permitted in a represents clause";
+    public static final String REPRESENTS_STATIC = "A represents clause and its associated model field must both be static or both not be static";
+    public static final String IN_CLAUSE_NOT_AFTER_FIELD = "This in clause must directly follow a field declaration";
+    public static final String DATAGROUP_NOT_MODEL = "Datagroups in \"in\" and \"maps\" clauses must be model variables";
+    public static final String NON_STATIC_IN_STATIC_DATAGROUP = "A non-static variable may not be in a static datagroup";
+
+    // OpenJML's warning for a quantified expression that its runtime checks cannot compute, which they then treat as
+    // false (or 0); the tooltip explains what that means
+    public static final String QUANTIFIER_NOT_EXECUTABLE = "Runtime assertion checking is not implemented for this type or number of declarations in a quantified expression";
+    public static final String QUANTIFIER_NOT_EXECUTABLE_TOOLTIP = "<html>" + QUANTIFIER_NOT_EXECUTABLE + ".<br>"
+            + "Run with JML Checks then uses false instead (or 0 for \\sum, \\num_of and \\max), so it can report a "
+            + "violation that is not there. It can compute a quantified expression over one variable:<br>"
+            + "- of an integral type, such as int, with a lower and an upper bound in the range, as in "
+            + "(\\forall int i; 0 &lt;= i &lt; a.length; a[i] &gt; 0)<br>"
+            + "- over the elements of a collection, with a call of contains first in the range, as in "
+            + "(\\forall String s; list.contains(s); s != null)<br>"
+            + "- of type boolean.</html>";
+
+    public static String forallWithBoundsInExpression(String variable) {
+        return "This \\forall is false: its expression must hold for every " + variable
+                + ", also outside the range that && restricts it to. Put that restriction in the range, or use ==> after it";
+    }
+
+    public static String existsWithBoundsInExpression(String variable) {
+        return "This \\exists is true: its expression holds for every " + variable
+                + " outside the range before ==>. Put that restriction in the range, or use && instead of ==>";
+    }
+
+    // OpenJML's messages for a semicolon that is missing at the end of the JML, and for modifiers followed by one
+    public static String insertingMissingSemicolon(String clause) {
+        return "Inserting missing semicolon at the end of a " + clause + " statement";
+    }
+
+    public static String missingSemicolonBeforeClause(String clause) {
+        return "Incorrectly formed or terminated " + clause + " statement near here -- perhaps a missing semicolon";
+    }
+
+    public static final String ORPHANED_MODIFIERS = "Orphaned modifiers found before an empty declaration";
+
+    // OpenJML's messages for old clauses
+    public static final String OLD_WITHOUT_INITIALIZER = "A old method clause variable must have an initializer";
+
+    public static String javaModifierInOldClause(String modifier) {
+        return "No Java modifiers are allowed in a old clause declaration: " + modifier;
+    }
+
+    public static String modelInInterfaceNotStaticOrInstance(String name) {
+        return "Model fields in an interface should be explicitly declared either static or instance: " + name;
+    }
+
+    public static String representsNotModelField(String name) {
+        return "The target of a represents clause must be a model field: " + name;
+    }
+
+    public static String representsOtherClass(String name) {
+        return "A represents clause must be declared in the same class as the static model field it represents: " + name;
+    }
+
+    public static String representsNotHelper(String method) {
+        return "A method called in a represents clause must be a helper method: " + method;
+    }
+
+    public static String notInDataGroup(String model, String field) {
+        return "Because '" + model + "' reads '" + field + "' in a represents clause, '" + field
+                + "' must be 'in' the model field '" + model + "'";
+    }
+
+    public static String javaModifierNotAllowedHere(String modifier) {
+        return "modifier " + modifier + " not allowed here";
+    }
+
+    // OpenJML's error for two of pure, spec_pure, strictly_pure and no_state, at the second
+    public static String bothModifiers(String second, String first) {
+        return "A declaration may not be both " + second + " and " + first;
+    }
+
+    public static String illegalCombinationOfModifiers(String first, String second) {
+        return "illegal combination of modifiers: " + first + " and " + second;
+    }
+
+    public static String nullityOnPrimitive(@NotNull PsiType type) {
+        return "the type modifier/annotation is not permitted on a primitive type: " + type.getPresentableText();
+    }
+
+    public static String notIntegral(@Nullable PsiType type) {
+        return "Expected an integral type in loop_decreases, not " + (type == null ? "unknown" : type.getCanonicalText());
+    }
+
+    public static String identifierNotVisible(String identifierVisibility, String clause, String specVisibility) {
+        return "An identifier with " + identifierVisibility + " visibility may not be used in a " + clause
+                + " clause with " + specVisibility + " visibility";
+    }
+
+    public static String unknownBackslashKeyword(String keyword) {
+        return "Unknown keyword " + keyword + ", or a JML keyword that this plugin does not support";
+    }
+
     public static String modifierNotAllowedHere(String modifier, CommentPosition position) {
         return "Modifier '" + modifier + "' is not allowed " + position.getPositionString();
     }
@@ -108,9 +349,21 @@ public final class ErrorMessages {
         if (specKind instanceof JMLModifiers) {
             specKindStr = "Modifiers";
         } else if (specKind instanceof JMLMethodJml) {
+            // OpenJML's message for a specification after a Java annotation or modifier, as in "@Override //@ ensures ..."
+            if (position == CommentPosition.METHOD_DECLARATION) return "A method specification incorrectly follows non-JML modifiers";
+            // OpenJML's message for a specification with no method or field below it, as at the end of a class body
+            if (position == CommentPosition.INSIDE_CLASS) return "Method specifications without a following method declaration";
             specKindStr = "Method specifications";
         } else if (specKind instanceof JMLInMethodSpec) {
             specKindStr = "In-method specifications";
+        } else if (specKind instanceof JMLGhostDeclaration declaration) {
+            return (Ghosts.isModel(declaration) ? "Model" : "Ghost") + " declarations are not allowed "
+                    + position.getPositionString()
+                    + (position == CommentPosition.FIELD ? ", add a newline after the comment" : "");
+        } else if (specKind instanceof JMLRepresentsClause) {
+            specKindStr = "Represents clauses";
+        } else if (specKind instanceof JMLInClause) {
+            specKindStr = "In clauses";
         } else if (specKind instanceof JMLClassInvariant) {
             return "Class invariants are not allowed " + position.getPositionString()
                     + (position == CommentPosition.FIELD ? ", add a newline after the comment" : "");

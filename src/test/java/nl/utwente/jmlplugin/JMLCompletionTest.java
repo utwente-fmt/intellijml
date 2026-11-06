@@ -1,9 +1,13 @@
 package nl.utwente.jmlplugin;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import com.intellij.codeInsight.completion.CompletionType;
+import com.intellij.testFramework.LightProjectDescriptor;
+import com.intellij.util.containers.ContainerUtil;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import org.jetbrains.annotations.NotNull;
 
 import static nl.utwente.jmlplugin.completion.JMLCompletionUtils.*;
 import static nl.utwente.jmlplugin.psi.JMLTokenSet.*;
@@ -23,7 +27,8 @@ import static nl.utwente.jmlplugin.psi.JMLTokenSet.*;
  * supposed to take place, this makes it a giant pain to deal with and custom handling of these circumstances is necessary,
  * hence the tests must also test with a semicolon and without one.
  *
- * There is also some boiler plate that needs to be copy pasted in the test method itself, but you can look that up below.
+ * Get the suggestions with {@link #completeIn(String)}, and check them with assertContainsElements, assertDoesntContain
+ * or, where the exact list matters, assertSameElements: these show the actual suggestions when a test fails.
  */
 
 public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
@@ -31,212 +36,159 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
     public static List<String> START_KEYWORDS = Arrays.asList(getText(methodSpecCaseKeywords));
     public static List<String> METHOD_MODIFIERS = Arrays.asList(getText(methodDeclModifiers));
     public static List<String> ALSO = Arrays.asList(getText(also));
+    public static List<String> BEHAVIORS = Arrays.asList("normal_behavior", "exceptional_behavior", "behavior",
+            "public normal_behavior", "public exceptional_behavior", "public behavior");
+
+    @Override
+    protected @NotNull LightProjectDescriptor getProjectDescriptor() {
+        // a mock JDK that the test framework downloads, so the tests need no intellij-community checkout
+        return JAVA_21;
+    }
 
     @Override
     protected String getTestDataPath() {
-        return "src/test/completionTestData";
+        return "src/test/testData/completionTestData";
+    }
+
+    /**
+     * Invokes basic completion at the caret in a test file
+     *
+     * @param fileName the test file, with a caret
+     * @return the suggestions in the completion popup
+     */
+    private List<String> completeIn(String fileName) {
+        myFixture.configureByFile(fileName);
+        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = myFixture.getLookupElementStrings();
+        assertNotNull("No completion popup in " + fileName + ": there were no suggestions, or the only one was inserted",
+                strings);
+        return strings;
     }
 
     public void testStartingJMLKeywords() {
-        myFixture.configureByFile("JMLStartingKeywords.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("JMLStartingKeywords.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.containsAll(START_KEYWORDS));
-        assertTrue(strings.containsAll(METHOD_MODIFIERS));
-        assertTrue(strings.containsAll(ALSO));
-        assertEquals(START_KEYWORDS.size() + METHOD_MODIFIERS.size() + ALSO.size(), strings.size());
+        assertSameElements(strings, ContainerUtil.concat(START_KEYWORDS, List.of("reads", "old"), METHOD_MODIFIERS, ALSO, BEHAVIORS));
     }
 
     public void testJMLJavaField() {
-        myFixture.configureByFile("JavaField.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("JavaField.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("number"));
+        assertContainsElements(strings, "number");
     }
 
     public void testJMLJavaFieldSemicolon() {
-        myFixture.configureByFile("JavaFieldSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("JavaFieldSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("number"));
+        assertContainsElements(strings, "number");
     }
 
     public void testMethodParameters() {
-        myFixture.configureByFile("MethodParameter.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("MethodParameter.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("methodParameter"));
+        assertContainsElements(strings, "methodParameter");
     }
 
     public void testMethodParameterSemicolon() {
-        myFixture.configureByFile("MethodParameterSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("MethodParameterSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("methodParameter"));
+        assertContainsElements(strings, "methodParameter");
     }
 
     public void testMethod() {
-        myFixture.configureByFile("Method.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("Method.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("randomNumber"));
+        assertContainsElements(strings, "randomNumber");
     }
 
     public void testInlineModifier() {
-        myFixture.configureByFile("InlineModifier.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("InlineModifier.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.containsAll(METHOD_MODIFIERS));
-        assertEquals(METHOD_MODIFIERS.size(), strings.size());
+        assertSameElements(strings, METHOD_MODIFIERS);
     }
 
     public void testMethodSemicolon() {
-        myFixture.configureByFile("MethodSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("MethodSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("randomNumber"));
+        assertContainsElements(strings, "randomNumber");
     }
 
     public void testStaticImports() {
-        myFixture.configureByFile("StaticImports.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("StaticImports.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("MAX_VALUE"));
-        assertTrue(strings.contains("getInteger"));
+        assertContainsElements(strings, "MAX_VALUE");
+        assertContainsElements(strings, "getInteger");
     }
 
     public void testStaticImportsSemicolon() {
-        myFixture.configureByFile("StaticImportsSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("StaticImportsSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("MAX_VALUE"));
-        assertTrue(strings.contains("getInteger"));
+        assertContainsElements(strings, "MAX_VALUE");
+        assertContainsElements(strings, "getInteger");
     }
 
     public void testDotCompletion() {
-        myFixture.configureByFile("DotCompletion.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("DotCompletion.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("add"));
+        assertContainsElements(strings, "add");
     }
 
     public void testDotCompletionSemicolon() {
-        myFixture.configureByFile("DotCompletionSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("DotCompletionSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("add"));
+        assertContainsElements(strings, "add");
     }
 
     public void testStaticDotCompletion() {
-        myFixture.configureByFile("StaticDot.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("StaticDot.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("MAX_VALUE"));
-        assertTrue(strings.contains("getInteger"));
+        assertContainsElements(strings, "MAX_VALUE");
+        assertContainsElements(strings, "getInteger");
     }
 
     public void testStaticDotCompletionSemicolon() {
-        myFixture.configureByFile("StaticDotSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("StaticDotSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("MAX_VALUE"));
-        assertTrue(strings.contains("getInteger"));
+        assertContainsElements(strings, "MAX_VALUE");
+        assertContainsElements(strings, "getInteger");
     }
 
     public void testSignalsCompletion() {
-        myFixture.configureByFile("Signals.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("Signals.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("IllegalStateException"));
+        assertContainsElements(strings, "IllegalStateException");
     }
 
     public void testSignalsCompletionSemicolon() {
-        myFixture.configureByFile("SignalsSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("SignalsSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("IllegalStateException"));
+        assertContainsElements(strings, "IllegalStateException");
     }
 
     public void testThis() {
-        myFixture.configureByFile("This.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("This.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("privateNum"));
-        assertTrue(strings.contains("protectedNum"));
-        assertTrue(strings.contains("publicNum"));
-        assertTrue(strings.contains("defaultNum"));
-        assertTrue(strings.contains("getPrivateNum"));
-        assertTrue(strings.contains("getProtectedNum"));
-        assertTrue(strings.contains("getPublicNum"));
-        assertTrue(strings.contains("getDefaultNum"));
+        assertContainsElements(strings, "privateNum");
+        assertContainsElements(strings, "protectedNum");
+        assertContainsElements(strings, "publicNum");
+        assertContainsElements(strings, "defaultNum");
+        assertContainsElements(strings, "getPrivateNum");
+        assertContainsElements(strings, "getProtectedNum");
+        assertContainsElements(strings, "getPublicNum");
+        assertContainsElements(strings, "getDefaultNum");
     }
 
     public void testThisSemicolon() {
-        myFixture.configureByFile("ThisSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ThisSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("privateNum"));
-        assertTrue(strings.contains("protectedNum"));
-        assertTrue(strings.contains("publicNum"));
-        assertTrue(strings.contains("defaultNum"));
-        assertTrue(strings.contains("getPrivateNum"));
-        assertTrue(strings.contains("getProtectedNum"));
-        assertTrue(strings.contains("getPublicNum"));
-        assertTrue(strings.contains("getDefaultNum"));
+        assertContainsElements(strings, "privateNum");
+        assertContainsElements(strings, "protectedNum");
+        assertContainsElements(strings, "publicNum");
+        assertContainsElements(strings, "defaultNum");
+        assertContainsElements(strings, "getPrivateNum");
+        assertContainsElements(strings, "getProtectedNum");
+        assertContainsElements(strings, "getPublicNum");
+        assertContainsElements(strings, "getDefaultNum");
     }
 
     /**
@@ -245,461 +197,355 @@ public class JMLCompletionTest extends LightJavaCodeInsightFixtureTestCase {
      * (or there might be an issue with the order of the class loading, but I can' be sure)
      */
     public void testSuper() {
-        myFixture.configureByFile(  "Super.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("Super.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("get"));
-        assertTrue(strings.contains("size"));
-        assertTrue(strings.contains("modCount"));
-        assertTrue(strings.contains("wait"));
+        assertContainsElements(strings, "get");
+        assertContainsElements(strings, "size");
+        assertContainsElements(strings, "modCount");
+        assertContainsElements(strings, "wait");
     }
 
     public void testSuperSemicolon() {
-        myFixture.configureByFile(  "SuperSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("SuperSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("get"));
-        assertTrue(strings.contains("size"));
-        assertTrue(strings.contains("modCount"));
-        assertTrue(strings.contains("wait"));
+        assertContainsElements(strings, "get");
+        assertContainsElements(strings, "size");
+        assertContainsElements(strings, "modCount");
+        assertContainsElements(strings, "wait");
     }
 
     public void testAssignable() {
-        myFixture.configureByFile(  "Assignable.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("Assignable.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
+        assertContainsElements(strings, "number");
+        assertContainsElements(strings, "\\nothing");
+        assertContainsElements(strings, "\\everything");
+    }
 
-        assertTrue(strings.contains("number"));
-        assertTrue(strings.contains("\\nothing"));
-        assertTrue(strings.contains("\\everything"));
+    public void testLoopWrites() {
+        List<String> strings = completeIn("LoopWrites.java");
+
+        // a loop can also write the local variables
+        assertContainsElements(strings, "number", "total", "\\nothing");
+    }
+
+    public void testCodeBlockKeywords() {
+        List<String> strings = completeIn("CodeBlockKeywords.java");
+
+        assertSameElements(strings, "assert", "assume", "maintaining", "loop_invariant", "decreases", "loop_writes",
+                "ghost", "set", "check", "show", "reachable", "unreachable", "halt", "split");
     }
 
     public void testAssignableSemicolon() {
-        myFixture.configureByFile(  "AssignableSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("AssignableSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
+        assertContainsElements(strings, "number");
+        assertContainsElements(strings, "\\nothing");
+        assertContainsElements(strings, "\\everything");
+    }
 
-        assertTrue(strings.contains("number"));
-        assertTrue(strings.contains("\\nothing"));
-        assertTrue(strings.contains("\\everything"));
+    public void testAssignableInNestedClass() {
+        List<String> strings = completeIn("AssignableNestedClass.java");
+
+        // the fields of the outer class, and the fields of the inner class only once
+        assertContainsElements(strings, "outerNumber", "innerNumber");
+        assertEquals(strings.toString(), 1, Collections.frequency(strings, "innerNumber"));
+    }
+
+    public void testParameterModifier() {
+        List<String> strings = completeIn("ParameterModifier.java");
+
+        // nullable is the only modifier of a parameter
+        assertSameElements(strings, "nullable", "non_null");
+    }
+
+    public void testStaticImportOfNestedClass() {
+        List<String> strings = completeIn("StaticImportNestedClass.java");
+
+        // "import static java.util.Map.Entry" imports the class Entry, not the members of Map
+        assertDoesntContain(strings, "containsKey", "put");
+    }
+
+    public void testSignalsOnlyWithPrefix() {
+        List<String> strings = completeIn("SignalsOnlyPrefix.java");
+
+        assertContainsElements(strings, "ArrayIndexOutOfBoundsException");
+        assertDoesntContain(strings, "ArrayList", "Arrays");
     }
 
     public void testModifiable() {
-        myFixture.configureByFile(  "Modifiable.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("Modifiable.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("number"));
-        assertTrue(strings.contains("\\nothing"));
-        assertTrue(strings.contains("\\everything"));
+        assertContainsElements(strings, "number");
+        assertContainsElements(strings, "\\nothing");
+        assertContainsElements(strings, "\\everything");
     }
 
     public void testModifiableSemicolon() {
-        myFixture.configureByFile(  "ModifiableSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ModifiableSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("number"));
-        assertTrue(strings.contains("\\nothing"));
-        assertTrue(strings.contains("\\everything"));
+        assertContainsElements(strings, "number");
+        assertContainsElements(strings, "\\nothing");
+        assertContainsElements(strings, "\\everything");
     }
 
     public void testModifies() {
-        myFixture.configureByFile(  "Modifies.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("Modifies.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("number"));
-        assertTrue(strings.contains("\\nothing"));
-        assertTrue(strings.contains("\\everything"));
+        assertContainsElements(strings, "number");
+        assertContainsElements(strings, "\\nothing");
+        assertContainsElements(strings, "\\everything");
     }
 
     public void testModifiesSemicolon() {
-        myFixture.configureByFile(  "ModifiesSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ModifiesSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("number"));
-        assertTrue(strings.contains("\\nothing"));
-        assertTrue(strings.contains("\\everything"));
+        assertContainsElements(strings, "number");
+        assertContainsElements(strings, "\\nothing");
+        assertContainsElements(strings, "\\everything");
     }
 
     public void testResultDot() {
-        myFixture.configureByFile(  "ResultDot.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ResultDot.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("add"));
-        assertTrue(strings.contains("addAll"));
+        assertContainsElements(strings, "add");
+        assertContainsElements(strings, "addAll");
     }
 
     public void testResultDotSemicolon() {
-        myFixture.configureByFile(  "ResultDotSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ResultDotSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("add"));
-        assertTrue(strings.contains("addAll"));
+        assertContainsElements(strings, "add");
+        assertContainsElements(strings, "addAll");
     }
 
     public void testOldDot() {
-        myFixture.configureByFile(  "OldDot.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("OldDot.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("add"));
-        assertTrue(strings.contains("addAll"));
+        assertContainsElements(strings, "add");
+        assertContainsElements(strings, "addAll");
     }
 
     public void testOldDotSemicolon() {
-        myFixture.configureByFile(  "OldDotSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("OldDotSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("add"));
-        assertTrue(strings.contains("addAll"));
+        assertContainsElements(strings, "add");
+        assertContainsElements(strings, "addAll");
     }
 
     public void testQuantifiedInitializeSection() {
-        myFixture.configureByFile(  "QuantifiedInitialization.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("QuantifiedInitialization.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.containsAll(Arrays.asList(PRIMITIVE_TYPES)));
+        assertContainsElements(strings, Arrays.asList(PRIMITIVE_TYPES));
     }
 
     public void testQuantifiedInitializeSectionSemicolon() {
-        myFixture.configureByFile(  "QuantifiedInitializationSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("QuantifiedInitializationSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.containsAll(Arrays.asList(PRIMITIVE_TYPES)));
+        assertContainsElements(strings, Arrays.asList(PRIMITIVE_TYPES));
     }
 
     public void testQuantifiedCondition() {
-        myFixture.configureByFile(  "QuantifiedCondition.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("QuantifiedCondition.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("fieldInt"));
-        assertTrue(strings.contains("getRandomNumber"));
+        assertContainsElements(strings, "fieldInt");
+        assertContainsElements(strings, "getRandomNumber");
     }
 
     public void testQuantifiedConditionSemicolon() {
-        myFixture.configureByFile(  "QuantifiedConditionSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("QuantifiedConditionSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("fieldInt"));
-        assertTrue(strings.contains("getRandomNumber"));
+        assertContainsElements(strings, "fieldInt");
+        assertContainsElements(strings, "getRandomNumber");
     }
 
     public void testQuantifiedLastSection() {
-        myFixture.configureByFile(  "QuantifiedLastSection.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("QuantifiedLastSection.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("fieldInt"));
-        assertTrue(strings.contains("getSomeNumber"));
+        assertContainsElements(strings, "fieldInt");
+        assertContainsElements(strings, "getSomeNumber");
     }
 
     public void testQuantifiedLastSectionSemicolon() {
-        myFixture.configureByFile(  "QuantifiedLastSectionSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("QuantifiedLastSectionSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("fieldInt"));
-        assertTrue(strings.contains("getSomeNumber"));
+        assertContainsElements(strings, "fieldInt");
+        assertContainsElements(strings, "getSomeNumber");
     }
 
     public void testStarStaticImport() {
-        myFixture.configureByFile(  "SpecificStaticImport.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("SpecificStaticImport.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("MAX_VALUE"));
-        assertFalse(strings.contains("getInteger"));
+        assertContainsElements(strings, "MAX_VALUE");
+        assertDoesntContain(strings, "getInteger");
     }
 
     public void testStarStaticImportSemicolon() {
-        myFixture.configureByFile(  "SpecificStaticImportSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("SpecificStaticImportSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-        assertTrue(strings.contains("MAX_VALUE"));
-        assertFalse(strings.contains("getInteger"));
+        assertContainsElements(strings, "MAX_VALUE");
+        assertDoesntContain(strings, "getInteger");
     }
 
     public void testResult() {
-        myFixture.configureByFile(  "Result.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("Result.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("\\result"));
+        assertContainsElements(strings, "\\result");
     }
 
     public void testResultSemicolon() {
-        myFixture.configureByFile(  "ResultSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ResultSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("\\result"));
+        assertContainsElements(strings, "\\result");
     }
 
     public void testOld() {
-        myFixture.configureByFile(  "Old.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("Old.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("\\old()"));
+        assertContainsElements(strings, "\\old()");
     }
 
     public void testOldSemicolon() {
-        myFixture.configureByFile(  "OldSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("OldSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
+        assertContainsElements(strings, "\\old()");
+    }
 
-        assertTrue(strings.contains("\\old()"));
+    public void testGhostVariables() {
+        List<String> strings = completeIn("GhostVariables.java");
+
+        assertContainsElements(strings, "ghostCount", "ghostTotal", "ghostLocal");
+    }
+
+    public void testFresh() {
+        List<String> strings = completeIn("Fresh.java");
+
+        assertContainsElements(strings, "\\fresh()");
     }
 
     public void testIdentifierClassName() {
-        myFixture.configureByFile(  "IdentifierClassName.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("IdentifierClassName.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("Integer"));
-        assertTrue(strings.contains("InterruptedException"));
+        assertContainsElements(strings, "Integer");
+        assertContainsElements(strings, "InterruptedException");
     }
 
     public void testIdentifierClassNameSemicolon() {
-        myFixture.configureByFile(  "IdentifierClassNameSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("IdentifierClassNameSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("Integer"));
-        assertTrue(strings.contains("InterruptedException"));
+        assertContainsElements(strings, "Integer");
+        assertContainsElements(strings, "InterruptedException");
     }
 
     public void testClassInvariant() {
-        myFixture.configureByFile(  "ClassInvariant.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ClassInvariant.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("public"));
-        assertTrue(strings.contains("protected"));
-        assertTrue(strings.contains("private"));
-        assertTrue(strings.contains("static"));
-        assertTrue(strings.contains("invariant"));
-        assertTrue(strings.contains("instance"));
+        // the comment is separated from the field below it by a blank line, so it can be the JML of the field,
+        // as OpenJML takes it, or an invariant or another declaration of the class
+        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost", "model",
+                "represents", "in", "nullable", "non_null", "spec_protected", "spec_public");
     }
 
     public void testClassInvariantSemicolon() {
-        myFixture.configureByFile(  "ClassInvariantSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ClassInvariantSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("public"));
-        assertTrue(strings.contains("protected"));
-        assertTrue(strings.contains("private"));
-        assertTrue(strings.contains("static"));
-        assertTrue(strings.contains("invariant"));
-        assertTrue(strings.contains("instance"));
+        // the comment is separated from the field below it by a blank line, so it can be the JML of the field,
+        // as OpenJML takes it, or an invariant or another declaration of the class
+        assertSameElements(strings, "public", "protected", "private", "static", "invariant", "instance", "ghost", "model",
+                "represents", "in", "nullable", "non_null", "spec_protected", "spec_public");
     }
 
     public void testFieldModifiers() {
-        myFixture.configureByFile(  "FieldModifiers.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("FieldModifiers.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("instance"));
-        assertTrue(strings.contains("nullable"));
-        assertTrue(strings.contains("spec_protected"));
-        assertTrue(strings.contains("spec_public"));
+        assertSameElements(strings, "instance", "nullable", "non_null", "spec_protected", "spec_public");
     }
 
     public void testFieldModifiersSemicolon() {
-        myFixture.configureByFile(  "FieldModifiersSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("FieldModifiersSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("instance"));
-        assertTrue(strings.contains("nullable"));
-        assertTrue(strings.contains("spec_protected"));
-        assertTrue(strings.contains("spec_public"));
+        assertSameElements(strings, "instance", "nullable", "non_null", "spec_protected", "spec_public");
     }
 
     public void testNestedClass() {
-        myFixture.configureByFile(  "NestedClass.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("NestedClass.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("publicInt"));
-        assertTrue(strings.contains("protectedInt"));
-        assertTrue(strings.contains("defaultInt"));
-        assertTrue(strings.contains("privateInt"));
-        assertTrue(strings.contains("getPublicInt"));
-        assertTrue(strings.contains("getProtectedInt"));
-        assertTrue(strings.contains("defaultInt"));
-        assertTrue(strings.contains("privateInt"));
-        assertTrue(strings.contains("innerClassInt"));
+        assertContainsElements(strings, "publicInt");
+        assertContainsElements(strings, "protectedInt");
+        assertContainsElements(strings, "defaultInt");
+        assertContainsElements(strings, "privateInt");
+        assertContainsElements(strings, "getPublicInt");
+        assertContainsElements(strings, "getProtectedInt");
+        assertContainsElements(strings, "defaultInt");
+        assertContainsElements(strings, "privateInt");
+        assertContainsElements(strings, "innerClassInt");
     }
 
     public void testNestedClassSemicolon() {
-        myFixture.configureByFile(  "NestedClassSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("NestedClassSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("publicInt"));
-        assertTrue(strings.contains("protectedInt"));
-        assertTrue(strings.contains("defaultInt"));
-        assertTrue(strings.contains("privateInt"));
-        assertTrue(strings.contains("getPublicInt"));
-        assertTrue(strings.contains("getProtectedInt"));
-        assertTrue(strings.contains("defaultInt"));
-        assertTrue(strings.contains("privateInt"));
-        assertTrue(strings.contains("innerClassInt"));
+        assertContainsElements(strings, "publicInt");
+        assertContainsElements(strings, "protectedInt");
+        assertContainsElements(strings, "defaultInt");
+        assertContainsElements(strings, "privateInt");
+        assertContainsElements(strings, "getPublicInt");
+        assertContainsElements(strings, "getProtectedInt");
+        assertContainsElements(strings, "defaultInt");
+        assertContainsElements(strings, "privateInt");
+        assertContainsElements(strings, "innerClassInt");
     }
 
     public void testComplexDot() {
-        myFixture.configureByFile(  "ComplexDot.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ComplexDot.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("trim"));
-        assertTrue(strings.contains("charAt"));
-        assertTrue(strings.contains("length"));
+        assertContainsElements(strings, "trim");
+        assertContainsElements(strings, "charAt");
+        assertContainsElements(strings, "length");
     }
 
     public void testComplexDotSemicolon() {
-        myFixture.configureByFile(  "ComplexDotSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("ComplexDotSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("trim"));
-        assertTrue(strings.contains("charAt"));
-        assertTrue(strings.contains("length"));
+        assertContainsElements(strings, "trim");
+        assertContainsElements(strings, "charAt");
+        assertContainsElements(strings, "length");
     }
 
     /**
      * Code block assert also tests the completion for loop_invariant.
      */
     public void testCodeBlockAssert() {
-        myFixture.configureByFile(  "CodeBlock.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("CodeBlock.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("number"));
-        assertTrue(strings.contains("num"));
-        assertTrue(strings.contains("getRandomNumber"));
-        assertTrue(strings.contains("visible"));
-        assertFalse(strings.contains("notVisible"));
+        assertContainsElements(strings, "number");
+        assertContainsElements(strings, "num");
+        assertContainsElements(strings, "getRandomNumber");
+        assertContainsElements(strings, "visible");
+        assertDoesntContain(strings, "notVisible");
     }
 
     public void testCodeBlockAssertSemicolon() {
-        myFixture.configureByFile(  "CodeBlockSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("CodeBlockSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("number"));
-        assertTrue(strings.contains("num"));
-        assertTrue(strings.contains("getRandomNumber"));
-        assertTrue(strings.contains("visible"));
-        assertFalse(strings.contains("notVisible"));
+        assertContainsElements(strings, "number");
+        assertContainsElements(strings, "num");
+        assertContainsElements(strings, "getRandomNumber");
+        assertContainsElements(strings, "visible");
+        assertDoesntContain(strings, "notVisible");
     }
 
     public void testMixedJMLJavaDot() {
-        myFixture.configureByFile(  "MixedJMLJavaDot.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("MixedJMLJavaDot.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("trim"));
-        assertTrue(strings.contains("length"));
+        assertContainsElements(strings, "trim");
+        assertContainsElements(strings, "length");
     }
 
     public void testMixedJMLJavaDotSemicolon() {
-        myFixture.configureByFile(  "MixedJMLJavaDotSemicolon.java");
-        myFixture.complete(CompletionType.BASIC, 1);
+        List<String> strings = completeIn("MixedJMLJavaDotSemicolon.java");
 
-        List<String> strings = myFixture.getLookupElementStrings();
-        if (strings == null) fail();
-
-        assertTrue(strings.contains("trim"));
-        assertTrue(strings.contains("length"));
+        assertContainsElements(strings, "trim");
+        assertContainsElements(strings, "length");
     }
 
 

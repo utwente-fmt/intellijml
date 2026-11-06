@@ -7,6 +7,8 @@ import com.intellij.pom.java.LanguageLevel;
 import com.intellij.testFramework.builders.JavaModuleFixtureBuilder;
 import com.intellij.testFramework.fixtures.JavaCodeInsightFixtureTestCase;
 
+import java.util.List;
+
 /**
  * Tests that all the type checking is done correctly so that the error messages are shown at the
  * correct spot and that they are only shown when there is an actual type error
@@ -23,12 +25,14 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
     @Override
     protected void tuneFixture(JavaModuleFixtureBuilder<?> moduleBuilder) throws Exception {
         super.tuneFixture(moduleBuilder);
+        // a mock JDK that the test framework downloads, so the tests need no intellij-community checkout
+        moduleBuilder.addJdkVersion(LanguageLevel.JDK_21);
         moduleBuilder.addMavenLibrary(new JavaModuleFixtureBuilder.MavenLib("org.jetbrains:annotations:24.1.0"));
     }
 
     @Override
     protected String getTestDataPath() {
-        return "src/test/typeAnnotatorTestData";
+        return "src/test/testData/typeAnnotatorTestData";
     }
 
     public void testAssignableVars() {
@@ -41,8 +45,124 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testLoopVariants() {
+        myFixture.configureByFile("LoopVariants.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testBackslashFresh() {
+        myFixture.configureByFile("BackslashFresh.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testGhostTypes() {
+        myFixture.configureByFile("GhostTypes.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testSpecialExpressions() {
+        myFixture.configureByFile("SpecialExpressions.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testClausesAndModifiers() {
+        myFixture.configureByFile("ClausesAndModifiers.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testStatements() {
+        myFixture.configureByFile("Statements.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testChainedComparisons() {
+        myFixture.configureByFile("ChainedComparisons.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testGhostAssignable() {
+        myFixture.configureByFile("GhostAssignable.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testModelFields() {
+        myFixture.configureByFile("ModelFields.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testModelFieldClauses() {
+        myFixture.configureByFile("ModelFieldClauses.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testKeywordNames() {
+        myFixture.configureByFile("KeywordNames.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testBlankLines() {
+        myFixture.configureByFile("BlankLines.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testPureFrames() {
+        myFixture.configureByFile("PureFrames.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    /**
+     * The annotations of OpenJML are in its jar, which the test project does not have
+     */
+    public void testPurityRules() {
+        for (String annotation : List.of("Pure", "SpecPure", "SpecPublic")) {
+            myFixture.addFileToProject("org/jmlspecs/annotation/" + annotation + ".java",
+                    "package org.jmlspecs.annotation;\npublic @interface " + annotation + " {}\n");
+        }
+        myFixture.configureByFile("PurityRules.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testExtraSyntax() {
+        for (String annotation : List.of("NonNull", "Nullable", "StrictlyPure", "NoState")) {
+            myFixture.addFileToProject("org/jmlspecs/annotation/" + annotation + ".java",
+                    "package org.jmlspecs.annotation;\npublic @interface " + annotation + " {}\n");
+        }
+        myFixture.configureByFile("ExtraSyntax.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testAcceptedByOpenJml() {
+        myFixture.configureByFile("AcceptedByOpenJml.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testArrayElementFrames() {
+        myFixture.configureByFile("ArrayElementFrames.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testClausesOverLines() {
+        myFixture.configureByFile("ClausesOverLines.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testOldClauses() {
+        myFixture.configureByFile("OldClauses.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testOldClauseModifiers() {
+        myFixture.configureByFile("OldClauseModifiers.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testMultiLineExpressions() {
         myFixture.configureByFile("MultiLineExpressions.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testMultiLineLists() {
+        myFixture.configureByFile("MultiLineLists.java");
         myFixture.checkHighlighting(true, false, true, false);
     }
 
@@ -148,6 +268,90 @@ public class JMLTypeAnnotatorTest extends JavaCodeInsightFixtureTestCase {
 
     public void testSpecVisibilityAcrossClasses() {
         myFixture.configureByFile("SpecVisibilityAcrossClasses.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    /**
+     * The errors in this file are the ones that OpenJML 21.0.29 gives for it, with the same messages
+     */
+    public void testOpenJMLVisibility() {
+        myFixture.configureByFile("OpenJMLVisibility.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    /**
+     * The errors in this file are the ones that OpenJML 21.0.29 gives for it, with the same messages
+     */
+    public void testOpenJMLVisibilityEdgeCases() {
+        myFixture.configureByFile("OpenJMLVisibilityEdgeCases.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testSpecPublicQuickFix() {
+        myFixture.configureByText("A.java", "class A {\n    private int count;\n\n" +
+                "    //@ ensures count == \\old(<caret>count) + 1;\n    public void increment() { count++; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'count' spec_public"));
+        myFixture.checkResult("class A {\n    private /*@ spec_public @*/ int count;\n\n" +
+                "    //@ ensures count == \\old(count) + 1;\n    public void increment() { count++; }\n}");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testPureQuickFix() {
+        // a call of a method that is not pure, in a specification: Alt+Enter declares it pure
+        myFixture.configureByText("A.java", "class A {\n    int count;\n\n" +
+                "    //@ requires <caret>valid();\n    void m() {}\n\n    boolean valid() { return count >= 0; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'valid' pure"));
+        myFixture.checkResult("class A {\n    int count;\n\n" +
+                "    //@ requires valid();\n    void m() {}\n\n    /*@ pure @*/ boolean valid() { return count >= 0; }\n}");
+        myFixture.checkHighlighting(true, false, true, false);
+        // spec_pure for one that returns an object; when it is pure already, instead of pure, as OpenJML does not allow
+        // both
+        myFixture.configureByText("A2.java", "class A2 {\n    String name;\n\n" +
+                "    //@ requires <caret>name().length() > 0;\n    void m() {}\n\n    String name() { return name; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'name' spec_pure"));
+        myFixture.checkResult("class A2 {\n    String name;\n\n" +
+                "    //@ requires name().length() > 0;\n    void m() {}\n\n    /*@ spec_pure @*/ String name() { return name; }\n}");
+        myFixture.checkHighlighting(true, false, true, false);
+        myFixture.configureByText("A3.java", "class A3 {\n    String name;\n\n" +
+                "    //@ requires <caret>name().length() > 0;\n    void m() {}\n\n    /*@ pure @*/ String name() { return name; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'name' spec_pure"));
+        myFixture.checkResult("class A3 {\n    String name;\n\n" +
+                "    //@ requires name().length() > 0;\n    void m() {}\n\n    /*@ spec_pure @*/ String name() { return name; }\n}");
+        myFixture.configureByText("A4.java", "class A4 {\n    String name;\n\n" +
+                "    //@ requires <caret>name().length() > 0;\n    void m() {}\n\n    //@ pure\n    String name() { return name; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'name' spec_pure"));
+        myFixture.checkResult("class A4 {\n    String name;\n\n" +
+                "    //@ requires name().length() > 0;\n    void m() {}\n\n    //@ spec_pure\n    String name() { return name; }\n}");
+        // the word pure in a comment in the JML is not replaced
+        myFixture.configureByText("A5.java", "class A5 {\n    String name;\n\n" +
+                "    //@ requires <caret>name().length() > 0;\n    void m() {}\n\n    //@ ensures true; // pure soon\n    String name() { return name; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'name' spec_pure"));
+        myFixture.checkResult("class A5 {\n    String name;\n\n" +
+                "    //@ requires name().length() > 0;\n    void m() {}\n\n    //@ ensures true; // pure soon\n    /*@ spec_pure @*/ String name() { return name; }\n}");
+    }
+
+    public void testSpecProtectedQuickFix() {
+        myFixture.configureByText("A.java", "class A {\n    int count;\n\n" +
+                "    //@ requires <caret>count > 0;\n    protected void decrement() { count--; }\n}");
+        myFixture.launchAction(myFixture.findSingleIntention("Declare 'count' spec_protected"));
+        myFixture.checkResult("class A {\n    /*@ spec_protected @*/ int count;\n\n" +
+                "    //@ requires count > 0;\n    protected void decrement() { count--; }\n}");
+    }
+
+    public void testSpecProtectedInOtherPackage() {
+        // spec_protected is in a comment in the other file
+        myFixture.allowTreeAccessForAllFiles();
+        myFixture.copyFileToProject("specprotected/b/Owner.java");
+        myFixture.configureByFile("specprotected/a/User.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testSpecProtectedInSubclassOfSubclass() {
+        // spec_protected is in a comment in the other file
+        myFixture.allowTreeAccessForAllFiles();
+        myFixture.copyFileToProject("specprotected/b/Owner.java");
+        myFixture.copyFileToProject("specprotected/b/Middle.java");
+        myFixture.configureByFile("other/Sub.java");
         myFixture.checkHighlighting(true, false, true, false);
     }
 

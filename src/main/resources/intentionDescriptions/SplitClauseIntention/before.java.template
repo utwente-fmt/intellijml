@@ -1,0 +1,9 @@
+class Account {
+    private /*@ spec_public @*/ int balance;
+
+    //@ <spot>ensures</spot> balance == \old(balance) + amount && \result == balance;
+    public int deposit(int amount) {
+        balance += amount;
+        return balance;
+    }
+}

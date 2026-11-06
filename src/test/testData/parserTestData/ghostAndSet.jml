@@ -1,0 +1,4 @@
+@ ghost int x = set.size(); set x = x + 1;
+@ assert x > 0; set ghost = ghost;
+@ set values[0] = (\sum int i; 0 <= i; i);
+@ ghost nullable Object o;

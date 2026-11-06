@@ -24,7 +24,7 @@ public class JMLParserDefinition implements ParserDefinition {
 
     public static final TokenSet WHITE_SPACES = TokenSet.create(TokenType.WHITE_SPACE);
 
-    public static final TokenSet COMMENTS = TokenSet.create(JMLTypes.INFORMAL_DESCRIPTION);
+    public static final TokenSet COMMENTS = TokenSet.create(JMLTypes.INFORMAL_DESCRIPTION, JMLTypes.LINE_COMMENT);
 
     public static final IFileElementType FILE = new IFileElementType(JMLLanguage.INSTANCE);
 

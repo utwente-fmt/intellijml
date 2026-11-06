@@ -1,0 +1,4 @@
+@ public normal_behavior
+@   old int n = old + 1;
+@   requires n > 0;
+@   old non_null Object o = this; ensures \result == n;

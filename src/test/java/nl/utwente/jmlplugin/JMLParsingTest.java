@@ -5,6 +5,11 @@ import com.intellij.lang.java.syntax.JavaElementTypeConverterExtension;
 import com.intellij.platform.syntax.psi.ElementTypeConverters;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.testFramework.ParsingTestCase;
+import nl.utwente.jmlplugin.psi.JMLElementType;
+import nl.utwente.jmlplugin.psi.JMLGrammarTypes;
+import nl.utwente.jmlplugin.psi.JMLTokenType;
+
+import java.lang.reflect.Field;
 
 /**
  * Tests that the parsers generate correct parse trees and error elements at the correct places
@@ -26,7 +31,7 @@ public class JMLParsingTest extends ParsingTestCase {
 
     @Override
     protected String getTestDataPath() {
-        return "src/test/parserTestData";
+        return "src/test/testData/parserTestData";
     }
 
     @Override
@@ -48,6 +53,15 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testBehaviors() {
+        doTest(true, true);
+    }
+
+    public void testAlsoAlone() {
+        // the "//@ also" between two specification cases in line comments
+        doTest(true, true);
+    }
+
     public void testCorrectAssert() {
         doTest(true, true);
     }
@@ -61,6 +75,34 @@ public class JMLParsingTest extends ParsingTestCase {
     }
 
     public void testCorrectLoopInvariant() {
+        doTest(true, true);
+    }
+
+    public void testGhostFields() {
+        doTest(true, true);
+    }
+
+    public void testGhostAndSet() {
+        // ghost and set are also names in expressions, as in OpenJML
+        doTest(true, true);
+    }
+
+    public void testStatements() {
+        // check, show, reachable, unreachable, halt and split; the last ones need no semicolon, and all are also names
+        doTest(true, true);
+    }
+
+    public void testLineComments() {
+        // a comment ends at the end of the line, and does not end the expression; // in a string is not a comment
+        doTest(true, true);
+    }
+
+    public void testOnlyLineComment() {
+        doTest(true, true);
+    }
+
+    public void testLoopSpecs() {
+        // decreases and loop_writes in all spellings, also with decreasing and decreases as names
         doTest(true, true);
     }
 
@@ -96,6 +138,10 @@ public class JMLParsingTest extends ParsingTestCase {
         doTest(true, true);
     }
 
+    public void testMultiLineLists() {
+        doTest(true, true);
+    }
+
     public void testNoWhitespaceAfterKeyword() {
         doTest(true, false);
     }
@@ -123,6 +169,19 @@ public class JMLParsingTest extends ParsingTestCase {
         int allocatedTypes = IElementType.getAllocatedTypesCount();
         ensureParsed(createPsiFile("second", text));
         assertEquals(allocatedTypes, IElementType.getAllocatedTypesCount());
+    }
+
+    public void testGeneratedTypesHaveReadableNames() throws IllegalAccessException {
+        // the names are shown in syntax error messages, so new rules and tokens in JML.bnf need an entry in
+        // JMLElementType or JMLTokenType
+        for (Field field : JMLGrammarTypes.class.getFields()) {
+            Object type = field.get(null);
+            if (type instanceof JMLElementType) {
+                assertFalse(field.getName() + " has no readable name", type.toString().equals(field.getName()));
+            } else if (type instanceof JMLTokenType) {
+                assertTrue(field.getName() + " has no readable name", type.toString().matches(".*[a-zA-Z].*"));
+            }
+        }
     }
 
     public void testRedundantSemicolons() {
@@ -167,6 +226,22 @@ public class JMLParsingTest extends ParsingTestCase {
 
     public void testMissingParentheses() {
         doTest(true, false);
+    }
+
+    public void testModelFields() {
+        doTest(true, true);
+    }
+
+    public void testReadsClause() {
+        doTest(true, true);
+    }
+
+    public void testOldClause() {
+        doTest(true, true);
+    }
+
+    public void testMissingFinalSemicolon() {
+        doTest(true, true);
     }
 
 }

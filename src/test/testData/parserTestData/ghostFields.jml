@@ -1,0 +1,4 @@
+@ public ghost int count = 0;
+@ private static ghost non_null java.util.List<String> names = new java.util.ArrayList<>();
+@ ghost int[] values;
+@ public invariant count >= 0;

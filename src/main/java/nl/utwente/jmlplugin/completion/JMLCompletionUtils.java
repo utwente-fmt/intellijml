@@ -6,7 +6,6 @@ import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.lang.injection.InjectedLanguageManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.psi.*;
-import com.intellij.psi.impl.PsiImplUtil;
 import com.intellij.psi.tree.TokenSet;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiUtil;
@@ -116,7 +115,7 @@ public class JMLCompletionUtils {
                 final PsiClass innerClass = importedClass.findInnerClassByName(memberName, true);
                 if (innerClass != null) {
                     if (isAccessibleHere((PsiMember) innerClass, params.getPosition())) {
-                        fillClassCompletions(importedClass, results, params);
+                        results.addElement(getClassLookup(innerClass));
                     }
                 }
             }
@@ -169,7 +168,7 @@ public class JMLCompletionUtils {
                 .withTypeText(returnType)
                 .withIcon(method.getIcon(0))
                 .withTailText(method.getParameterList().getText())
-                .withStrikeoutness(PsiImplUtil.isDeprecated(method))
+                .withStrikeoutness(method.isDeprecated())
                 .withInsertHandler((context, item) -> {
                     final Editor editor = context.getEditor();
                     context.setAddCompletionChar(false);
@@ -402,20 +401,6 @@ public class JMLCompletionUtils {
     }
 
     /**
-     * Reuse of IntelliJ's completion results sorting algorithm, doesn't work as well as normal as much of the
-     * completion that is made by IntelliJ is heavily dependent on context and a proper Java parse tree.
-     *
-     * But this works better than anything I can come up with, so we use this.
-     *
-     * @param params - completion context.
-     * @param results - completion results holder.
-     */
-
-    public static void sortResults(@NotNull CompletionParameters params, @NotNull CompletionResultSet results) {
-        JavaCompletionSorting.addJavaSorting(params, results);
-    }
-
-    /**
      * Fill in completions for . expressions when they are called on a method parameter, only single dot expressions are
      * supported as we do not have our own recursive type resolver.
      *
@@ -435,7 +420,6 @@ public class JMLCompletionUtils {
                 if (psiClass == null) return false;
 
                 fillClassCompletions(psiClass, results, params);
-                sortResults(params, results);
                 return true;
             }
         }
@@ -474,7 +458,6 @@ public class JMLCompletionUtils {
 
             if (psiClass == null) return true;
             fillClassCompletions(psiClass, results, params);
-            sortResults(params, results);
             return true;
         }
 
@@ -497,7 +480,6 @@ public class JMLCompletionUtils {
                     if (psiClass == null) return true;
 
                     fillClassCompletions(psiClass, results, params);
-                    sortResults(params, results);
                     return true;
                 }
             }
@@ -603,6 +585,9 @@ public class JMLCompletionUtils {
             case "\\elemtype":
             case "\\type":
             case "\\nonnullelements":
+            case "\\fresh":
+            case "\\invariant_for":
+            case "\\not_modified":
                 return true;
             default:
                 return false;
@@ -634,6 +619,7 @@ public class JMLCompletionUtils {
             case ENSURES:
                 //fallthrough is intentional
                 addTokens(result, results);
+                addTokens(postconditionKeywordsInJava, results);
             case OTHER:
                 addTokens(generalJMLKeywordsInJava, results);
                 addTokens(quantifiers, results);

@@ -1,0 +1,6 @@
+<!-- The parts of the plugin that need the Gradle plugin -->
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <programRunner implementation="nl.utwente.jmlplugin.rac.JMLRacGradleProgramRunner"/>
+    </extensions>
+</idea-plugin>

@@ -1,0 +1,4 @@
+JML File(0,18)
+  JMLJmlSpecificationImpl(JML specification)(0,1)
+    PsiElement(at-sign)('@')(0,1)
+  PsiComment(comment)('// only a comment')(1,18)

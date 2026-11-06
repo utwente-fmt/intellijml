@@ -1,14 +1,6 @@
 package nl.utwente.jmlplugin;
 
-import com.intellij.openapi.editor.colors.EditorColorsScheme;
-import com.intellij.openapi.editor.highlighter.EditorHighlighter;
-import com.intellij.openapi.fileTypes.EditorHighlighterProvider;
-import com.intellij.openapi.fileTypes.FileType;
-import com.intellij.openapi.fileTypes.FileTypeEditorHighlighterProviders;
 import com.intellij.openapi.fileTypes.LanguageFileType;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.vfs.VirtualFile;
-import nl.utwente.jmlplugin.syntax_highlighting.JMLEditorHighlighter;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,16 +20,6 @@ public class JMLFileType extends LanguageFileType {
 
     private JMLFileType() {
         super(JMLLanguage.INSTANCE);
-
-        //noinspection Convert2Lambda
-        FileTypeEditorHighlighterProviders.INSTANCE.addExplicitExtension(this, new EditorHighlighterProvider() {
-            @Override
-            public EditorHighlighter getEditorHighlighter(@Nullable Project project, @NotNull FileType fileType,
-                                                          @Nullable VirtualFile virtualFile,
-                                                          @NotNull EditorColorsScheme colors) {
-                return new JMLEditorHighlighter(project, virtualFile, colors);
-            }
-        });
     }
 
     @Override

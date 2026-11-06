@@ -1,0 +1,10 @@
+class Counter {
+    private /*@ spec_public @*/ int count;
+
+    <spot>//@ requires true;
+    //@ ensures true;
+    //@ assignable count;</spot>
+    public void add(int n) {
+        count += n;
+    }
+}

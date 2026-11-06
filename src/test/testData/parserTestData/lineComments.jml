@@ -1,0 +1,6 @@
+@ requires x > 0; // why
+@ requires x > 0 && // the first part
+@   y > 0; // and the second
+@ ensures s.equals("http://example.org") && c != '/'; // a string and a character with a slash
+@ also // another case
+@ ensures \result; //

@@ -2,11 +2,12 @@ package nl.utwente.jmlplugin.settings;
 
 import com.intellij.openapi.options.BaseConfigurable;
 import com.intellij.openapi.options.ConfigurationException;
-import com.intellij.openapi.project.ProjectManager;
-import com.intellij.openapi.project.ex.ProjectManagerEx;
+import nl.utwente.jmlplugin.rac.OpenJml;
 import org.jetbrains.annotations.Nullable;
 
 import javax.swing.*;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 
 /**
  * Controller of the MVC pattern for the JML settings page.
@@ -38,8 +39,9 @@ public class Configuration extends BaseConfigurable {
      */
     @Override
     public boolean isModified() {
-        return isRuntimeCheckingEnabled() ^ panel.isRuntimeCheckingEnabled()
-                || isEasterEggEnabled() ^ panel.isEasterEggEnabled();
+        return !panel.getOpenJmlPath().equals(OpenJml.configuredPath())
+                || settings.CHECK_ON_SAVE ^ panel.isCheckOnSaveEnabled()
+                || settings.RAINBOW_MODE ^ panel.isEasterEggEnabled();
     }
 
     /**
@@ -47,8 +49,26 @@ public class Configuration extends BaseConfigurable {
      */
     @Override
     public void apply() throws ConfigurationException {
+        String openJmlPath = panel.getOpenJmlPath();
+        String missing = openJmlPath.isEmpty() ? null : missingFromInstallation(openJmlPath);
+        if (missing != null) {
+            throw new ConfigurationException("This folder does not contain OpenJML " + OpenJml.VERSION + ": it has no "
+                    + missing + ". Choose the folder that contains openjml, jmlruntime.jar and jdk.", "OpenJML Installation");
+        }
+        settings.OPENJML_PATH = openJmlPath;
+        settings.CHECK_ON_SAVE = panel.isCheckOnSaveEnabled();
         settings.RAINBOW_MODE = panel.isEasterEggEnabled();
-        settings.RUNTIME_CHECKING_ENABLED = panel.isRuntimeCheckingEnabled();
+    }
+
+    /**
+     * @return what the folder lacks of an OpenJML installation, or null if it is one
+     */
+    private static String missingFromInstallation(String path) {
+        try {
+            return OpenJml.missing(Path.of(path.trim()));
+        } catch (InvalidPathException e) {
+            return "OpenJML (it is no folder)";
+        }
     }
 
     /**
@@ -56,26 +76,14 @@ public class Configuration extends BaseConfigurable {
      */
     @Override
     public void reset() {
-        panel.setRuntimeCheckingEnabled(isRuntimeCheckingEnabled());
-        panel.setEasterEggEnabled(isEasterEggEnabled());
+        // also a download that the settings do not name yet
+        panel.setOpenJmlPath(OpenJml.configuredPath());
+        panel.setCheckOnSaveEnabled(settings.CHECK_ON_SAVE);
+        panel.setEasterEggEnabled(settings.RAINBOW_MODE);
     }
 
     @Override
     public void disposeUIResources() {
         panel = null;
     }
-
-    /**
-     * Checks whether runtime checking is enabled in the internal settings
-     *
-     * @return true if runtime checking is enabled in the internal settings
-     */
-    private boolean isRuntimeCheckingEnabled() {
-        return settings.RUNTIME_CHECKING_ENABLED;
-    }
-
-    private boolean isEasterEggEnabled() {
-        return settings.RAINBOW_MODE;
-    }
-
 }

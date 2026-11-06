@@ -7,18 +7,20 @@ import com.intellij.psi.JavaTokenType;
 import com.intellij.psi.TokenType;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.TokenSet;
+import nl.utwente.jmlplugin.psi.JMLTokenSet;
 import nl.utwente.jmlplugin.psi.JMLTypes;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Top level parser for JML. Merges JML inside Java expressions. Merges the \keywords from JML into a single token, because otherwise
+ * Lexer for the Java expressions in JML: merges the JML in them. Merges the \keywords from JML into a single token, because otherwise
  * JML views it as \ + keyword instead of \keyword. Also merges JML operators such as ==> and <==>
  */
 
 public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
-    private final MergeFunction mergeFunction = new JavaExprJMLKeywordMergeFunction();
+    private final JavaExprJMLKeywordMergeFunction mergeFunction = new JavaExprJMLKeywordMergeFunction();
 
     public JMLInJavaExprMergingLexer() {
         super(new JMLMultiLayerLexer(), TokenSet.EMPTY);
@@ -27,6 +29,13 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
     @Override
     public MergeFunction getMergeFunction() {
         return mergeFunction;
+    }
+
+    @Override
+    public void start(@NotNull CharSequence buffer, int startOffset, int endOffset, int initialState) {
+        // a backslash at the end of the previous text must not affect this text
+        mergeFunction.reset();
+        super.start(buffer, startOffset, endOffset, initialState);
     }
 
     /**
@@ -50,9 +59,40 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
             textToToken.put("type", JMLTypes.TYPE);
             textToToken.put("TYPE", JMLTypes.TYPE_CAPS);
             textToToken.put("nonnullelements", JMLTypes.NON_NULL_ELEMENTS);
+            textToToken.put("fresh", JMLTypes.FRESH);
+            textToToken.put("invariant_for", JMLTypes.INVARIANT_FOR);
+            textToToken.put("not_modified", JMLTypes.NOT_MODIFIED);
+            textToToken.put("java_math", JMLTypes.JAVA_MATH);
+            textToToken.put("safe_math", JMLTypes.SAFE_MATH);
+            textToToken.put("bigint_math", JMLTypes.BIGINT_MATH);
+            textToToken.put("count", JMLTypes.COUNT);
+            // OpenJML's other name for it
+            textToToken.put("index", JMLTypes.COUNT);
+            textToToken.put("lbl", JMLTypes.LBL);
+            textToToken.put("lblpos", JMLTypes.LBLPOS);
+            textToToken.put("lblneg", JMLTypes.LBLNEG);
+            textToToken.put("choose", JMLTypes.CHOOSE);
+            textToToken.put("bigint", JMLTypes.BIGINT);
+            textToToken.put("real", JMLTypes.REAL);
+            textToToken.put("datagroup", JMLTypes.DATAGROUP);
+            textToToken.put("such_that", JMLTypes.SUCH_THAT);
         }
 
+        // the nullity modifiers that the variable of a quantifier can have, as in "(\forall non_null Object o; ...)"
+        private static final Map<String, IElementType> quantifierModifiers = Map.of(
+                "nullable", JMLTypes.NULLABLE, "non_null", JMLTypes.NON_NULL);
+
         private boolean checkBackslashKeyword = false;
+        // whether the last token that is not whitespace is a quantifier, such as \forall
+        private boolean afterQuantifier = false;
+        // the type for the next token, an identifier that is a nullity modifier after a quantifier
+        private IElementType remapNext = null;
+
+        void reset() {
+            checkBackslashKeyword = false;
+            afterQuantifier = false;
+            remapNext = null;
+        }
 
         /**
          * Merges certain tokens together and returns the new element type for those merged tokens
@@ -63,6 +103,25 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
          */
         @Override
         public IElementType merge(IElementType type, Lexer originalLexer) {
+            IElementType result;
+            if (remapNext != null) {
+                result = remapNext;
+                remapNext = null;
+            } else {
+                result = mergeToken(type, originalLexer);
+            }
+            if (JMLTokenSet.quantifiers.contains(result)) {
+                afterQuantifier = true;
+            } else if (result != TokenType.WHITE_SPACE) {
+                afterQuantifier = false;
+            }
+            if (afterQuantifier && originalLexer.getTokenType() == JavaTokenType.IDENTIFIER) {
+                remapNext = quantifierModifiers.get(originalLexer.getTokenText().toString());
+            }
+            return result;
+        }
+
+        private IElementType mergeToken(IElementType type, Lexer originalLexer) {
             if (checkBackslashKeyword) {
                 // we found a backslash, so check if JML keyword is after it
                 IElementType result = type;
@@ -103,6 +162,10 @@ public class JMLInJavaExprMergingLexer extends MergingLexerAdapter {
                     // ==>
                     originalLexer.advance();
                     return JMLTypes.LOGICAL_IMPL;
+                } else if (type == JavaTokenType.LT /* < */ && originalLexer.getTokenType() == JavaTokenType.COLON /* : */) {
+                    // <:, the subtype relation
+                    originalLexer.advance();
+                    return JMLTypes.SUBTYPE;
                 }
             }
             return type;

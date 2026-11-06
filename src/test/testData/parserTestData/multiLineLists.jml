@@ -1,0 +1,8 @@
+@ assignable a,
+  @ b[*]
+  @ , c.*;
+@ assignable
+  @ d;
+@ signals_only IllegalArgumentException,
+  @ java.io.IOException;
+(* lists may continue on lines that start with @-signs *)

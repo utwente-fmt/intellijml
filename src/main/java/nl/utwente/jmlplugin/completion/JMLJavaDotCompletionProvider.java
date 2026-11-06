@@ -80,7 +80,6 @@ public class JMLJavaDotCompletionProvider extends CompletionProvider<CompletionP
         if (type == null) {
             //check for static class reference
             resolveStaticClassReference(expressionText, parameters, result);
-            sortResults(parameters, result);
             return;
         }
 
@@ -94,14 +93,12 @@ public class JMLJavaDotCompletionProvider extends CompletionProvider<CompletionP
 
         //check for super and this completions
         if (checkSuperAndThis(parameters, result, psiClass)) {
-            sortResults(parameters, result);
             return;
         }
 
 
         //using the class reference fill in the possible completions
         fillClassCompletions(psiClass, result, parameters);
-        sortResults(parameters, result);
     }
 
     /**

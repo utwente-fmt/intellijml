@@ -1,0 +1,4 @@
+@ public normal_behavior
+@   reads \nothing;
+@   accessible x, in, model;
+@   ensures \result == model;

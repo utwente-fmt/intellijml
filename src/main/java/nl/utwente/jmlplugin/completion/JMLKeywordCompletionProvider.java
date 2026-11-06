@@ -3,9 +3,14 @@ package nl.utwente.jmlplugin.completion;
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionProvider;
 import com.intellij.codeInsight.completion.CompletionResultSet;
+import com.intellij.codeInsight.completion.PrioritizedLookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.psi.PsiClass;
+import com.intellij.psi.PsiComment;
+import com.intellij.psi.tree.IElementType;
 import com.intellij.util.ProcessingContext;
 import nl.utwente.jmlplugin.annotator.CommentPosition;
+import nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil;
 import org.jetbrains.annotations.NotNull;
 
 import static nl.utwente.jmlplugin.completion.JMLCompletionUtils.*;
@@ -29,6 +34,15 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
                                   @NotNull CompletionResultSet result) {
         final CommentPosition position = getCommentPosition(parameters);
 
+        // a comment in the class body that is separated from the method or field below it, by a blank line or by its
+        // documentation, can be the JML of that method or field, as OpenJML takes it, or an invariant or another
+        // declaration of the class
+        PsiComment comment = JMLAnnotatorUtil.getCommentContext(parameters.getPosition());
+        if (comment != null && comment.getParent() instanceof PsiClass
+                && (position == CommentPosition.ABOVE_METHOD || position == CommentPosition.FIELD)) {
+            fillClassInvariantCompletion(result);
+        }
+
         // figure out in what kind of JML comment you are and fill in the appropriate keyword completions.
         switch (position) {
             case INSIDE_CLASS:
@@ -48,8 +62,10 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
                 break;
             case PARAMETER:
                 fillParameterCompletions(result);
+                break;
             case VAR_DECLARATION:
                 fillVariableDeclarationCompletions(result);
+                // fallthrough is intentional: a local variable declaration is also in a code block
             case CODE_BLOCK:
                 fillCodeBlockCompletions(result);
                 break;
@@ -60,8 +76,6 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
             default:
                 break;
         }
-
-        sortResults(parameters, result);
     }
 
     /**
@@ -70,7 +84,7 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
      */
 
     private static void fillVariableDeclarationCompletions(@NotNull CompletionResultSet results) {
-        addTokens(nullable, results);
+        addTokens(nullityModifiers, results);
     }
 
     /**
@@ -82,7 +96,7 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
      */
 
     private static void fillParameterCompletions(@NotNull CompletionResultSet results) {
-        addTokens(nullable, results);
+        addTokens(nullityModifiers, results);
     }
 
     /**
@@ -134,7 +148,15 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
 
     private static void fillMethodSpecCompletions(@NotNull CompletionResultSet results) {
         addTokens(methodSpecCaseKeywords, results);
+        results.addElement(LookupElementBuilder.create(READS.toString()));
+        results.addElement(LookupElementBuilder.create(OLD_KEYWORD.toString()));
         addTokens(also, results);
+        addTokens(behaviors, results);
+        // a heavyweight specification case usually is public, as in OpenJML's examples
+        for (IElementType behavior : behaviors.getTypes()) {
+            results.addElement(PrioritizedLookupElement.withPriority(LookupElementBuilder.create("public " + behavior),
+                    JMLCompletionWeights.KEYWORD.getWeight()));
+        }
     }
 
     /**
@@ -148,5 +170,10 @@ public class JMLKeywordCompletionProvider extends CompletionProvider<CompletionP
         addTokens(invariantModifiers, results);
         //add in invariant itself
         results.addElement(LookupElementBuilder.create(INVARIANT.toString()));
+        // and ghost and model fields, and the clauses for model fields
+        results.addElement(LookupElementBuilder.create(GHOST.toString()));
+        results.addElement(LookupElementBuilder.create(MODEL.toString()));
+        results.addElement(LookupElementBuilder.create(REPRESENTS.toString()));
+        results.addElement(LookupElementBuilder.create(IN.toString()));
     }
 }

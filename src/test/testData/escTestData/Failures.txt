@@ -1,0 +1,65 @@
+Proving methods in demo.Failures
+Starting proof of demo.Failures.Failures() with prover z3-5.1.0
+Completed proof of demo.Failures.Failures() with prover z3-5.1.0 - no warnings [0,29 secs]
+Starting proof of demo.Failures.call(int) with prover z3-5.1.0
+demo\Failures.java:31: verify: The prover cannot establish an assertion (Precondition: demo\Failures.java:27:) in method call
+        positive(x);
+                ^
+demo\Failures.java:27: verify: Associated declaration: demo\Failures.java:31:
+    public void positive(int x) {
+                ^
+demo\Failures.java:26: verify: Precondition conjunct is false: x > 0
+    //@ requires x > 0;
+                   ^
+Completed proof of demo.Failures.call(int) with prover z3-5.1.0 - with warnings [1,92 secs]
+Starting proof of demo.Failures.frame() with prover z3-5.1.0
+demo\Failures.java:19: verify: The prover cannot establish an assertion (Assignable: demo\Failures.java:17:) in method frame: count
+        count = 1;
+              ^
+demo\Failures.java:17: verify: Associated declaration: demo\Failures.java:19:
+    //@ assignable \nothing;
+        ^
+Completed proof of demo.Failures.frame() with prover z3-5.1.0 - with warnings [2,31 secs]
+Starting proof of demo.Failures.loop(int) with prover z3-5.1.0
+demo\Failures.java:40: verify: The prover cannot establish an assertion (LoopInvariant) in method loop
+        //@ loop_invariant 0 <= i && i <= 5;
+            ^
+Completed proof of demo.Failures.loop(int) with prover z3-5.1.0 - with warnings [3,90 secs]
+Starting proof of demo.Failures.nullReturn() with prover z3-5.1.0
+demo\Failures.java:34: verify: The prover cannot establish an assertion (PossiblyNullReturn: demo\Failures.java:34:) in method nullReturn
+    public Object nullReturn() {
+           ^
+demo\Failures.java:34: verify: Associated declaration: demo\Failures.java:34:
+    public Object nullReturn() {
+                  ^
+demo\Failures.java:35: verify: Associated method exit
+        return maybe;
+        ^
+Completed proof of demo.Failures.nullReturn() with prover z3-5.1.0 - with warnings [2,09 secs]
+Starting proof of demo.Failures.positive(int) with prover z3-5.1.0
+Completed proof of demo.Failures.positive(int) with prover z3-5.1.0 - no warnings [0,09 secs]
+Starting proof of demo.Failures.post(int) with prover z3-5.1.0
+demo\Failures.java:10: verify: The prover cannot establish an assertion (Postcondition: demo\Failures.java:8:) in method post
+        return a;
+        ^
+demo\Failures.java:8: verify: Associated declaration: demo\Failures.java:10:
+    //@ ensures \result > a;
+        ^
+Completed proof of demo.Failures.post(int) with prover z3-5.1.0 - with warnings [1,81 secs]
+Starting proof of demo.Failures.reset() with prover z3-5.1.0
+demo\Failures.java:22: verify: The prover cannot establish an assertion (InvariantExit: demo\Failures.java:6:) in method reset
+    public void reset() {
+                ^
+demo\Failures.java:6: verify: Associated declaration: demo\Failures.java:22:
+    //@ public invariant count >= 0;
+               ^
+Completed proof of demo.Failures.reset() with prover z3-5.1.0 - with warnings [2,68 secs]
+Starting proof of demo.Failures.sum(int,int) with prover z3-5.1.0
+demo\Failures.java:14: verify: The prover cannot establish an assertion (ArithmeticOperationRange) in method sum: overflow in int sum
+        return a + b;
+                 ^
+demo\Failures.java:14: verify: The prover cannot establish an assertion (ArithmeticOperationRange) in method sum: underflow in int sum
+        return a + b;
+                 ^
+Completed proof of demo.Failures.sum(int,int) with prover z3-5.1.0 - with warnings [2,98 secs]
+Completed proving methods in demo.Failures [18,06 secs]

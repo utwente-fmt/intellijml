@@ -3,12 +3,20 @@ package nl.utwente.jmlplugin;
 import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.roots.LanguageLevelProjectExtension;
 import com.intellij.pom.java.LanguageLevel;
+import com.intellij.testFramework.LightProjectDescriptor;
 import com.intellij.testFramework.fixtures.LightJavaCodeInsightFixtureTestCase;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Tests that correct semantic errors are given
  */
 public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCase {
+
+    @Override
+    protected @NotNull LightProjectDescriptor getProjectDescriptor() {
+        // a mock JDK that the test framework downloads, so the tests need no intellij-community checkout
+        return JAVA_21;
+    }
 
 
     @Override
@@ -20,7 +28,31 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
 
     @Override
     protected String getTestDataPath() {
-        return "src/test/semanticsAnnotatorTestData";
+        return "src/test/testData/semanticsAnnotatorTestData";
+    }
+
+    /**
+     * The weak warnings are on the quantified expressions for which OpenJML 21.0.29 gives the same warning when it
+     * compiles with runtime checks
+     */
+    public void testAlsoWarnings() {
+        myFixture.configureByFile("AlsoWarnings.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testSpecificationPlacement() {
+        myFixture.configureByFile("SpecificationPlacement.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testMissingFinalSemicolon() {
+        myFixture.configureByFile("MissingFinalSemicolon.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testQuantifierChecks() {
+        myFixture.configureByFile("QuantifierChecks.java");
+        myFixture.checkHighlighting(true, false, true, false);
     }
 
 
@@ -79,6 +111,31 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
         myFixture.checkHighlighting(true, false, true, false);
     }
 
+    public void testLoopSpecsNotAboveLoop() {
+        myFixture.configureByFile("LoopSpecsNotAboveLoop.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testNullityModifiers() {
+        myFixture.configureByFile("NullityModifiers.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testFreshAllowed() {
+        myFixture.configureByFile("FreshAllowed.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testGhostDeclarations() {
+        myFixture.configureByFile("GhostDeclarations.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testStatementPlacement() {
+        myFixture.configureByFile("StatementPlacement.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
     public void testRedundantNotSpecified() {
         myFixture.configureByFile("RedundantNotSpecified.java");
         myFixture.checkHighlighting(true, false, true, false);
@@ -96,6 +153,20 @@ public class JMLSemanticsAnnotatorTest extends LightJavaCodeInsightFixtureTestCa
 
     public void testMultipleDuplicateVisibilityModifiers() {
         myFixture.configureByFile("MultipleDuplicateVisibilityModifiers.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    public void testOpenJMLBehaviors() {
+        myFixture.configureByFile("OpenJMLBehaviors.java");
+        myFixture.checkHighlighting(true, false, true, false);
+    }
+
+    /**
+     * The errors are those of OpenJML 21.0.29 for this file: two of pure, spec_pure, strictly_pure and no_state, at the
+     * second, also in another comment
+     */
+    public void testPurityModifiers() {
+        myFixture.configureByFile("PurityModifiers.java");
         myFixture.checkHighlighting(true, false, true, false);
     }
 

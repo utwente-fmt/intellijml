@@ -1,0 +1,5 @@
+@ public model int side; //@ in size, all;
+@ private represents side = count;
+@ represents size \such_that size >= 0;
+@ public static represents total <- 0;
+@ model instance public \datagroup all;

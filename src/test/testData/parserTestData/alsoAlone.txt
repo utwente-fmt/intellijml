@@ -1,0 +1,5 @@
+JML File(0,6)
+  JMLJmlSpecificationImpl(JML specification)(0,6)
+    PsiElement(at-sign)('@')(0,1)
+    JMLMethodJmlImpl(method specification)(2,6)
+      PsiElement(also)('also')(2,6)

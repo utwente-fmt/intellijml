@@ -1,0 +1,5 @@
+@ check x > 0; show x, a.length, \old(x); show;
+@ reachable; unreachable
+@ halt;
+@ split x > 0;
+@ set show = check + halt; split

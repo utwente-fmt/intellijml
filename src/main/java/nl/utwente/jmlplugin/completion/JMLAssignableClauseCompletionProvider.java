@@ -30,11 +30,11 @@ public class JMLAssignableClauseCompletionProvider extends CompletionProvider<Co
         //account for inner classes
         PsiClass enclosingClass = getEnclosingClass(psiClass);
         while (enclosingClass != null) {
-            fillFieldCompletions(psiClass, result, parameters);
+            fillFieldCompletions(enclosingClass, result, parameters);
             enclosingClass = getEnclosingClass(enclosingClass);
         }
+        // a loop_writes clause in a method body can also name the local variables
+        fillMethodLocalVariables(parameters, result);
         addTokens(assignableJavaKeywords, result);
-
-        sortResults(parameters, result);
     }
 }

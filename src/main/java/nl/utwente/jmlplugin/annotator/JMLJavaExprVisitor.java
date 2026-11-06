@@ -1,16 +1,22 @@
 package nl.utwente.jmlplugin.annotator;
 
 import com.intellij.codeInsight.AnnotationUtil;
+import com.intellij.codeInsight.intention.IntentionAction;
+import com.intellij.lang.annotation.AnnotationBuilder;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.pom.java.LanguageLevel;
 import com.intellij.psi.*;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiTypesUtil;
 import com.intellij.psi.util.TypeConversionUtil;
+import nl.utwente.jmlplugin.psi.JMLGhostDeclaration;
+import nl.utwente.jmlplugin.psi.JMLSetStatement;
 import nl.utwente.jmlplugin.psi.impl.JMLInnerJavaExpr;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
@@ -55,6 +61,20 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         } else {
             holder.newAnnotation(HighlightSeverity.ERROR, message).range(rangeManager.getOriginalRange(element)).create();
         }
+        noErrors = false;
+    }
+
+    /**
+     * Adds an error message with a quick fix to the annotation holder
+     *
+     * @param element the element to use the text range of
+     * @param message the error message
+     * @param fix     the quick fix, or null if there is none
+     */
+    public void annotateError(@NotNull PsiElement element, String message, @Nullable IntentionAction fix) {
+        AnnotationBuilder builder = holder.newAnnotation(HighlightSeverity.ERROR, message).range(rangeManager.getOriginalRange(element));
+        if (fix != null) builder = builder.withFix(fix);
+        builder.create();
         noErrors = false;
     }
 
@@ -230,6 +250,17 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         if (operands.length > 0) {
             PsiExpression lOp = operands[0];
             if (!typeErrorGuard(false, lOp)) return;
+            // JML chains comparisons in the same direction, as in "0 <= i < n", which means "0 <= i && i < n": the
+            // comparison continues from the last operand of the one before it, unless that is in parentheses
+            if (direction(tokenType) != 0 && lOp instanceof PsiPolyadicExpression previous
+                    && direction(previous.getOperationTokenType()) != 0 && operands.length > 1) {
+                if (direction(previous.getOperationTokenType()) != direction(tokenType)) {
+                    annotateError(expr.getTokenBeforeOperand(operands[1]), ErrorMessages.CHAIN_DIRECTIONS);
+                    return;
+                }
+                PsiExpression[] previousOperands = previous.getOperands();
+                lOp = previousOperands[previousOperands.length - 1];
+            }
             // for each pair of operands that are next to each other, check whether the types are allowed
             for (int i = 1; i < operands.length; i++) {
                 PsiExpression rOp = operands[i];
@@ -247,6 +278,15 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
     }
 
     /**
+     * @return 1 for &lt; and &lt;=, -1 for &gt; and &gt;=, and 0 for other operators
+     */
+    private static int direction(IElementType operator) {
+        if (operator == JavaTokenType.LT || operator == JavaTokenType.LE) return 1;
+        if (operator == JavaTokenType.GT || operator == JavaTokenType.GE) return -1;
+        return 0;
+    }
+
+    /**
      * Gives error when the reference cannot be resolved or is not visible from the caller
      *
      * @param reference a reference, usually created from a PsiIdentifier element
@@ -255,7 +295,11 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         if (!typeErrorGuardForChildren(true, reference)) return;
         JavaResolveResult resolved = reference.advancedResolve(false);
         if (!resolved.isValidResult() && !isSpecVisibilityValid(resolved)) {
-            annotateError(reference, ErrorMessages.REFERENCE_UNRESOLVED);
+            if (isInaccessible(resolved)) {
+                annotateError(reference, ErrorMessages.NOT_VISIBLE, SpecVisibility.specPublicFix((PsiMember) resolved.getElement()));
+            } else {
+                annotateError(reference, ErrorMessages.REFERENCE_UNRESOLVED);
+            }
         } else {
             resolvedReferences.put(reference, resolved);
         }
@@ -287,9 +331,8 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
                     if (dimExpr.getType() == null) {
                         // should not happen, but just in case
                         annotateError(dimExpr, ErrorMessages.TYPE_UNKNOWN);
-                    }
-                    if (!dimExpr.getType().getCanonicalText().equals("java.lang.Integer") && !TypeConversionUtil.isIntegerNumber(dimExpr.getType().getPresentableText())) {
-//                    if (!TypeConversionUtil.areTypesConvertible(dimExpr.getType(), PsiTypes.intType())) {
+                    } else if (!dimExpr.getType().getCanonicalText().equals("java.lang.Integer")
+                            && !TypeConversionUtil.isIntegerNumber(dimExpr.getType().getPresentableText())) {
                         annotateError(dimExpr, ErrorMessages.ARRAY_DIM_NO_INT);
                     }
                 }
@@ -317,7 +360,12 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
                 }
             }
         } else {
-            // is class creation
+            // is class creation, which OpenJML only allows in set statements and the initializers of ghost variables
+            if (PsiTreeUtil.getParentOfType(originalElement, JMLSetStatement.class, JMLGhostDeclaration.class) == null) {
+                // the types are still checked
+                holder.newAnnotation(HighlightSeverity.ERROR, ErrorMessages.OBJECT_ALLOCATION)
+                        .range(rangeManager.getOriginalRange(expr)).create();
+            }
             PsiJavaCodeReferenceElement ref = expr.getClassReference();
             if (!typeErrorGuard(false, ref)) return;
             // check if reference to the class has been resolved
@@ -380,7 +428,19 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
             checkPurenessOfMethod(expr, result);
             return;
         }
-        annotateError(expr, ErrorMessages.METHOD_UNRESOLVED);
+        if (isInaccessible(result)) {
+            annotateError(expr, ErrorMessages.NOT_VISIBLE, SpecVisibility.specPublicFix((PsiMember) result.getElement()));
+        } else {
+            annotateError(expr, ErrorMessages.METHOD_UNRESOLVED);
+        }
+    }
+
+    /**
+     * @param result the result of resolving a reference
+     * @return whether the reference resolves to a field, method or class that is not visible here
+     */
+    private static boolean isInaccessible(JavaResolveResult result) {
+        return result.getElement() instanceof PsiMember && !result.isAccessible();
     }
 
     // return true when valid
@@ -394,7 +454,9 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
     private boolean isSpecVisibilityValid(JavaResolveResult result) {
         // can still be valid through spec_public or spec_protected
         PsiElement elem = result.getElement();
-        if (elem != null && JMLAnnotatorUtil.doLinkedCommentsContain(elem, "spec_public", false)) {
+        if (elem != null && (JMLAnnotatorUtil.doLinkedCommentsContain(elem, "spec_public", false)
+                || (elem instanceof PsiMember member && SpecVisibility.hasAnnotation(member, "SpecPublic")))) {
+            // spec_public, also as the annotation @SpecPublic
             return true;
         }
         // for spec_protected, it is allowed if it is in the same package or the caller is a subclass
@@ -403,10 +465,10 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
             PsiClass elemClass = elem instanceof PsiClass ? (PsiClass) elem : PsiTreeUtil.getParentOfType(elem, PsiClass.class);
             PsiElement javaElem = getJavaContext(originalElement);
             PsiClass originalClass = javaElem instanceof PsiClass ? (PsiClass) javaElem : PsiTreeUtil.getParentOfType(javaElem, PsiClass.class);
-            // true if they has the same package name or if the class containing the JML comment is a subclass of class containing the resolved element
-            return elemClass != null && elemClass.getQualifiedName() != null && originalClass != null && originalClass.getQualifiedName() != null
-                    && (elemClass.getQualifiedName().replaceAll("\\..+$", "").equals(originalClass.getQualifiedName().replaceAll("\\..+$", ""))
-                    || Arrays.asList(originalClass.getSupers()).contains(elemClass));
+            // true if they are in the same package or if the class containing the JML comment is a subclass of class containing the resolved element
+            return elemClass != null && originalClass != null
+                    && (JavaPsiFacade.getInstance(project).arePackagesTheSame(elemClass, originalClass)
+                    || originalClass.isInheritor(elemClass, true));
         }
         return false;
     }
@@ -418,27 +480,36 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
      * @param result the found method
      */
     private void checkPurenessOfMethod(PsiCallExpression expr, JavaResolveResult result) {
-        // check that the user put JML pure above method
-        //noinspection ConstantConditions
-        if (!doLinkedCommentsContain(result.getElement(), "pure", false)) {
-            // if use did not use @pure, so look for IntelliJ contracts (also inferred ones)
-            PsiAnnotation[] annotations = AnnotationUtil.getAllAnnotations((PsiMethod) result.getElement(), true, null, true);
-            boolean pureFound = false;
+        if (!(result.getElement() instanceof PsiMethod method)) return;
+        // as in OpenJML, a spec_pure method, or a pure one whose result is not an object (see Purity)
+        if (Purity.callableInSpecification(method)) return;
+        Purity purity = Purity.of(method);
+        if (purity == Purity.NONE) {
+            // a method without JML, such as one of the Java library, which IntelliJ's contracts (also inferred ones)
+            // can declare pure; inferred ones only for the library, since a method of the project needs JML for OpenJML
+            PsiAnnotation[] annotations = AnnotationUtil.getAllAnnotations(method, true, null,
+                    method instanceof PsiCompiledElement);
             for (PsiAnnotation annotation : annotations) {
                 // found a contract
                 if ("org.jetbrains.annotations.Contract".equals(annotation.getQualifiedName())) {
                     PsiAnnotationMemberValue pureVal = annotation.findAttributeValue("pure");
                     // check whether there is a value for pure and whether that value equals true
-                    if (pureVal != null && JavaPsiFacade.getInstance(project).getConstantEvaluationHelper().computeConstantExpression(pureVal, false).equals(true)) {
-                        pureFound = true;
-                        break;
+                    if (pureVal != null && Boolean.TRUE.equals(JavaPsiFacade.getInstance(project).getConstantEvaluationHelper()
+                            .computeConstantExpression(pureVal, false))) {
+                        return;
                     }
                 }
             }
-            if (!pureFound) {
-                this.holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.METHOD_NOT_PURE).range(rangeManager.getOriginalRange(expr)).create();
-            }
         }
+        AnnotationBuilder builder = this.holder.newAnnotation(HighlightSeverity.WARNING,
+                ErrorMessages.nonPureCall(Purity.qualifiedName(method))).range(rangeManager.getOriginalRange(expr));
+        // a pure method that returns an object needs spec_pure, which is not obvious
+        if (purity == Purity.PURE) builder = builder.tooltip(ErrorMessages.pureReturnsObjectTooltip(method.getName()));
+        // Alt+Enter declares it so, in the project's code: pure, or spec_pure if it returns an object (a constructor
+        // has no result)
+        PsiType returned = method.getReturnType();
+        builder = builder.withFix(new SpecVisibilityFix(method, returned == null || returned instanceof PsiPrimitiveType ? "pure" : "spec_pure"));
+        builder.create();
     }
 
 
@@ -458,11 +529,39 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
             if (!TypeConversionUtil.areTypesConvertible(operand.getType(), castType.getType(), LanguageLevel.HIGHEST)) {
                 annotateError(expr, ErrorMessages.wrongCast(operand.getType(), castType.getType()));
             }
-            // give a warning when trying to cast to a sub-class
-            else if (Arrays.asList(castType.getType().getSuperTypes()).contains(operand.getType())) {
+            // give a warning when trying to cast to a sub-class, unless an instanceof check before it guards it
+            else if (Arrays.asList(castType.getType().getSuperTypes()).contains(operand.getType())
+                    && !isGuardedByInstanceof(expr, operand, castType.getType())) {
                 this.holder.newAnnotation(HighlightSeverity.WARNING, ErrorMessages.castToSubType(
                         operand.getType(), castType.getType())).range(rangeManager.getOriginalRange(expr)).create();
             }
+    }
+
+    /**
+     * @return whether an instanceof check of the same operand and type comes before the cast, as in
+     * "o instanceof Point &amp;&amp; ((Point) o).x == x" (also with ==&gt;), or "o instanceof Point ? ((Point) o).x : 0",
+     * which is common in the specification of equals
+     */
+    private static boolean isGuardedByInstanceof(PsiTypeCastExpression cast, PsiExpression operand, PsiType type) {
+        String operandText = operand.getText();
+        for (PsiElement current = cast; current.getParent() instanceof PsiExpression parent; current = parent) {
+            if (parent instanceof PsiPolyadicExpression polyadic && polyadic.getOperationTokenType() == JavaTokenType.ANDAND) {
+                for (PsiExpression previous : polyadic.getOperands()) {
+                    if (previous == current) break;
+                    if (isInstanceofCheck(previous, operandText, type)) return true;
+                }
+            } else if (parent instanceof PsiConditionalExpression conditional && conditional.getThenExpression() == current
+                    && isInstanceofCheck(conditional.getCondition(), operandText, type)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isInstanceofCheck(PsiExpression expression, String operandText, PsiType type) {
+        PsiExpression check = com.intellij.psi.util.PsiUtil.skipParenthesizedExprDown(expression);
+        return check instanceof PsiInstanceOfExpression instanceOf && instanceOf.getCheckType() != null
+                && instanceOf.getOperand().getText().equals(operandText) && instanceOf.getCheckType().getType().equals(type);
     }
 
     /**
@@ -474,9 +573,9 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
         PsiExpression operand = expr.getOperand();
         if (!typeErrorGuard(false, operand)) return;
         PsiJavaToken sign = expr.getOperationSign();
+        boolean changesVariable = sign.getTokenType() == JavaTokenType.PLUSPLUS || sign.getTokenType() == JavaTokenType.MINUSMINUS;
         // check that it is a reference for ++ and --
-        if ((sign.getTokenType() == JavaTokenType.PLUSPLUS || sign.getTokenType() == JavaTokenType.MINUSMINUS)
-                && !(operand instanceof PsiReferenceExpression)) {
+        if (changesVariable && !isVariable(operand)) {
             annotateError(expr, ErrorMessages.VARIABLE_EXPECTED);
         }
         // check that operator is allowed
@@ -488,5 +587,20 @@ public class JMLJavaExprVisitor extends JavaRecursiveElementVisitor {
                 annotateError(expr, ErrorMessages.wrongUnary(sign.getText(), operand.getType()));
             }
         }
+        // ++ and -- are assignments, which are not allowed in specifications
+        else if (changesVariable) {
+            annotateError(expr, ErrorMessages.INCREMENT_NOT_PURE);
+        }
+    }
+
+    /**
+     * @param operand an operand of ++ or --
+     * @return whether the operand is a variable: a reference, or a parameter or quantified variable, which are
+     * replaced by a value in the expression that is checked
+     */
+    private boolean isVariable(PsiExpression operand) {
+        if (operand instanceof PsiReferenceExpression) return true;
+        String originalText = rangeManager.getOriginalRange(operand).substring(originalElement.getContainingFile().getText());
+        return StringUtil.isJavaIdentifier(originalText.trim());
     }
 }

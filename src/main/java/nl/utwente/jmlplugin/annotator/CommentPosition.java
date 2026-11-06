@@ -3,10 +3,12 @@ package nl.utwente.jmlplugin.annotator;
 import com.intellij.psi.*;
 import nl.utwente.jmlplugin.psi.JMLClassInvariant;
 import nl.utwente.jmlplugin.psi.JMLJmlSpecification;
+import org.jetbrains.annotations.Nullable;
 
 import static com.intellij.psi.util.PsiTreeUtil.*;
 import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.getCommentContext;
 import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.getJavaContext;
+import static nl.utwente.jmlplugin.annotator.JMLAnnotatorUtil.isAtMostOneNewline;
 
 /**
  * Enum to keep track of where a JMLComment is placed in the Java file
@@ -17,6 +19,7 @@ public enum CommentPosition {
     ABOVE_METHOD("method"),
     BEFORE_METHOD_BODY("method body"),
     CLASS_INVARIANT("class_invariant"),
+    CAST("cast"),
     CODE_BLOCK("code block"),
     FIELD("field"),
     INSIDE_CLASS("class body"),
@@ -85,6 +88,11 @@ public enum CommentPosition {
             if (skipWhitespacesAndCommentsBackward(jmlComment) == null) {
                 return ABOVE_CLASS;
             }
+            // above the documentation comment of a method or field, or separated from it by blank lines, which
+            // OpenJML takes as its JML
+            PsiMember member = JMLAnnotatorUtil.memberBelow(jmlComment);
+            if (member instanceof PsiMethod) return ABOVE_METHOD;
+            if (member instanceof PsiField) return FIELD;
             return INSIDE_CLASS;
         }
         if (javaContext instanceof PsiCodeBlock) {
@@ -92,7 +100,7 @@ public enum CommentPosition {
             PsiElement nextSibling = jmlComment.getNextSibling();
             // skip all comments and whitespaces that have 1 newline max, otherwise it is not right above it
             while (nextSibling instanceof PsiComment || (nextSibling instanceof PsiWhiteSpace
-                    && nextSibling.getText().matches("^[ \t\u00A0]*(\n|\r\n)?[ \t\u00A0]*$"))) {
+                    && isAtMostOneNewline(nextSibling.getText()))) {
                 nextSibling = nextSibling.getNextSibling();
             }
             if (nextSibling instanceof PsiDeclarationStatement) {
@@ -100,6 +108,7 @@ public enum CommentPosition {
             }
             return CODE_BLOCK;
         }
+        if (isInCast(jmlComment)) return CAST;
         if (getParentOfType(jmlComment, PsiLocalVariable.class) != null) return VAR_DECLARATION;
         return UNKNOWN;
     }
@@ -117,6 +126,9 @@ public enum CommentPosition {
         PsiComment jmlComment = getCommentContext(element);
         PsiElement javaContext = getJavaContext(element);
         if (javaContext == null) return UNKNOWN;
+        // the modifiers of an invariant, also right above a field or method
+        JMLClassInvariant invariant = getParentOfType(element, JMLClassInvariant.class);
+        if (invariant != null && invariantClass(invariant) != null) return CLASS_INVARIANT;
         if (javaContext instanceof PsiField) return FIELD;
         if (javaContext instanceof PsiParameter) return PARAMETER;
         if (javaContext instanceof PsiMethod) {
@@ -134,7 +146,7 @@ public enum CommentPosition {
             PsiElement nextSibling = jmlComment.getNextSibling();
             // skip all comments and whitespaces that have 1 newline max, otherwise it is not right above it
             while (nextSibling instanceof PsiComment || (nextSibling instanceof PsiWhiteSpace
-                    && nextSibling.getText().matches("^[ \t\u00A0]*(\n|\r\n)?[ \t\u00A0]*$"))) {
+                    && isAtMostOneNewline(nextSibling.getText()))) {
                 nextSibling = nextSibling.getNextSibling();
             }
             if (nextSibling instanceof PsiDeclarationStatement) {
@@ -149,8 +161,19 @@ public enum CommentPosition {
             }
             return UNKNOWN;
         }
+        if (isInCast(jmlComment)) return CAST;
         if (getParentOfType(jmlComment, PsiLocalVariable.class) != null) return VAR_DECLARATION;
         return UNKNOWN;
+    }
+
+    /**
+     * @return whether the comment is in the type of a cast, as in a cast to a non_null array type
+     */
+    private static boolean isInCast(PsiComment comment) {
+        PsiElement parent = comment == null ? null : comment.getParent();
+        if (parent instanceof PsiTypeElement) parent = parent.getParent();
+        return parent instanceof PsiTypeCastExpression cast && (cast.getOperand() == null
+                || comment.getTextRange().getEndOffset() <= cast.getOperand().getTextRange().getStartOffset());
     }
 
     /**
@@ -160,7 +183,22 @@ public enum CommentPosition {
      * @return true if it is on the correct position
      */
     public static boolean isInvariantOnCorrectPosition(JMLClassInvariant invariant) {
-        return getJavaContext(invariant) instanceof PsiClass;
+        return invariantClass(invariant) != null;
+    }
+
+    /**
+     * @param invariant an invariant, initially clause or constraint
+     * @return the class it belongs to: the class whose body it is in, also right above or after a field or method, as
+     * OpenJML allows, or null if it is somewhere else, such as in a method body
+     */
+    public static @Nullable PsiClass invariantClass(JMLClassInvariant invariant) {
+        PsiElement context = getJavaContext(invariant);
+        if (context instanceof PsiClass psiClass) return psiClass;
+        PsiComment comment = getCommentContext(invariant);
+        if ((context instanceof PsiField || context instanceof PsiMethod) && comment != null && comment.getParent() == context) {
+            return ((PsiMember) context).getContainingClass();
+        }
+        return null;
     }
 
     /**
@@ -183,6 +221,7 @@ public enum CommentPosition {
             case METHOD_DECLARATION:
             case CODE_BLOCK:
             case INSIDE_CLASS:
+            case CAST:
                 return "in a " + this.displayName;
             default:
                 return "here";

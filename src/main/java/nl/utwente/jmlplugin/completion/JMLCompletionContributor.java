@@ -56,8 +56,8 @@ public class JMLCompletionContributor extends CompletionContributor {
         extend(CompletionType.BASIC, quantifiedExpressionStart(), JMLJavaPrimitiveClassCompletion.INSTANCE);
         extend(CompletionType.BASIC, jmlQuantifiedConditionExpression(), JMLJavaIdentifierCompletionProvider.INSTANCE);
         extend(CompletionType.BASIC, jmlQuantifiedConditionDotExpression(), JMLJavaDotCompletionProvider.INSTANCE);
-        //debug code, remove when done or uncomment if needed
-        //extend(CompletionType.BASIC, psiElement(), debugPrint());
+        // to find the pattern of a place, stop in the debugger in a provider and look at parameters.getPosition() and
+        // its parents: PsiViewer shows another tree than completion sees when the expression is not complete yet
     }
 
     /**
@@ -157,7 +157,8 @@ public class JMLCompletionContributor extends CompletionContributor {
      */
 
     private static PsiElementPattern.Capture<PsiElement> javaJMLStoreRefNoSemicolon() {
-        return psiElement(JMLTypes.IDENT).afterLeaf("assignable", "modifiable", "modifies");
+        return psiElement(JMLTypes.IDENT).afterLeaf("assignable", "modifiable", "modifies",
+                "loop_writes", "loop_modifies", "loop_assigns", "loop_assignable");
     }
 
     /**
@@ -244,37 +245,5 @@ public class JMLCompletionContributor extends CompletionContributor {
             names[i] = set.getTypes()[i].toString();
         }
         return names;
-    }
-    /**
-     * @return prints some information about the autocomplete to the console,
-     * should not be called up above unless needed for debugging as it it prone to
-     * null pointer exceptions.
-     *
-     * YOU SHOULD EITHER USE A DEBUGGER OR THIS DEBUG PRINT WHEN PROBING FOR COMPLETION PATTERNS BECAUSE PSI VIEWER
-     * LIES ABOUT THE STRUCTURE OF THE PARSE TREE WHEN THE EXPRESSION IS INCOMPLETE.
-     *
-     * DEBUGGER APPROACH IS USUALLY BETTER BECAUSE YOU CAN STOP AND INSPECT THE TREE STRUCTURE BY CALLING METHODS ON
-     * parameters.getPosition(). BUT THIS CAN BE VERY ANNOYING AT TIMES IF YOU NEED TO TEST MULTIPLE PLACES AND THE DEBUG
-     * PRINT IS PREFERABLE IN THOSE CASES.
-     */
-
-    private CompletionProvider<CompletionParameters> debugPrint() {
-        return new CompletionProvider<CompletionParameters>() {
-            @Override
-            protected void addCompletions(@NotNull CompletionParameters parameters,
-                                          @NotNull ProcessingContext context,
-                                          @NotNull CompletionResultSet result) {
-                result.addElement(LookupElementBuilder.create("test"));
-                System.out.println(
-                        parameters.getPosition().getText() + " " +
-                        parameters.getPosition().toString() + " " +
-                        parameters.getPosition().getLanguage().toString() + " " +
-                        parameters.getPosition().getParent().toString() + " " +
-                        //parameters.getPosition().getPrevSibling().getPrevSibling().toString() + " " +
-                        (parameters.getPosition().getPrevSibling() == null ? "no sibling" : parameters.getPosition().getPrevSibling().toString())
-                );
-
-            }
-        };
     }
 }
