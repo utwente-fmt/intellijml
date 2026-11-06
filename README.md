@@ -8,7 +8,7 @@ specifications in a convenient manner.
 
 ## Installation
 
-The installable plugin file (a .zip file, for Settings | Plugins | the gear icon | Install Plugin from Disk...) can be
+The installable plugin file (a .jar file, for Settings | Plugins | the gear icon | Install Plugin from Disk...) can be
 found in the [releases section](https://gitlab.utwente.nl/fmt/intellijml/-/releases).
 
 An installation guide can be found [here](docs/Installation_Guide.pdf)
