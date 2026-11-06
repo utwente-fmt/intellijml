@@ -7,4 +7,5 @@ Java programs:
 - Rename, Find Usages and Ctrl+click for the names in JML
 - Run with JML Checks: runs programs and tests with run time checks of their specifications (OpenJML)
 - Verify with OpenJML: proves that methods meet their specifications, with counterexamples and plain-word messages
+- OpenJML also checks a file when it is saved; the plugin downloads OpenJML the first time it is needed
 <!-- Plugin description end -->

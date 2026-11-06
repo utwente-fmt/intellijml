@@ -1,4 +1,4 @@
-## [Unreleased]
+## [2.0.0]
 
 ### Added
 - **Run with JML Checks**, next to Run and Debug: runs a program or tests with run time checks of their JML
